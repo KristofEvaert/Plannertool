@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+@import "primeicons/primeicons.css";
+
+/* Leaflet + Tailwind/PrimeUI compatibility: don't let global resets break marker sizing */
+img.leaflet-marker-icon,
+img.leaflet-marker-shadow {
+  max-width: none !important;
+}
+
+@plugin "tailwindcss-primeui";
+@plugin "@iconify/tailwind4";
+@custom-variant dark (&:where(.dark, .dark *));  
+
+/* Drivers page: icon-only edit button should be plain (no background/border) with black icon */
+.driver-action-icon-btn.p-button {
+  background: transparent !important;
+  border: none !important;
+  color: #111827 !important;
+  box-shadow: none !important;
+}
+
+.driver-action-icon-btn.p-button:not(:disabled):hover {
+  background: transparent !important;
+  border: none !important;
+  color: #111827 !important;
+}
+
+.driver-action-icon-btn.p-button:focus,
+.driver-action-icon-btn.p-button:focus-visible {
+  box-shadow: none !important;
+  outline: none !important;
+}

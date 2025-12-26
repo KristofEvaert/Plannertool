@@ -1,0 +1,6 @@
+@TransportPlanner.Api_HostAddress = http://localhost:5163
+
+GET {{TransportPlanner.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

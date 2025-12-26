@@ -1,0 +1,16 @@
+{
+    "extends": "stylelint-config-standard-scss",
+    "rules": {
+        "selector-pseudo-element-no-unknown": [
+            true,
+            {
+                "ignorePseudoElements": [
+                    "ng-deep"
+                ]
+            }
+        ],
+        "no-empty-source": null,
+        "scss/load-no-partial-leading-underscore": null,
+        "no-descending-specificity": null
+    }
+}

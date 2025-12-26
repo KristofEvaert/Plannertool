@@ -1,0 +1,39 @@
+using Microsoft.EntityFrameworkCore;
+using TransportPlanner.Application.Interfaces;
+using TransportPlanner.Domain.Entities;
+using TransportPlanner.Infrastructure.Data;
+
+namespace TransportPlanner.Infrastructure.Repositories;
+
+public class PoleRepository : IPoleRepository
+{
+    private readonly TransportPlannerDbContext _dbContext;
+
+    public PoleRepository(TransportPlannerDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Pole?> GetBySerialAsync(string serial, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Poles
+            .FirstOrDefaultAsync(p => p.Serial == serial, cancellationToken);
+    }
+
+    public async Task AddAsync(Pole pole, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.Poles.AddAsync(pole, cancellationToken);
+    }
+
+    public Task UpdateAsync(Pole pole, CancellationToken cancellationToken = default)
+    {
+        _dbContext.Poles.Update(pole);
+        return Task.CompletedTask;
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+

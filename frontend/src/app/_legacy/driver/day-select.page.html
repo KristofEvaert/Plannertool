@@ -1,0 +1,37 @@
+<div class="container mx-auto px-4 py-6">
+  <h2 class="text-2xl font-bold mb-6">Select Day</h2>
+
+  @if (error()) {
+    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+  }
+
+  <div class="max-w-md space-y-4">
+    <div>
+      <label class="block text-sm font-medium mb-2">Select Driver</label>
+      <p-dropdown
+        [options]="drivers()"
+        [(ngModel)]="selectedDriver"
+        optionLabel="name"
+        placeholder="Choose a driver"
+        class="w-full"
+      />
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-2">Select Date</label>
+      <p-calendar
+        [(ngModel)]="selectedDate"
+        dateFormat="yy-mm-dd"
+        [showIcon]="true"
+        class="w-full"
+      />
+    </div>
+    <p-button
+      label="Go to Day"
+      icon="pi pi-arrow-right"
+      iconPos="right"
+      [disabled]="!selectedDriver() || !selectedDate()"
+      (onClick)="navigateToDay()"
+    />
+  </div>
+</div>
+

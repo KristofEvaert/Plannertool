@@ -1,0 +1,496 @@
+using Microsoft.EntityFrameworkCore;
+using TransportPlanner.Application.DTOs.Plan;
+using TransportPlanner.Application.Interfaces;
+using TransportPlanner.Domain.Entities;
+using TransportPlanner.Infrastructure.Data;
+
+namespace TransportPlanner.Infrastructure.Queries;
+
+public class PlanQueries : IPlanQueries
+{
+    private readonly TransportPlannerDbContext _dbContext;
+    private readonly IGeocodingService _geocodingService;
+
+    public PlanQueries(TransportPlannerDbContext dbContext, IGeocodingService geocodingService)
+    {
+        _dbContext = dbContext;
+        _geocodingService = geocodingService;
+    }
+
+    public async Task<DayOverviewDto> GetDayOverviewAsync(DateTime date, int horizonDays = 14, CancellationToken cancellationToken = default)
+    {
+        var dateOnly = date.Date;
+        var endDate = dateOnly.AddDays(horizonDays - 1);
+
+        // Ensure PlanDay exists for this date
+        var planDay = await _dbContext.PlanDays
+            .AsNoTracking()
+            .FirstOrDefaultAsync(pd => pd.Date.Date == dateOnly, cancellationToken);
+
+        if (planDay == null)
+        {
+            // Create a new PlanDay entry
+            planDay = new PlanDay
+            {
+                Date = dateOnly,
+                IsLocked = false
+            };
+            _dbContext.PlanDays.Add(planDay);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        // Load all drivers
+        var drivers = await _dbContext.Drivers
+            .AsNoTracking()
+            .OrderBy(d => d.Name)
+            .ToListAsync(cancellationToken);
+
+        // Load routes for this date - ensure Date normalization (date-only comparison)
+        var routes = await _dbContext.Routes
+            .AsNoTracking()
+            .Where(r => r.Date.Date == dateOnly.Date)
+            .ToListAsync(cancellationToken);
+
+        // Load route stops with pole information
+        var routeIds = routes.Select(r => r.Id).ToList();
+        var routeStopsData = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Where(rs => routeIds.Contains(rs.RouteId))
+            .Join(
+                _dbContext.Poles,
+                rs => rs.PoleId,
+                pole => pole.Id,
+                (rs, pole) => new
+                {
+                    RouteId = rs.RouteId,
+                    Sequence = rs.Sequence,
+                    PoleId = pole.Id,
+                    Serial = pole.Serial,
+                    Latitude = pole.Latitude,
+                    Longitude = pole.Longitude
+                })
+            .OrderBy(x => x.RouteId)
+            .ThenBy(x => x.Sequence)
+            .ToListAsync(cancellationToken);
+
+        // Group stops by route ID
+        var stopsByRoute = routeStopsData
+            .GroupBy(x => x.RouteId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => new TransportPlanner.Application.DTOs.Plan.RouteStopDto
+                {
+                    Sequence = x.Sequence,
+                    PoleId = x.PoleId,
+                    Serial = x.Serial,
+                    Latitude = (double)x.Latitude,
+                    Longitude = (double)x.Longitude
+                }).ToList());
+
+        // Fetch addresses for all stops in parallel
+        var allStops = stopsByRoute.Values.SelectMany(s => s).ToList();
+        var addressTasks = allStops.Select(async stop =>
+        {
+            try
+            {
+                stop.Address = await _geocodingService.GetAddressAsync(stop.Latitude, stop.Longitude, cancellationToken);
+            }
+            catch
+            {
+                // If geocoding fails, leave address as null
+                stop.Address = null;
+            }
+        });
+
+        await Task.WhenAll(addressTasks);
+
+        // Build driver route summaries - find route by DriverId + Date==date.Date
+        var driverSummaries = new List<DriverRouteSummaryDto>();
+        var totalPlannedTodayCount = 0;
+        
+        foreach (var driver in drivers)
+        {
+            // Find route for this driver: Route.DriverId == driver.Id AND Route.Date == dateOnly.Date
+            var route = routes.FirstOrDefault(r => r.DriverId == driver.Id && r.Date.Date == dateOnly.Date);
+            var stops = route != null && stopsByRoute.TryGetValue(route.Id, out var routeStops) 
+                ? routeStops 
+                : new List<TransportPlanner.Application.DTOs.Plan.RouteStopDto>();
+
+            // Query stopCount from database for accuracy: COUNT(RouteStops WHERE RouteId = Route.Id)
+            int stopCount = 0;
+            if (route != null)
+            {
+                stopCount = await _dbContext.RouteStops
+                    .AsNoTracking()
+                    .Where(rs => rs.RouteId == route.Id)
+                    .CountAsync(cancellationToken);
+                totalPlannedTodayCount += stopCount;
+            }
+
+            driverSummaries.Add(new DriverRouteSummaryDto
+            {
+                DriverId = driver.Id,
+                DriverName = driver.Name,
+                RouteId = route?.Id,
+                IsRouteLocked = route?.IsLocked ?? false,
+                StopCount = stopCount,
+                TotalMinutes = route?.TotalMinutes ?? 0,
+                TotalKm = route != null ? (double)route.TotalKm : 0.0,
+                StartLatitude = (double)driver.StartLatitude,
+                StartLongitude = (double)driver.StartLongitude,
+                ImageUrl = driver.ImageUrl,
+                Stops = stops
+            });
+        }
+
+        // Compute plannedTodayCount from driver summaries (sum of stopCounts)
+        var plannedTodayCount = driverSummaries.Sum(d => d.StopCount);
+
+        // Compute horizon-based metrics
+        var horizonMetrics = await GetHorizonBasedMetricsAsync(dateOnly, endDate, cancellationToken);
+        var backlogPreview = await GetBacklogPreviewAsync(dateOnly, endDate, cancellationToken);
+
+        // Compute legacy backlog counts (keep for backward compatibility)
+        var backlogInfo = await GetBacklogInfoAsync(dateOnly, cancellationToken);
+        var backlogMetrics = await GetBacklogMetricsAsync(dateOnly, cancellationToken);
+
+        // Get extra work minutes from settings (default 0)
+        var settings = await _dbContext.PlanDaySettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Date == dateOnly, cancellationToken);
+        var extraWorkMinutes = settings?.ExtraWorkMinutes ?? 0;
+
+        return new DayOverviewDto
+        {
+            Date = dateOnly,
+            IsLocked = planDay.IsLocked,
+            ExtraWorkMinutes = extraWorkMinutes,
+            Drivers = driverSummaries,
+            UnplannedPoles = backlogPreview, // Now backlog preview (top N urgent in horizon)
+            EligibleBacklogCount = backlogInfo.EligibleBacklogCount,
+            DueTodayCount = backlogInfo.DueTodayCount,
+            OverdueCount = backlogInfo.OverdueCount,
+            DueTodayUnplannedCount = backlogInfo.DueTodayUnplannedCount,
+            FixedForDayCount = backlogInfo.FixedForDayCount,
+            FixedForDayUnplannedCount = backlogInfo.FixedForDayUnplannedCount,
+            TotalOpenPolesCount = horizonMetrics.TotalOpenPolesCount,
+            UnplannedInHorizonCount = horizonMetrics.RemainingInHorizonCount,
+            PlannedInHorizonCount = horizonMetrics.PlannedInHorizonCount,
+            HorizonDays = horizonDays,
+            TotalBacklogCount = backlogMetrics.TotalBacklogCount,
+            PlannedTodayCount = plannedTodayCount, // Use computed from driver summaries
+            RemainingBacklogCount = backlogMetrics.RemainingBacklogCount,
+            // Horizon-based metrics (primary)
+            TotalToPlanInHorizonCount = horizonMetrics.TotalToPlanInHorizonCount,
+            PlannedInHorizonCount = horizonMetrics.PlannedInHorizonCount,
+            RemainingInHorizonCount = horizonMetrics.RemainingInHorizonCount
+        };
+    }
+
+    private async Task<(int TotalToPlanInHorizonCount, int PlannedInHorizonCount, int RemainingInHorizonCount, int PlannedTodayCount, int TotalOpenPolesCount)> GetHorizonBasedMetricsAsync(
+        DateTime dateOnly,
+        DateTime endDate,
+        CancellationToken cancellationToken)
+    {
+        // Compute "scope poles" for the horizon:
+        // Poles where Status not Done/Cancelled AND (
+        //   (FixedDate != null AND FixedDate between [dateOnly..end]) OR
+        //   (FixedDate == null AND DueDate between [dateOnly..end])
+        // )
+        var scopePoleIds = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .Where(p =>
+                (p.FixedDate.HasValue && p.FixedDate.Value.Date >= dateOnly && p.FixedDate.Value.Date <= endDate) ||
+                (p.FixedDate == null && p.DueDate.Date >= dateOnly && p.DueDate.Date <= endDate))
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken);
+
+        var totalToPlanInHorizonCount = scopePoleIds.Count;
+
+        // Compute planned pole ids in horizon:
+        // DISTINCT RouteStops.PoleId JOIN Routes WHERE Routes.Date between [dateOnly..end]
+        var plannedPoleIdsInHorizon = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date >= dateOnly && r.Date <= endDate),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs.PoleId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        // Planned in horizon: COUNT(plannedPoleIdsInHorizon INTERSECT scopePoleIds)
+        var plannedInHorizonCount = scopePoleIds
+            .Where(poleId => plannedPoleIdsInHorizon.Contains(poleId))
+            .Count();
+
+        // Remaining in horizon: totalToPlanInHorizonCount - plannedInHorizonCount
+        var remainingInHorizonCount = totalToPlanInHorizonCount - plannedInHorizonCount;
+
+        // Planned today: COUNT(RouteStops JOIN Routes where Routes.Date == dateOnly)
+        var plannedTodayCount = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date.Date == dateOnly.Date),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs)
+            .CountAsync(cancellationToken);
+
+        // Total open poles count (for legacy compatibility)
+        var totalOpenPolesCount = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .CountAsync(cancellationToken);
+
+        return (totalToPlanInHorizonCount, plannedInHorizonCount, remainingInHorizonCount, plannedTodayCount, totalOpenPolesCount);
+    }
+
+    private async Task<List<PoleDto>> GetBacklogPreviewAsync(
+        DateTime dateOnly,
+        DateTime endDate,
+        CancellationToken cancellationToken)
+    {
+        const int maxPreviewPoles = 20; // Configurable limit for UI performance
+
+        // Scope poles: same as in GetHorizonBasedMetricsAsync
+        var scopePoleIds = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .Where(p =>
+                (p.FixedDate.HasValue && p.FixedDate.Value.Date >= dateOnly && p.FixedDate.Value.Date <= endDate) ||
+                (p.FixedDate == null && p.DueDate.Date >= dateOnly && p.DueDate.Date <= endDate))
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken);
+
+        // Planned pole ids in horizon
+        var plannedPoleIdsInHorizon = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date >= dateOnly && r.Date <= endDate),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs.PoleId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        // Unplanned preview: Poles in scope EXCLUDING plannedPoleIdsInHorizon
+        // ORDER BY DueDate asc, TAKE 20
+        var backlogPreviewPoles = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => scopePoleIds.Contains(p.Id))
+            .Where(p => !plannedPoleIdsInHorizon.Contains(p.Id))
+            .OrderBy(p => p.DueDate) // Order by DueDate ASC (earliest due first)
+            .Take(maxPreviewPoles)
+            .ToListAsync(cancellationToken);
+
+        var defaultServiceMinutes = 20; // Default service minutes
+
+        var poleDtos = backlogPreviewPoles
+            .Select(pole => new PoleDto
+            {
+                PoleId = pole.Id,
+                Serial = pole.Serial,
+                Latitude = (double)pole.Latitude,
+                Longitude = (double)pole.Longitude,
+                DueDate = pole.DueDate,
+                FixedDate = pole.FixedDate,
+                ServiceMinutes = defaultServiceMinutes
+            })
+            .ToList();
+
+        return poleDtos;
+    }
+
+    private async Task<(int TotalBacklogCount, int PlannedTodayCount, int RemainingBacklogCount)> GetBacklogMetricsAsync(
+        DateTime dateOnly,
+        CancellationToken cancellationToken)
+    {
+        // totalBacklogCount: count of poles where Status != Done/Cancelled
+        // AND poleId NOT IN (SELECT RouteStop.PoleId FROM RouteStops JOIN Routes WHERE Routes.Date < date)
+        var plannedPoleIdsBeforeDate = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date < dateOnly),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs.PoleId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var totalBacklogCount = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .Where(p => !plannedPoleIdsBeforeDate.Contains(p.Id))
+            .CountAsync(cancellationToken);
+
+        // plannedTodayCount: count of RouteStops where Route.Date == date
+        var plannedTodayCount = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date.Date == dateOnly.Date),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs)
+            .CountAsync(cancellationToken);
+
+        // remainingBacklogCount: totalBacklogCount - plannedTodayCount
+        var remainingBacklogCount = totalBacklogCount - plannedTodayCount;
+
+        return (totalBacklogCount, plannedTodayCount, remainingBacklogCount);
+    }
+
+    private async Task<(int TotalOpenPolesCount, int UnplannedInHorizonCount, int PlannedInHorizonCount)> GetHorizonBacklogMetricsAsync(
+        DateTime dateOnly,
+        DateTime endDate,
+        CancellationToken cancellationToken)
+    {
+        // TotalOpenPolesCount: all poles not Done/Cancelled
+        var totalOpenPolesCount = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .CountAsync(cancellationToken);
+
+        // PlannedPoleIdsInHorizon: all PoleIds that appear in RouteStops joined to Routes where Routes.Date in [date .. endDate]
+        var plannedPoleIdsInHorizon = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date >= dateOnly && r.Date <= endDate),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs.PoleId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var plannedInHorizonCount = plannedPoleIdsInHorizon.Count;
+
+        // HorizonCandidatePoleIds: poles that we EXPECT to be planned by generation in this horizon
+        // Include all non-done/cancelled poles where:
+        // - FixedDate is null AND DueDate between [date .. endDate]
+        //   OR FixedDate between [date .. endDate]
+        var horizonCandidatePoleIds = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .Where(p =>
+                (p.FixedDate == null && p.DueDate.Date >= dateOnly && p.DueDate.Date <= endDate) ||
+                (p.FixedDate.HasValue && p.FixedDate.Value.Date >= dateOnly && p.FixedDate.Value.Date <= endDate))
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken);
+
+        // UnplannedInHorizonCount: count of horizonCandidatePoleIds EXCLUDING plannedPoleIdsInHorizon
+        var unplannedInHorizonCount = horizonCandidatePoleIds
+            .Where(poleId => !plannedPoleIdsInHorizon.Contains(poleId))
+            .Count();
+
+        return (totalOpenPolesCount, unplannedInHorizonCount, plannedInHorizonCount);
+    }
+
+    private async Task<(int EligibleBacklogCount, int DueTodayCount, int OverdueCount, int DueTodayUnplannedCount, int FixedForDayCount, int FixedForDayUnplannedCount)> GetBacklogInfoAsync(
+        DateTime dateOnly,
+        CancellationToken cancellationToken)
+    {
+        // Get all poles that are not Done/Cancelled
+        var allPoles = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .ToListAsync(cancellationToken);
+
+        // Get poles planned before or on this day (from any date <= dateOnly)
+        var plannedPoleIds = await _dbContext.Routes
+            .AsNoTracking()
+            .Where(r => r.Date <= dateOnly)
+            .SelectMany(r => _dbContext.RouteStops
+                .AsNoTracking()
+                .Where(rs => rs.RouteId == r.Id)
+                .Select(rs => rs.PoleId))
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        // A1) BacklogEligible(D): FixedDate is null AND DueDate >= D
+        var eligibleBacklog = allPoles
+            .Where(p => p.FixedDate == null && p.DueDate.Date >= dateOnly)
+            .Where(p => !plannedPoleIds.Contains(p.Id))
+            .ToList();
+        var eligibleBacklogCount = eligibleBacklog.Count;
+
+        // A2) DueToday(D): DueDate == D
+        var dueToday = allPoles
+            .Where(p => p.DueDate.Date == dateOnly)
+            .ToList();
+        var dueTodayCount = dueToday.Count;
+
+        // A3) Overdue(D): DueDate < D
+        var overdue = allPoles
+            .Where(p => p.DueDate.Date < dateOnly)
+            .ToList();
+        var overdueCount = overdue.Count;
+
+        // DueTodayUnplannedCount: DueToday excluding planned before/on D
+        var dueTodayUnplannedCount = dueToday
+            .Where(p => !plannedPoleIds.Contains(p.Id))
+            .Count();
+
+        // A4) FixedForDay(D): FixedDate == D
+        var fixedForDay = allPoles
+            .Where(p => p.FixedDate.HasValue && p.FixedDate.Value.Date == dateOnly)
+            .ToList();
+        var fixedForDayCount = fixedForDay.Count;
+
+        // FixedForDayUnplannedCount: FixedForDay excluding planned before/on D
+        var fixedForDayUnplannedCount = fixedForDay
+            .Where(p => !plannedPoleIds.Contains(p.Id))
+            .Count();
+
+        return (eligibleBacklogCount, dueTodayCount, overdueCount, dueTodayUnplannedCount, fixedForDayCount, fixedForDayUnplannedCount);
+    }
+
+    private async Task<List<PoleDto>> GetUnplannedPolesBacklogAsync(DateTime dateOnly, CancellationToken cancellationToken)
+    {
+        const int maxUnplannedPoles = 50; // Configurable limit for UI performance
+
+        // Get poles planned before this day (not on or after)
+        var plannedPoleIdsBeforeDate = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Join(
+                _dbContext.Routes.AsNoTracking().Where(r => r.Date < dateOnly),
+                rs => rs.RouteId,
+                r => r.Id,
+                (rs, r) => rs.PoleId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        // Return backlog poles: Status != Done/Cancelled AND NOT planned before date
+        // ORDER BY DueDate ASC (earliest due first)
+        var backlogPoles = await _dbContext.Poles
+            .AsNoTracking()
+            .Where(p => p.Status != PoleStatus.Done && p.Status != PoleStatus.Cancelled)
+            .Where(p => !plannedPoleIdsBeforeDate.Contains(p.Id))
+            .OrderBy(p => p.DueDate) // DueDate only affects ordering, not eligibility
+            .Take(maxUnplannedPoles)
+            .ToListAsync(cancellationToken);
+
+        var defaultServiceMinutes = 20; // Default service minutes
+
+        var poleDtos = backlogPoles
+            .Select(pole => new PoleDto
+            {
+                PoleId = pole.Id,
+                Serial = pole.Serial,
+                Latitude = (double)pole.Latitude,
+                Longitude = (double)pole.Longitude,
+                DueDate = pole.DueDate,
+                FixedDate = pole.FixedDate,
+                ServiceMinutes = defaultServiceMinutes
+            })
+            .ToList();
+
+        return poleDtos;
+    }
+
+    private async Task<List<PoleDto>> GetUnplannedPolesAsync(DateTime dateOnly, CancellationToken cancellationToken)
+    {
+        // Legacy method - delegate to backlog-driven version
+        return await GetUnplannedPolesBacklogAsync(dateOnly, cancellationToken);
+    }
+}

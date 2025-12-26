@@ -1,0 +1,509 @@
+<div class="container mx-auto p-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-3xl font-bold text-gray-900">Service Locations</h1>
+      <div class="flex gap-2">
+        <p-button
+          label="Download Template"
+          icon="pi pi-download"
+          [outlined]="true"
+          (onClick)="downloadTemplate()"
+        />
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          (change)="onFileSelected($event)"
+          style="display: none"
+          #fileInput
+        />
+        <p-button
+          label="Upload Excel"
+          icon="pi pi-upload"
+          [outlined]="true"
+          (onClick)="fileInput.click()"
+        />
+        <p-button
+          label="Add Service Location"
+          icon="pi pi-plus"
+          (onClick)="openAddDialog()"
+        />
+      </div>
+    </div>
+
+    <!-- Bulk upload info -->
+    <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center">
+          <i class="pi pi-info-circle mr-2"></i>
+          <span>Bulk upload. Existing ERP IDs will be updated (status set to Open).</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium">Service Type for Bulk:</label>
+          <p-dropdown
+            [ngModel]="selectedServiceTypeId()"
+            (ngModelChange)="selectedServiceTypeId.set($event)"
+            [options]="serviceTypes()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select service type"
+            [appendTo]="'body'"
+            styleClass="w-48"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium">Owner for Bulk:</label>
+          <p-dropdown
+            [ngModel]="selectedOwnerId()"
+            (ngModelChange)="selectedOwnerId.set($event)"
+            [options]="owners()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select owner"
+            [appendTo]="'body'"
+            styleClass="w-48"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-4 mb-4">
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">Status:</label>
+        <p-dropdown
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event)"
+          [options]="statusFilterOptions"
+          optionLabel="label"
+          optionValue="value"
+          [appendTo]="'body'"
+          styleClass="w-32"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">Service Type:</label>
+        <p-dropdown
+          [ngModel]="serviceTypeId()"
+          (ngModelChange)="serviceTypeId.set($event)"
+          [options]="serviceTypeFilterOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="All types"
+          [appendTo]="'body'"
+          styleClass="w-48"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">Owner:</label>
+        <p-dropdown
+          [ngModel]="ownerId()"
+          (ngModelChange)="ownerId.set($event)"
+          [options]="ownerFilterOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="All owners"
+          [appendTo]="'body'"
+          styleClass="w-48"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">Search:</label>
+        <input
+          pInputText
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          placeholder="Name, address, or ERP ID"
+          styleClass="w-64"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">From Due:</label>
+        <p-calendar
+          [ngModel]="fromDue()"
+          (ngModelChange)="fromDue.set($event)"
+          [dateFormat]="'yy-mm-dd'"
+          [showIcon]="true"
+          [appendTo]="'body'"
+          styleClass="w-40"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">To Due:</label>
+        <p-calendar
+          [ngModel]="toDue()"
+          (ngModelChange)="toDue.set($event)"
+          [dateFormat]="'yy-mm-dd'"
+          [showIcon]="true"
+          [appendTo]="'body'"
+          styleClass="w-40"
+        />
+      </div>
+
+      <p-button
+        label="Load"
+        icon="pi pi-search"
+        (onClick)="loadData()"
+        [loading]="loading()"
+      />
+    </div>
+  </div>
+
+  <!-- Table -->
+  <p-table
+    [value]="items()"
+    [loading]="loading()"
+    [scrollable]="true"
+    [paginator]="true"
+    [rows]="pageSize()"
+    [first]="(page() - 1) * pageSize()"
+    [totalRecords]="totalCount()"
+    [lazy]="true"
+    (onLazyLoad)="onPageChange($event)"
+    [rowsPerPageOptions]="[10, 25, 50, 100]"
+    styleClass="p-datatable-striped min-w-[1100px]"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Name</th>
+        <th>ERP ID</th>
+        <th>Service Type</th>
+        <th>Owner</th>
+        <th>Order Date</th>
+        <th>Address</th>
+        <th>Location</th>
+        <th>Service Min</th>
+        <th>Status</th>
+        <th>Driver Instruction</th>
+        <th>Remark</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+      <tr>
+        <td>
+          @if (item.driverInstruction) {
+            <span class="flex items-center gap-1" [title]="item.driverInstruction">
+              {{ item.name }} <span class="text-red-500">*</span>
+            </span>
+          } @else {
+            {{ item.name }}
+          }
+        </td>
+        <td>{{ item.erpId }}</td>
+        <td>{{ item.serviceTypeName || '—' }}</td>
+        <td>{{ item.ownerName || '—' }}</td>
+        <td>
+          <div class="flex items-center gap-2">
+            <p-calendar
+              [ngModel]="getOrderDateAsDate(item)"
+              (ngModelChange)="onOrderDateChange(item, $event)"
+              [dateFormat]="'yy-mm-dd'"
+              [showIcon]="false"
+              [appendTo]="'body'"
+              [baseZIndex]="10000"
+              styleClass="w-32"
+              [inputId]="'orderDate_' + rowIndex"
+            />
+            @if (item.priorityDate) {
+              <span class="text-xs text-blue-600 font-semibold">(P)</span>
+            }
+          </div>
+        </td>
+        <td>{{ item.address || '—' }}</td>
+        <td class="text-xs text-gray-500">
+          {{ item.latitude.toFixed(6) }}, {{ item.longitude.toFixed(6) }}
+        </td>
+        <td>
+          <p-inputNumber
+            [(ngModel)]="item.serviceMinutes"
+            [min]="1"
+            [max]="240"
+            [showButtons]="true"
+            [useGrouping]="false"
+            (onBlur)="onServiceMinutesChange(item, item.serviceMinutes)"
+            styleClass="w-20"
+          />
+        </td>
+        <td>
+          <p-dropdown
+            [ngModel]="item.status"
+            (ngModelChange)="onStatusChange(item, $event)"
+            [options]="statusEditOptions"
+            optionLabel="label"
+            optionValue="value"
+            [appendTo]="'body'"
+            [baseZIndex]="10000"
+            styleClass="w-32"
+          />
+        </td>
+        <td class="min-w-[220px]">
+          <textarea
+            pInputTextarea
+            [ngModel]="item.driverInstruction"
+            (ngModelChange)="item.driverInstruction = $event"
+            (blur)="onDriverInstructionChange(item, item.driverInstruction)"
+            (focusout)="onDriverInstructionChange(item, item.driverInstruction)"
+            rows="2"
+            class="w-full"
+            placeholder="Driver instruction"
+          ></textarea>
+        </td>
+        <td class="max-w-xs truncate" [title]="item.remark">{{ item.remark || '—' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="11" class="text-center py-8 text-gray-500">
+          No service locations found
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <!-- Add/Edit Dialog -->
+  <p-dialog
+    [(visible)]="showDialogValue"
+    [header]="isEditMode() ? 'Edit Service Location' : 'Add Service Location'"
+    [modal]="true"
+    [style]="{ width: '600px' }"
+    [appendTo]="'body'"
+    [baseZIndex]="10000"
+    (onHide)="showDialog.set(false)"
+  >
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">ErpId *</label>
+        <p-inputNumber
+          [(ngModel)]="form().erpId"
+          [useGrouping]="false"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Name *</label>
+        <input
+          pInputText
+          [(ngModel)]="form().name"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Address</label>
+        <input
+          pInputText
+          [(ngModel)]="form().address"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Driver Instruction</label>
+        <textarea
+          pInputTextarea
+          [(ngModel)]="form().driverInstruction"
+          class="w-full"
+          rows="3"
+          placeholder="Optional note shown to the driver"
+        ></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Latitude *</label>
+          <p-inputNumber
+            [(ngModel)]="form().latitude"
+            [minFractionDigits]="6"
+            [maxFractionDigits]="6"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Longitude *</label>
+          <p-inputNumber
+            [(ngModel)]="form().longitude"
+            [minFractionDigits]="6"
+            [maxFractionDigits]="6"
+            class="w-full"
+          />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Due Date *</label>
+          <p-calendar
+            [(ngModel)]="form().dueDate"
+            [dateFormat]="'yy-mm-dd'"
+            [showIcon]="true"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Priority Date</label>
+          <p-calendar
+            [(ngModel)]="form().priorityDate"
+            [dateFormat]="'yy-mm-dd'"
+            [showIcon]="true"
+            class="w-full"
+          />
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Service Minutes</label>
+        <p-inputNumber
+          [(ngModel)]="form().serviceMinutes"
+          [min]="1"
+          [max]="240"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Service Type *</label>
+        <p-dropdown
+          [(ngModel)]="form().serviceTypeId"
+          [options]="serviceTypes()"
+          optionLabel="name"
+          optionValue="id"
+          [appendTo]="'body'"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Owner *</label>
+        <p-dropdown
+          [(ngModel)]="form().ownerId"
+          [options]="owners()"
+          optionLabel="name"
+          optionValue="id"
+          [appendTo]="'body'"
+          class="w-full"
+        />
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        (onClick)="showDialog.set(false)"
+      />
+      <p-button
+        label="Save"
+        (onClick)="save()"
+        [loading]="loading()"
+      />
+    </ng-template>
+  </p-dialog>
+
+  <!-- Priority Date Dialog -->
+  <p-dialog
+    [(visible)]="showPriorityDialogValue"
+    [header]="'Set Priority Date'"
+    [modal]="true"
+    [style]="{ width: '400px' }"
+    [appendTo]="'body'"
+    [baseZIndex]="10000"
+    (onHide)="showPriorityDialog.set(false)"
+  >
+    @if (selectedItemForPriority(); as item) {
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Service Location</label>
+          <p class="text-gray-700">{{ item.name }} (ERP: {{ item.erpId }})</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Priority Date</label>
+          <p-calendar
+            [(ngModel)]="priorityDate"
+            [dateFormat]="'yy-mm-dd'"
+            [showIcon]="true"
+            class="w-full"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            Leave empty to clear priority date. Priority date overrides due date for ordering.
+          </p>
+        </div>
+      </div>
+    }
+    <ng-template pTemplate="footer">
+      <p-button
+        label="Clear"
+        severity="secondary"
+        (onClick)="priorityDate.set(null); savePriorityDate()"
+        [loading]="loading()"
+      />
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        (onClick)="showPriorityDialog.set(false)"
+      />
+      <p-button
+        label="Save"
+        (onClick)="savePriorityDate()"
+        [loading]="loading()"
+      />
+    </ng-template>
+  </p-dialog>
+
+  <p-toast />
+
+  <!-- Bulk Upload Result Dialog -->
+  <p-dialog
+    [(visible)]="showBulkResultDialogValue"
+    header="Bulk Upload Result"
+    [modal]="true"
+    [style]="{ width: '600px' }"
+    [appendTo]="'body'"
+    [baseZIndex]="10000"
+    (onHide)="showBulkResultDialog.set(false)"
+  >
+    @if (bulkResult(); as result) {
+      <div class="flex flex-col gap-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-4 bg-green-50 border border-green-200 rounded">
+            <div class="text-sm text-green-700 font-medium">Inserted</div>
+            <div class="text-2xl font-bold text-green-900">{{ result.inserted }}</div>
+          </div>
+          <div class="p-4 bg-blue-50 border border-blue-200 rounded">
+            <div class="text-sm text-blue-700 font-medium">Updated</div>
+            <div class="text-2xl font-bold text-blue-900">{{ result.updated }}</div>
+          </div>
+        </div>
+
+        @if (result.errors.length > 0) {
+          <div>
+            <div class="text-sm font-medium text-gray-700 mb-2">
+              Errors ({{ result.errors.length }}):
+            </div>
+            <div class="max-h-64 overflow-y-auto border border-gray-200 rounded">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-medium text-gray-700">Row</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-700">Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (error of result.errors; track error.rowRef) {
+                    <tr class="border-t border-gray-100">
+                      <td class="px-3 py-2 text-gray-600">{{ error.rowRef }}</td>
+                      <td class="px-3 py-2 text-red-600">{{ error.message }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+      </div>
+    }
+    <ng-template pTemplate="footer">
+      <p-button
+        label="Close"
+        (onClick)="showBulkResultDialog.set(false)"
+      />
+    </ng-template>
+  </p-dialog>
+</div>
+

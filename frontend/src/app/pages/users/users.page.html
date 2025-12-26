@@ -1,0 +1,111 @@
+<div class="container mx-auto p-6 space-y-6">
+  <h1 class="text-3xl font-bold text-gray-900">User & Role Management</h1>
+
+  <div class="card p-4 space-y-4">
+    <div class="flex items-center gap-2">
+      <label class="text-sm font-medium">Filter by email</label>
+      <input
+        pInputText
+        [ngModel]="emailFilter()"
+        (ngModelChange)="emailFilter.set($event)"
+        placeholder="Search email..."
+        class="w-64"
+      />
+    </div>
+    <p-table [value]="filteredUsers()" [loading]="loading()">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Email</th>
+          <th>Name</th>
+          <th>Roles</th>
+          <th>Owner</th>
+          <th>Driver Owner</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-user>
+        <tr>
+          <td>{{ user.email }}</td>
+          <td>
+            <input pInputText [(ngModel)]="user.displayName" class="w-48" placeholder="Display name" />
+          </td>
+          <td>
+            <div class="flex flex-wrap gap-2">
+              @for (role of rolesList; track role) {
+                <label class="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    [disabled]="role === 'SuperAdmin' && !isCurrentSuperAdmin()"
+                    [checked]="rolesFor(user.id).includes(role)"
+                    (change)="toggleRole(user.id, role)"
+                  />
+                  {{ role }}
+                </label>
+              }
+            </div>
+          </td>
+          <td>
+            <p-dropdown
+              [options]="owners()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Owner for admin/planner"
+              [disabled]="rolesFor(user.id).includes('SuperAdmin') || !(rolesFor(user.id).includes('Admin') || rolesFor(user.id).includes('Planner'))"
+              [(ngModel)]="staffOwnerSelection[user.id]"
+              (onChange)="staffOwnerSelection[user.id] = $event.value"
+              styleClass="w-52 mb-2"
+            ></p-dropdown>
+            <p-dropdown
+              [options]="owners()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Owner for driver"
+              [disabled]="!rolesFor(user.id).includes('Driver')"
+              [(ngModel)]="driverOwnerSelection[user.id]"
+              (onChange)="driverOwnerSelection[user.id] = $event.value"
+              styleClass="w-52"
+            ></p-dropdown>
+            <div class="mt-2 space-y-2">
+              <input
+                pInputText
+                [(ngModel)]="driverStartAddressSelection[user.id]"
+                placeholder="Driver start address"
+                class="w-52"
+                [disabled]="!rolesFor(user.id).includes('Driver')"
+              />
+              <div class="flex gap-2">
+                <input
+                  type="number"
+                  pInputText
+                  [(ngModel)]="driverStartLatitudeSelection[user.id]"
+                  placeholder="Lat"
+                  class="w-24"
+                  [disabled]="!rolesFor(user.id).includes('Driver')"
+                />
+                <input
+                  type="number"
+                  pInputText
+                  [(ngModel)]="driverStartLongitudeSelection[user.id]"
+                  placeholder="Lon"
+                  class="w-24"
+                  [disabled]="!rolesFor(user.id).includes('Driver')"
+                />
+              </div>
+              <div class="text-xs text-gray-500">
+                Current: {{ user.driverStartAddress || 'N/A' }} ({{ user.driverStartLatitude ?? '—' }}, {{ user.driverStartLongitude ?? '—' }})
+              </div>
+            </div>
+          </td>
+          <td>
+            <p-button
+              label="Save"
+              size="small"
+              (onClick)="assignRoles(user)"
+              [loading]="loading()"
+            />
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

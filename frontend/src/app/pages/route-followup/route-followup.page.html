@@ -1,0 +1,122 @@
+<div class="pt-20 px-6 pb-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-end gap-4">
+        <div class="w-72">
+          <label class="block text-sm font-semibold mb-1">Owner</label>
+          <p-select
+            [options]="ownerOptions()"
+            [ngModel]="selectedOwnerId()"
+            (ngModelChange)="selectedOwnerId.set($event)"
+            placeholder="Select owner"
+            optionLabel="label"
+            optionValue="value"
+            [filter]="true"
+          />
+        </div>
+
+        <div class="w-72">
+          <label class="block text-sm font-semibold mb-1">Driver</label>
+          <p-select
+            [options]="driversForSelectedOwner()"
+            [ngModel]="selectedDriverToolId()"
+            (ngModelChange)="selectedDriverToolId.set($event)"
+            placeholder="Select driver"
+            optionLabel="label"
+            optionValue="value"
+            [filter]="true"
+          />
+        </div>
+
+        <div class="w-72">
+          <label class="block text-sm font-semibold mb-1">Date</label>
+          <p-datepicker
+            [ngModel]="selectedDate()"
+            (ngModelChange)="selectedDate.set($event)"
+            [showIcon]="true"
+            [maxDate]="maxDate"
+          />
+        </div>
+
+        <p-button
+          label="Reload"
+          icon="pi pi-refresh"
+          (onClick)="manualReload()"
+          [loading]="loading()"
+          [disabled]="!selectedOwnerId() || !selectedDriverToolId()"
+        />
+      </div>
+
+      @if (error()) {
+        <div class="p-3 rounded border border-red-200 bg-red-50 text-red-700">
+          {{ error() }}
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="text-sm text-gray-500">Loading route…</div>
+      }
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-3">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-semibold">Route Map</div>
+            @if (route(); as r) {
+              <div class="text-xs text-gray-500">
+                {{ r.driverName }} · {{ r.totalMinutes }} min · {{ r.totalKm | number: '1.0-1' }} km
+                @if (isToday()) {
+                  <span class="ml-2">(Live)</span>
+                }
+              </div>
+            } @else {
+              <div class="text-xs text-gray-500">No route loaded</div>
+            }
+          </div>
+          <div id="route-followup-map" class="route-followup-map"></div>
+        </div>
+
+        <div class="card p-3">
+          @if (route() == null) {
+            <div class="text-sm text-gray-500">No route for this driver/day.</div>
+          } @else {
+            @if (route(); as r) {
+              <div class="flex items-center justify-between mb-2">
+                <div class="font-semibold">Stops</div>
+                <div class="text-xs text-gray-500">{{ r.stops.length }} stops</div>
+              </div>
+
+              <div class="max-h-[520px] overflow-auto pr-1">
+                @for (stop of r.stops; track stop.id) {
+                  <div class="p-2 rounded border mb-2">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <div class="font-medium truncate">{{ stop.sequence }}. {{ stop.name }}</div>
+                        <div class="text-xs text-gray-500">
+                          Arrived: {{ timeLabel(stop.arrivedAtUtc) }} · Completed:
+                          {{ timeLabel(stop.completedAtUtc) }} · Duration:
+                          {{ stopDurationMinutes(stop) ?? '—' }}m
+                        </div>
+                      </div>
+                      <p-tag
+                        [value]="stop.status ?? 'Pending'"
+                        [severity]="severityForStopStatus(stop.status)"
+                      />
+                    </div>
+
+                    @if (stop.note) {
+                      <div class="mt-2 text-sm text-gray-700">
+                        <span class="font-semibold">Remark:</span> {{ stop.note }}
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

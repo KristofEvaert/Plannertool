@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Api", "TransportPlanner.Api\TransportPlanner.Api.csproj", "{DF6A557D-A0CA-48BD-89B0-19842E16CE56}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Domain", "TransportPlanner.Domain\TransportPlanner.Domain.csproj", "{5DF4F4FF-6D12-40E8-9F1F-4166AB5EB77D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Application", "TransportPlanner.Application\TransportPlanner.Application.csproj", "{2DA6799F-BAC2-417D-8268-22518A321348}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Infrastructure", "TransportPlanner.Infrastructure\TransportPlanner.Infrastructure.csproj", "{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DF6A557D-A0CA-48BD-89B0-19842E16CE56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF6A557D-A0CA-48BD-89B0-19842E16CE56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF6A557D-A0CA-48BD-89B0-19842E16CE56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF6A557D-A0CA-48BD-89B0-19842E16CE56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DF4F4FF-6D12-40E8-9F1F-4166AB5EB77D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DF4F4FF-6D12-40E8-9F1F-4166AB5EB77D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DF4F4FF-6D12-40E8-9F1F-4166AB5EB77D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DF4F4FF-6D12-40E8-9F1F-4166AB5EB77D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2DA6799F-BAC2-417D-8268-22518A321348}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DA6799F-BAC2-417D-8268-22518A321348}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2DA6799F-BAC2-417D-8268-22518A321348}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DA6799F-BAC2-417D-8268-22518A321348}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

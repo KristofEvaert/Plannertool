@@ -1,0 +1,119 @@
+<div class="container mx-auto px-4 py-6">
+  <h2 class="text-2xl font-bold mb-6">Poles</h2>
+
+  @if (error()) {
+    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+  }
+
+  <div class="mb-4 p-4 bg-surface border border-surface-border rounded-lg">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium mb-2">Search</label>
+        <input
+          type="text"
+          pInputText
+          [(ngModel)]="search"
+          (keyup.enter)="applyFilters()"
+          placeholder="Serial..."
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2">Status</label>
+        <p-dropdown
+          [options]="statusOptions"
+          [(ngModel)]="status"
+          optionLabel="label"
+          optionValue="value"
+          [showClear]="true"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2">From Date</label>
+        <p-calendar
+          [(ngModel)]="fromDate"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2">To Date</label>
+        <p-calendar
+          [(ngModel)]="toDate"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          class="w-full"
+        />
+      </div>
+    </div>
+    <div class="flex items-center gap-4 mb-4">
+      <p-checkbox
+        [(ngModel)]="hasFixedDate"
+        [binary]="true"
+        inputId="hasFixedDate"
+      />
+      <label for="hasFixedDate">Has Fixed Date</label>
+    </div>
+    <p-button label="Apply Filters" (onClick)="applyFilters()" />
+  </div>
+
+  @if (loading() && !poles()) {
+    <div class="text-center py-8">Loading...</div>
+  } @else if (poles(); as result) {
+    <p-table
+      [value]="result.items"
+      [loading]="loading()"
+      [paginator]="false"
+      styleClass="p-datatable-striped"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Serial</th>
+          <th>Due Date</th>
+          <th>Fixed Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-pole>
+        <tr>
+          <td>{{ pole.serial }}</td>
+          <td>{{ pole.dueDate }}</td>
+          <td>{{ pole.fixedDate || '-' }}</td>
+          <td>{{ pole.status }}</td>
+          <td>
+            @if (pole.fixedDate) {
+              <p-button
+                label="Unfix"
+                size="small"
+                severity="secondary"
+                (onClick)="unfixDate(pole.poleId)"
+              />
+            } @else {
+              <p-button
+                label="Fix Tomorrow"
+                size="small"
+                (onClick)="fixDate(pole.poleId)"
+              />
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="text-center py-4">No poles found</td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-paginator
+      [rows]="pageSize()"
+      [totalRecords]="result.totalCount"
+      [first]="(result.page - 1) * result.pageSize"
+      (onPageChange)="onPageChange($event)"
+    />
+  }
+</div>
+

@@ -1,0 +1,368 @@
+  <div class="container mx-auto p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Drivers</h1>
+    <p-button
+      label="Grid View"
+      icon="pi pi-table"
+      [outlined]="true"
+      routerLink="/drivers/grid"
+    />
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left: Drivers table -->
+    <div>
+      <div class="mb-4 flex justify-between items-center">
+        <h2 class="text-xl font-semibold">Drivers</h2>
+      </div>
+
+      <p-card>
+        <ng-template pTemplate="content">
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium">Owner:</label>
+              <p-dropdown
+                [options]="owners()"
+                [(ngModel)]="ownerFilterId"
+                optionLabel="name"
+                optionValue="id"
+                [showClear]="true"
+                placeholder="All owners"
+                [style]="{ width: '220px' }"
+              />
+            </div>
+            <div class="text-sm text-gray-600">
+              Showing {{ filteredDrivers().length }} / {{ drivers().length }}
+            </div>
+          </div>
+
+          @if (loading()) {
+            <div class="text-center py-8">Loading...</div>
+          } @else {
+            <p-table
+              [value]="filteredDrivers()"
+              [paginator]="true"
+              [rows]="10"
+              selectionMode="single"
+              [(selection)]="selectedDriver"
+              [rowHover]="true"
+            >
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>Name</th>
+                  <th>ErpId</th>
+                  <th>Owner</th>
+                  <th>Max Work (min)</th>
+                  <th>Active</th>
+                  <th>Actions</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-driver>
+                <tr [class.bg-blue-50]="selectedDriver()?.toolId === driver.toolId">
+                  <td>{{ driver.name }}</td>
+                  <td>{{ driver.erpId }}</td>
+                  <td>
+                    @if (editingOwnerId() === driver.toolId) {
+                      <div class="flex items-center gap-2">
+                        <p-dropdown
+                          [options]="owners()"
+                          [(ngModel)]="driver.ownerId"
+                          optionLabel="name"
+                          optionValue="id"
+                          [style]="{ width: '200px' }"
+                          (onChange)="saveOwnerChange(driver, $event.value)"
+                          (onClick)="$event.stopPropagation()"
+                        />
+                        <p-button
+                          icon="pi pi-times"
+                          [text]="true"
+                          severity="secondary"
+                          size="small"
+                          (onClick)="cancelEditingOwner()"
+                        />
+                      </div>
+                    } @else {
+                      <div class="flex items-center gap-2">
+                        <span>{{ driver.ownerName || 'N/A' }}</span>
+                        <p-button
+                          icon="pi pi-pencil"
+                          [text]="true"
+                          severity="secondary"
+                          size="small"
+                          (onClick)="startEditingOwner(driver)"
+                        />
+                      </div>
+                    }
+                  </td>
+                  <td>{{ driver.maxWorkMinutesPerDay }}</td>
+                  <td>
+                    @if (driver.isActive) {
+                      <span class="text-green-600">Active</span>
+                    } @else {
+                      <span class="text-gray-400">Inactive</span>
+                    }
+                  </td>
+                  <td style="min-width: 120px; position: relative; z-index: 10;">
+                    <div class="flex gap-1" style="position: relative; z-index: 10;">
+                      <p-button
+                        icon="pi pi-pencil"
+                        severity="secondary"
+                        size="small"
+                        (onClick)="openEditDriverDialog(driver); $event.stopPropagation()"
+                        styleClass="driver-action-icon-btn"
+                        [style]="{ 'position': 'relative', 'z-index': '10', 'min-width': '40px', 'height': '32px', 'display': 'inline-flex', 'visibility': 'visible', 'opacity': '1' }"
+                      ></p-button>
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        size="small"
+                        (onClick)="deleteDriver(driver); $event.stopPropagation()"
+                        [style]="{ 'position': 'relative', 'z-index': '10', 'min-width': '40px', 'height': '32px', 'display': 'inline-flex', 'visibility': 'visible', 'opacity': '1',  'border-color': '#dc2626', 'color': 'black' }"
+                      ></p-button>
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+        </ng-template>
+      </p-card>
+    </div>
+
+    <!-- Right: Availability panel -->
+    <div>
+      @if (selectedDriver(); as driver) {
+        <div>
+          <h2 class="text-xl font-semibold mb-4">Availability: {{ driver.name }}</h2>
+          <p-card>
+            <ng-template pTemplate="content">
+              <div class="mb-4">
+                <p class="text-sm text-gray-600">
+                  Start: {{ driver.startAddress || 'N/A' }}<br />
+                  Location: {{ driver.startLatitude.toFixed(4) }}, {{ driver.startLongitude.toFixed(4) }}
+                </p>
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Select Month</label>
+                <p-calendar
+                  [(ngModel)]="currentMonth"
+                  [view]="'month'"
+                  [dateFormat]="'mm/yy'"
+                  [readonlyInput]="true"
+                  class="w-full"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">Click a date to set availability</label>
+                <p-calendar
+                  [(ngModel)]="selectedDate"
+                  [inline]="true"
+                  [selectionMode]="'single'"
+                  (onSelect)="onDateSelect($event)"
+                />
+                <div class="mt-2 text-xs text-gray-500">
+                  @for (av of availabilities(); track av.date) {
+                    <div>
+                      {{ av.date | date:'MMM d' }}: {{ formatTime(av.startMinuteOfDay) }}-{{ formatTime(av.endMinuteOfDay) }}
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <h3 class="text-sm font-semibold mb-2">Availability for {{ currentMonth() | date:'MMMM yyyy' }}</h3>
+                <div class="space-y-1 max-h-48 overflow-y-auto">
+                  @for (av of availabilities(); track av.date) {
+                    <div class="text-sm p-2 bg-gray-50 rounded">
+                      <strong>{{ av.date | date:'MMM d' }}:</strong>
+                      {{ formatTime(av.startMinuteOfDay) }} - {{ formatTime(av.endMinuteOfDay) }}
+                      ({{ av.availableMinutes }} min)
+                    </div>
+                  } @empty {
+                    <p class="text-sm text-gray-500">No availability set for this month</p>
+                  }
+                </div>
+              </div>
+            </ng-template>
+          </p-card>
+        </div>
+      } @else {
+        <p-card>
+          <ng-template pTemplate="content">
+            <p class="text-gray-500">Select a driver to view availability</p>
+          </ng-template>
+        </p-card>
+      }
+    </div>
+  </div>
+
+  <!-- Driver Dialog -->
+  <p-dialog
+    [(visible)]="showDriverDialogValue"
+    [header]="isEditMode() ? 'Edit Driver' : 'Add Driver'"
+    [modal]="true"
+    [style]="{ width: '600px' }"
+    (onHide)="showDriverDialog.set(false)"
+  >
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">ErpId *</label>
+        <p-inputNumber
+          [(ngModel)]="driverForm().erpId"
+          [useGrouping]="false"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Name *</label>
+        <input
+          pInputText
+          [(ngModel)]="driverForm().name"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Start Address</label>
+        <input
+          pInputText
+          [(ngModel)]="driverForm().startAddress"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Owner <span class="text-red-500">*</span></label>
+        <p-dropdown
+          [options]="owners()"
+          [(ngModel)]="driverForm().ownerId"
+          optionLabel="name"
+          optionValue="id"
+          [style]="{ width: '100%' }"
+          placeholder="Select Owner"
+        />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Latitude *</label>
+          <p-inputNumber
+            [(ngModel)]="driverForm().startLatitude"
+            [minFractionDigits]="6"
+            [maxFractionDigits]="6"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Longitude *</label>
+          <p-inputNumber
+            [(ngModel)]="driverForm().startLongitude"
+            [minFractionDigits]="6"
+            [maxFractionDigits]="6"
+            class="w-full"
+          />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Default Service Minutes</label>
+          <p-inputNumber
+            [(ngModel)]="driverForm().defaultServiceMinutes"
+            [min]="1"
+            [max]="240"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Max Work Minutes/Day</label>
+          <p-inputNumber
+            [(ngModel)]="driverForm().maxWorkMinutesPerDay"
+            [min]="60"
+            [max]="900"
+            class="w-full"
+          />
+        </div>
+      </div>
+      <div>
+        <label class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            [(ngModel)]="driverForm().isActive"
+          />
+          <span>Active</span>
+        </label>
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        (onClick)="showDriverDialog.set(false)"
+      />
+      <p-button
+        label="Save"
+        (onClick)="saveDriver()"
+        [loading]="loading()"
+      />
+    </ng-template>
+  </p-dialog>
+
+  <!-- Availability Dialog -->
+  <p-dialog
+    [(visible)]="showAvailabilityDialogValue"
+    [header]="'Set Availability for ' + (selectedDate() | date:'MMM d, yyyy')"
+    [modal]="true"
+    [style]="{ width: '400px' }"
+    (onHide)="showAvailabilityDialog.set(false)"
+  >
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Start Time</label>
+        <p-dropdown
+          [(ngModel)]="availabilityForm().startMinuteOfDay"
+          [options]="timeOptions()"
+          optionLabel="label"
+          optionValue="value"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">End Time</label>
+        <p-dropdown
+          [(ngModel)]="availabilityForm().endMinuteOfDay"
+          [options]="timeOptions()"
+          optionLabel="label"
+          optionValue="value"
+          class="w-full"
+        />
+      </div>
+      @if (selectedAvailability()) {
+        <div class="text-sm text-gray-600">
+          Current: {{ formatTime(selectedAvailability()!.startMinuteOfDay) }} - {{ formatTime(selectedAvailability()!.endMinuteOfDay) }}
+        </div>
+      }
+    </div>
+    <ng-template pTemplate="footer">
+      @if (selectedAvailability()) {
+        <p-button
+          label="Delete"
+          severity="danger"
+          (onClick)="deleteAvailability()"
+          [loading]="loading()"
+        />
+      }
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        (onClick)="showAvailabilityDialog.set(false)"
+      />
+      <p-button
+        label="Save"
+        (onClick)="saveAvailability()"
+        [loading]="loading()"
+      />
+    </ng-template>
+  </p-dialog>
+
+  <p-confirmDialog />
+  <p-toast />
+</div>

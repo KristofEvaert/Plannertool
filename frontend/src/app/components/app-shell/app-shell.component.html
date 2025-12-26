@@ -1,0 +1,93 @@
+<div class="flex flex-col h-screen">
+  <header class="bg-surface border-b border-surface-border">
+    <div class="px-4 py-3">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-semibold">Transport Planner</h1>
+        <span class="text-xs px-2 py-1 bg-gray-200 rounded">{{ environmentLabel() }}</span>
+      </div>
+    </div>
+  </header>
+  <div class="flex flex-1 overflow-hidden">
+    <aside class="w-64 bg-surface border-r border-surface-border overflow-y-auto">
+      <nav class="p-4">
+        <div class="mb-6">
+          <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Planner</h2>
+          <ul class="space-y-1">
+            <li>
+              <a
+                routerLink="/planner"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Day Overview
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="/planner/poles"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Poles
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="/planner/drivers"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Drivers
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="/planner/import"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Import
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="/planner/settings"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Settings
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="text-sm font-semibold text-gray-500 uppercase mb-2">Driver</h2>
+          <ul class="space-y-1">
+            <li>
+              <a
+                routerLink="/driver/today"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Today
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="/driver/day"
+                routerLinkActive="bg-primary-50 text-primary-700 font-semibold"
+                class="block px-3 py-2 rounded hover:bg-surface-hover transition-colors"
+              >
+                Select Day
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+    <main class="flex-1 overflow-auto">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+

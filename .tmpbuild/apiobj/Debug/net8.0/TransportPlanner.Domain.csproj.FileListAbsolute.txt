@@ -1,0 +1,4 @@
+C:\Users\krist\source\plannertool\.tmpbuild\apiobj\Debug\net8.0\TransportPlanner.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\krist\source\plannertool\.tmpbuild\apiobj\Debug\net8.0\TransportPlanner.Domain.AssemblyInfoInputs.cache
+C:\Users\krist\source\plannertool\.tmpbuild\apiobj\Debug\net8.0\TransportPlanner.Domain.AssemblyInfo.cs
+C:\Users\krist\source\plannertool\.tmpbuild\apiobj\Debug\net8.0\TransportPlanner.Domain.csproj.CoreCompileInputs.cache

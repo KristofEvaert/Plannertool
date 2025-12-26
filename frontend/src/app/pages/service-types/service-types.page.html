@@ -1,0 +1,118 @@
+<div class="container mx-auto p-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-3xl font-bold text-gray-900">Service Types</h1>
+      <p-button
+        label="Add Service Type"
+        icon="pi pi-plus"
+        (onClick)="openAddDialog()"
+      />
+    </div>
+  </div>
+
+  <!-- Table -->
+  <p-table
+    [value]="items()"
+    [loading]="loading()"
+    [paginator]="false"
+    styleClass="p-datatable-striped"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-item>
+      <tr>
+        <td class="font-mono font-semibold">{{ item.code }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.description || '—' }}</td>
+        <td>
+          <span
+            [class]="
+              item.isActive
+                ? 'px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800'
+                : 'px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800'
+            "
+          >
+            {{ item.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </td>
+        <td>
+          <span class="text-gray-400 text-sm">Read-only</span>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="5" class="text-center text-gray-500 py-4">
+          No service types found.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <!-- Add/Edit Dialog -->
+  <p-dialog
+    [(visible)]="showDialogValue"
+    header="Add Service Type"
+    [modal]="true"
+    [style]="{ width: '500px' }"
+    [appendTo]="'body'"
+    [baseZIndex]="10000"
+    (onHide)="showDialog.set(false)"
+  >
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Code *</label>
+        <input
+          pInputText
+          [(ngModel)]="form().code"
+          placeholder="e.g., CHARGING_POST"
+          class="w-full"
+        />
+        <p class="text-xs text-gray-500 mt-1">
+          Uppercase, alphanumeric, underscores only
+        </p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Name *</label>
+        <input
+          pInputText
+          [(ngModel)]="form().name"
+          placeholder="e.g., Charging Posts"
+          class="w-full"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Description</label>
+        <input
+          pInputText
+          [(ngModel)]="form().description"
+          placeholder="Optional description"
+          class="w-full"
+        />
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        (onClick)="showDialog.set(false)"
+      />
+      <p-button
+        label="Save"
+        (onClick)="save()"
+        [loading]="loading()"
+      />
+    </ng-template>
+  </p-dialog>
+
+  <p-toast />
+</div>
+

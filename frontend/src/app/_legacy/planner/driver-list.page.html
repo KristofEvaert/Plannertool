@@ -1,0 +1,45 @@
+<div class="container mx-auto px-4 py-6">
+  <h2 class="text-2xl font-bold mb-6">Drivers</h2>
+
+  @if (error()) {
+    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+  }
+
+  @if (loading() && drivers().length === 0) {
+    <div class="text-center py-8">Loading...</div>
+  } @else {
+    <p-table [value]="drivers()" [loading]="loading()" styleClass="p-datatable-striped">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Name</th>
+          <th>Start Location</th>
+          <th>Max Work Minutes</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-driver>
+        <tr>
+          <td>{{ driver.name }}</td>
+          <td>
+            {{ driver.startLatitude.toFixed(4) }}, {{ driver.startLongitude.toFixed(4) }}
+          </td>
+          <td>{{ driver.maxWorkMinutesPerDay }}</td>
+          <td>
+            <a
+              [routerLink]="['/planner/day', today, 'driver', driver.id]"
+              class="inline-block"
+            >
+              <p-button label="View Today" size="small" />
+            </a>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="4" class="text-center py-4">No drivers found</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</div>
+

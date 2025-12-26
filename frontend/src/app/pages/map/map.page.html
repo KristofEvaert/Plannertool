@@ -1,0 +1,288 @@
+<div class="map-page-container">
+  <div class="map-page-header">
+    <h1 class="page-title">Service Locations Map</h1>
+    
+    <div class="controls-section">
+      <div class="control-group">
+        <label for="serviceType" class="control-label">Service Type <span class="required">*</span></label>
+        <p-multiSelect
+          id="serviceType"
+          [options]="serviceTypes()"
+          [(ngModel)]="selectedServiceTypeIds"
+          (ngModelChange)="onServiceTypeOrOwnerChange()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select up to 5 service types"
+          [selectionLimit]="5"
+          [showToggleAll]="false"
+          [filter]="true"
+          [style]="{ width: '100%' }"
+        />
+      </div>
+
+      <div class="control-group">
+        <label for="owner" class="control-label">Owner <span class="required">*</span></label>
+        <p-dropdown
+          id="owner"
+          [options]="owners()"
+          [(ngModel)]="selectedOwnerId"
+          (ngModelChange)="onServiceTypeOrOwnerChange()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select owner"
+          [style]="{ width: '100%' }"
+        />
+      </div>
+
+      <div class="control-group">
+        <label for="fromDate" class="control-label">From Date</label>
+        <p-datepicker
+          id="fromDate"
+          [(ngModel)]="fromDate"
+          [showIcon]="true"
+          dateFormat="yy-mm-dd"
+          [style]="{ width: '100%' }"
+          [appendTo]="'body'"
+          [baseZIndex]="1000"
+        />
+      </div>
+
+      <div class="control-group">
+        <label for="toDate" class="control-label">To Date</label>
+        <p-datepicker
+          id="toDate"
+          [(ngModel)]="toDate"
+          [showIcon]="true"
+          dateFormat="yy-mm-dd"
+          [style]="{ width: '100%' }"
+          [appendTo]="'body'"
+          [baseZIndex]="1000"
+        />
+      </div>
+
+      <div class="control-group button-group">
+        <p-button
+          label="Load"
+          icon="pi pi-search"
+          (onClick)="onLoad()"
+          [loading]="loading()"
+          [disabled]="selectedServiceTypeIds().length === 0 || !selectedOwnerId() || loading()"
+          [style]="{ width: '100%' }"
+        />
+      </div>
+    </div>
+
+    <div class="info-section" *ngIf="mapData()">
+      <span class="info-badge">
+        <i class="pi pi-map-marker mr-1"></i>
+        Total points: {{ mapData()!.totalCount }}
+        <span *ngIf="mapData()!.minOrderDate && mapData()!.maxOrderDate">
+          ({{ mapData()!.minOrderDate }} to {{ mapData()!.maxOrderDate }})
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <div class="map-page-content">
+    <div class="map-left-panel">
+      <div class="map-toolbar" *ngIf="mapData()">
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            [checked]="showPlannedLocations()"
+            (change)="onToggleShowPlannedLocations($event)"
+          />
+          Show planned locations
+        </label>
+      </div>
+
+      <div class="map-section">
+        <div id="serviceLocationsMap" class="map-element"></div>
+      </div>
+
+      <div class="legend-section">
+        <div class="legend-gradient-container">
+          <div class="legend-gradient-bar"></div>
+          <div class="legend-labels">
+            <span class="legend-label-start">Most Urgent</span>
+            <span class="legend-label-end">Least Urgent</span>
+          </div>
+        </div>
+
+        <div class="legend-right">
+          <div class="legend-extra">
+            <span class="legend-dot planned"></span>
+            <span class="legend-extra-label">Planned</span>
+          </div>
+
+          <div class="legend-service-types" *ngIf="selectedServiceTypesLegend().length > 0">
+            <div class="legend-service-type" *ngFor="let st of selectedServiceTypesLegend()">
+              <span class="legend-shape" [ngClass]="getLegendShapeClass(st.id)"></span>
+              <span class="legend-service-type-label">{{ st.name }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-right-panel">
+      <div class="drivers-section" (click)="onDriversListBackgroundClick($event)">
+        <div class="drivers-section-header">
+          <h2 class="drivers-section-title">Available Drivers</h2>
+          <p-button
+            label="Auto-generate all"
+            icon="pi pi-bolt"
+            size="small"
+            severity="secondary"
+            (onClick)="autoGenerateForAllDrivers()"
+            [loading]="autoGenerateLoading()"
+            [disabled]="!selectedOwnerId() || !(mapData()?.items?.length)"
+          ></p-button>
+        </div>
+        
+        <div class="date-picker-container">
+          <label for="driverDate" class="date-picker-label">Select Date</label>
+          <p-datepicker
+            id="driverDate"
+            [(ngModel)]="selectedDate"
+            (onSelect)="onDateChange()"
+            [showIcon]="true"
+            dateFormat="yy-mm-dd"
+            [style]="{ width: '100%' }"
+            [appendTo]="'body'"
+            [baseZIndex]="1000"
+          />
+        </div>
+
+        <div class="drivers-list" *ngIf="!loadingDrivers()">
+          <div 
+            *ngFor="let item of driversWithAvailability(); trackBy: trackByDriverId" 
+            class="driver-item"
+            [class.driver-item-selected]="selectedDriver()?.driver?.toolId === item.driver.toolId"
+            [class.driver-item-unavailable]="!item.availability"
+            [class.driver-item-overbooked]="isDriverOverbooked(item)"
+            (click)="onDriverClick(item, $event)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="onDriverClick(item, $event)"
+            (keydown.space)="onDriverClick(item, $event)"
+          >
+            <div class="driver-content">
+              <span class="driver-name">{{ item.driver.name }}</span>
+              <span class="driver-hours">{{ getAvailableHours(item.availability) }}</span>
+              <span class="driver-availability">
+                <i class="pi pi-clock mr-1"></i>
+                {{ formatAvailability(item.availability) }}
+              </span>
+            </div>
+            <div
+              class="driver-route-info"
+              *ngIf="getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId"
+              (click)="$event.stopPropagation()"
+              (mousedown)="$event.stopPropagation()"
+              (touchstart)="$event.stopPropagation()"
+            >
+              <div class="route-header">
+                <h4 class="route-title">
+                  <i class="pi pi-map mr-1"></i>
+                  Route
+                </h4>
+              </div>
+              <div class="route-summary">
+                <i class="pi pi-map-marker mr-1"></i>
+                <span>{{ getLocationCount(getCurrentRouteForDisplay()!.waypoints) }} location(s)</span>
+                <span class="route-time" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1">
+                  <i class="pi pi-clock mr-1"></i>
+                  {{ formatRouteTime(getCurrentRouteForDisplay()!.totalTimeMinutes) }}
+                  <span style="opacity: 0.75;">
+                    ({{ formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!)) }} service + {{ formatRouteTime(getDriveMinutes(getCurrentRouteForDisplay()!)) }} driving)
+                  </span>
+                </span>
+                <span class="route-distance" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1">
+                  <i class="pi pi-map mr-1"></i>
+                  {{ getCurrentRouteForDisplay()!.totalDistanceKm.toFixed(1) }} km
+                </span>
+              </div>
+              <div class="route-locations" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 0">
+                <div class="route-location-item route-start" *ngIf="getStartWaypoint(getCurrentRouteForDisplay()!) as startWp">
+                  <span class="route-location-label">Start</span>
+                  <span class="route-location-name">{{ startWp.name }}</span>
+                </div>
+
+                <div>
+                  <div
+                    *ngFor="let waypoint of getLocationWaypoints(getCurrentRouteForDisplay()!); let i = index"
+                    class="route-location-item"
+                  >
+                    <button
+                      type="button"
+                      class="route-location-number route-location-number-btn"
+                      (click)="$event.stopPropagation(); toggleSelectedRouteStop(i)"
+                      title="Select stop to reorder"
+                    >
+                      {{ i + 1 }}
+                    </button>
+
+                    <div class="route-reorder-controls" *ngIf="selectedRouteStopIndex() === i">
+                      <button
+                        type="button"
+                        class="route-reorder-btn"
+                        [disabled]="i === 0"
+                        (click)="$event.stopPropagation(); moveSelectedStop('up')"
+                        title="Move up"
+                      >
+                        <i class="pi pi-arrow-up"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="route-reorder-btn"
+                        [disabled]="i === getLocationWaypoints(getCurrentRouteForDisplay()!).length - 1"
+                        (click)="$event.stopPropagation(); moveSelectedStop('down')"
+                        title="Move down"
+                      >
+                        <i class="pi pi-arrow-down"></i>
+                      </button>
+                    </div>
+
+                    <span class="route-location-name">{{ waypoint.name }}</span>
+                    <span class="route-location-time" *ngIf="waypoint.serviceMinutes">
+                      ({{ waypoint.serviceMinutes }}m)
+                    </span>
+                  </div>
+                </div>
+
+                <div class="route-location-item route-end" *ngIf="getEndWaypoint(getCurrentRouteForDisplay()!) as endWp">
+                  <span class="route-location-label">End</span>
+                  <span class="route-location-name">{{ endWp.name }}</span>
+                </div>
+              </div>
+              <div class="route-actions" *ngIf="isBuildingRoute() && getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId">
+                <p-button
+                  label="Clear Route"
+                  icon="pi pi-times"
+                  severity="secondary"
+                  size="small"
+                  (onClick)="clearRoute()"
+                  [style]="{ width: '100%', marginTop: '0.5rem' }"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div *ngIf="driversWithAvailability().length === 0" class="no-drivers">
+            <i class="pi pi-info-circle mr-2"></i>
+            No drivers found
+          </div>
+        </div>
+
+        <div class="drivers-loading" *ngIf="loadingDrivers()">
+          <i class="pi pi-spin pi-spinner mr-2"></i>
+          Loading drivers...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p-toast />
+

@@ -1,0 +1,79 @@
+# Build outputs
+bin/
+obj/
+out/
+TestResults/
+artifacts/
+**/bin/
+**/obj/
+**/TestResults/
+**/artifacts/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.rsuser
+*.sln.docstates
+
+# Rider/Resharper
+.idea/
+*.sln.iml
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Visual Studio
+.vs/
+*.cache
+*.log
+*.vsconfig
+
+# SQL Server / LocalDB
+*.mdf
+*.ldf
+
+# Node / frontend
+node_modules/
+dist/
+out-tsc/
+.angular/
+npm-debug.log
+yarn-error.log
+tmp/
+bazel-out/
+.sass-cache/
+connect.lock
+coverage/
+libpeerconnection.log
+typings/
+__screenshots__/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Secrets
+*.pfx
+*.snk
+*.key
+
+# Logs
+App_Data/
+*.log
+
+# IDEs and editors (frontend merge)
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*

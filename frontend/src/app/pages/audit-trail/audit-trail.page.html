@@ -1,0 +1,196 @@
+<div class="container mx-auto p-6">
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-3xl font-bold text-gray-900">Audit Trail</h1>
+      <div class="flex items-center gap-2">
+        <p-button
+          label="Refresh"
+          icon="pi pi-refresh"
+          [outlined]="true"
+          (onClick)="loadData(false)"
+          [loading]="loading()"
+        />
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4 mb-4">
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">From:</label>
+        <p-calendar
+          [ngModel]="fromUtc()"
+          (ngModelChange)="fromUtc.set($event)"
+          [showIcon]="true"
+          [appendTo]="'body'"
+          styleClass="w-40"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">To:</label>
+        <p-calendar
+          [ngModel]="toUtc()"
+          (ngModelChange)="toUtc.set($event)"
+          [showIcon]="true"
+          [appendTo]="'body'"
+          styleClass="w-40"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium">Search:</label>
+        <input
+          pInputText
+          [ngModel]="search()"
+          (ngModelChange)="onSearchChange($event)"
+          placeholder="Path, user, body, trace"
+          class="w-64"
+        />
+      </div>
+      <p-button
+        label="Apply"
+        icon="pi pi-filter"
+        (onClick)="loadData()"
+        [loading]="loading()"
+      />
+      <p-button
+        label="Clear"
+        severity="secondary"
+        (onClick)="clearFilters()"
+      />
+    </div>
+  </div>
+
+  <p-table
+    [value]="items()"
+    [loading]="loading()"
+    [paginator]="true"
+    [rows]="pageSize()"
+    [first]="(page() - 1) * pageSize()"
+    [totalRecords]="totalCount()"
+    [lazy]="true"
+    (onLazyLoad)="onPageChange($event)"
+    [rowsPerPageOptions]="[25, 50, 100, 200]"
+    [scrollable]="true"
+    [scrollHeight]="'calc(100vh - 320px)'"
+    styleClass="p-datatable-striped min-w-[1400px]"
+  >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Timestamp</th>
+          <th>Action</th>
+          <th>Roles</th>
+          <th>Status</th>
+          <th>Duration</th>
+          <th>Owner</th>
+          <th>IP</th>
+          <th>Endpoint</th>
+          <th>Headers</th>
+          <th>Payload</th>
+          <th>Response</th>
+        </tr>
+        <tr>
+          <th></th>
+          <th>
+            <div class="flex flex-col gap-2">
+              <p-dropdown
+                [ngModel]="method()"
+                (ngModelChange)="method.set($event); loadData()"
+                [options]="methodOptions"
+                optionLabel="label"
+                optionValue="value"
+                [appendTo]="'body'"
+                styleClass="w-full"
+              />
+              <input
+                pInputText
+                [ngModel]="pathContains()"
+                (ngModelChange)="onPathChange($event)"
+                placeholder="path"
+                class="w-full"
+              />
+            </div>
+          </th>
+          <th>
+            <input
+              pInputText
+              [ngModel]="userEmailContains()"
+              (ngModelChange)="onUserEmailChange($event)"
+              placeholder="user"
+              class="w-full"
+            />
+          </th>
+          <th>
+            <p-inputNumber
+              [ngModel]="statusCode()"
+              (ngModelChange)="statusCode.set($event); loadData()"
+              [useGrouping]="false"
+              placeholder="status"
+              class="w-full"
+            />
+          </th>
+          <th></th>
+          <th>
+            <p-dropdown
+              [ngModel]="ownerId()"
+              (ngModelChange)="ownerId.set($event); loadData()"
+              [options]="ownerOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [appendTo]="'body'"
+              styleClass="w-full"
+            />
+          </th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td class="whitespace-nowrap">{{ formatTimestamp(item.timestampUtc) }}</td>
+          <td class="max-w-sm truncate" [title]="(item.path || '') + (item.query || '')">
+            <div class="font-medium">{{ item.method }} {{ item.path }}{{ item.query || '' }}</div>
+            <div class="text-xs text-gray-600 truncate">{{ item.userEmail || item.userName || '-' }}</div>
+          </td>
+          <td class="text-xs text-gray-600">{{ item.roles?.join(', ') || '-' }}</td>
+          <td>{{ item.statusCode }}</td>
+          <td>{{ item.durationMs }} ms</td>
+          <td [title]="item.ownerId?.toString() || ''">{{ getOwnerName(item.ownerId) }}</td>
+          <td>{{ item.ipAddress || '-' }}</td>
+          <td class="max-w-xs truncate" [title]="item.endpoint || ''">{{ item.endpoint || '-' }}</td>
+          <td class="max-w-md truncate" [title]="item.requestHeaders || ''">
+            {{ item.requestHeaders || '-' }}
+          </td>
+          <td class="max-w-md truncate" [title]="item.body || ''">
+            @if (item.body) {
+              {{ item.body.length > 120 ? (item.body | slice:0:120) + '...' : item.body }}
+              @if (item.bodyTruncated) {
+                <span class="ml-1 text-xs text-orange-600">(truncated)</span>
+              }
+            } @else {
+              -
+            }
+          </td>
+          <td class="max-w-md truncate" [title]="item.responseBody || ''">
+            @if (item.responseBody) {
+              {{ item.responseBody.length > 120 ? (item.responseBody | slice:0:120) + '...' : item.responseBody }}
+              @if (item.responseBodyTruncated) {
+                <span class="ml-1 text-xs text-orange-600">(truncated)</span>
+              }
+            } @else {
+              -
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="11" class="text-center py-8 text-gray-500">
+            No audit entries found
+          </td>
+        </tr>
+      </ng-template>
+  </p-table>
+
+  <p-toast />
+</div>

@@ -1,0 +1,22 @@
+<div class="min-h-screen flex items-center justify-center bg-gray-50">
+  <div class="w-full max-w-md bg-white p-8 rounded shadow">
+    <h1 class="text-2xl font-semibold mb-6 text-center">Login</h1>
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Email</label>
+        <input pInputText type="email" [(ngModel)]="email" class="w-full" autocomplete="username" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Password</label>
+        <p-password
+          [(ngModel)]="password"
+          [toggleMask]="true"
+          inputStyleClass="w-full"
+          [feedback]="false"
+          autocomplete="current-password"
+        ></p-password>
+      </div>
+      <p-button label="Login" (onClick)="login()" [loading]="loading"></p-button>
+    </div>
+  </div>
+</div>

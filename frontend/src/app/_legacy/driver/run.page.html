@@ -1,0 +1,83 @@
+<div class="container mx-auto px-4 py-6">
+  @if (error()) {
+    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+  }
+
+  @if (loading() && !driverDay()) {
+    <div class="text-center py-8">Loading...</div>
+  } @else if (driverDay(); as day) {
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold">{{ day.driverName }} - {{ day.date }}</h2>
+      <p class="text-gray-600 mt-2">
+        Total: {{ day.totalMinutes }} min | {{ day.totalKm.toFixed(1) }} km
+      </p>
+    </div>
+
+    @if (!day.routeId) {
+      <div class="text-center py-8 bg-surface border border-surface-border rounded-lg">
+        <p class="text-gray-600">No route planned for this day</p>
+      </div>
+    } @else {
+      <div class="mb-4">
+        <p-button
+          label="Start Route"
+          icon="pi pi-play"
+          [loading]="loading()"
+          (onClick)="startRoute()"
+        />
+      </div>
+
+      <div class="space-y-4">
+        @for (stop of day.stops; track stop.sequence) {
+          <div class="p-4 border border-surface-border rounded-lg bg-surface">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex-1">
+                <div class="font-semibold text-lg">#{{ stop.sequence }} - {{ stop.serial }}</div>
+                <div class="text-sm text-gray-600 mt-1">
+                  @if (stop.plannedStart) {
+                    <div>Start: {{ stop.plannedStart }}</div>
+                  }
+                  @if (stop.plannedEnd) {
+                    <div>End: {{ stop.plannedEnd }}</div>
+                  }
+                  <div>Travel: {{ stop.travelMinutesFromPrev }} min</div>
+                  <div>Service: {{ stop.serviceMinutes }} min</div>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-2 mb-3">
+              <p-button
+                label="Arrive"
+                size="small"
+                severity="info"
+                (onClick)="arriveStop(stop.poleId)"
+              />
+              <p-button
+                label="Complete"
+                size="small"
+                severity="success"
+                (onClick)="completeStop(stop.poleId)"
+              />
+            </div>
+            <div class="flex gap-2">
+              <textarea
+                pInputTextarea
+                [value]="getNote(stop.poleId)"
+                (input)="setNote(stop.poleId, $any($event.target).value)"
+                placeholder="Add note..."
+                rows="2"
+                class="flex-1"
+              ></textarea>
+              <p-button
+                label="Add Note"
+                size="small"
+                (onClick)="addNote(stop.poleId)"
+              />
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>
+

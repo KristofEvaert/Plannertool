@@ -1,0 +1,219 @@
+<div class="pt-20 px-6 pb-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-end gap-4">
+        <div class="w-72">
+          <label class="block text-sm font-semibold mb-1">Driver</label>
+          <p-select
+            [options]="driverOptions()"
+            [ngModel]="selectedDriverToolId()"
+            (ngModelChange)="selectedDriverToolId.set($event)"
+            placeholder="Select driver"
+            optionLabel="label"
+            optionValue="value"
+            [filter]="true"
+          />
+        </div>
+
+        <div class="w-72">
+          <label class="block text-sm font-semibold mb-1">Owner</label>
+          <p-select
+            [options]="ownerOptions()"
+            [ngModel]="selectedOwnerId()"
+            (ngModelChange)="selectedOwnerId.set($event)"
+            placeholder="Select owner"
+            optionLabel="label"
+            optionValue="value"
+          />
+        </div>
+
+        <div class="w-72">
+          <label class="block text-sm font-semibold mb-1">Date</label>
+          <p-datepicker
+            [ngModel]="selectedDate()"
+            (ngModelChange)="selectedDate.set($event)"
+            [showIcon]="true"
+          />
+        </div>
+      </div>
+
+      @if (error()) {
+        <div class="p-3 rounded border border-red-200 bg-red-50 text-red-700">
+          {{ error() }}
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="text-sm text-gray-500">Loading route…</div>
+      }
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-3">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-semibold">Route Map</div>
+            @if (route(); as r) {
+              <div class="text-xs text-gray-500">
+                {{ r.driverName }} · {{ r.totalMinutes }} min · {{ r.totalKm | number: '1.0-1' }} km
+              </div>
+            } @else {
+              <div class="text-xs text-gray-500">No route loaded</div>
+            }
+          </div>
+          <div id="driver-map" class="driver-map"></div>
+        </div>
+
+        <div class="card p-3">
+          @if (loading()) {
+            <div class="text-sm text-gray-500">Loading route…</div>
+          } @else if (route() == null) {
+            <div class="text-sm text-gray-500">No route for this driver/day.</div>
+          } @else {
+            @if (route(); as r) {
+              <div class="font-semibold mb-2">Stops</div>
+
+              <div class="max-h-[420px] overflow-auto pr-1">
+                @for (stop of r.stops; track stop.id) {
+                <button
+                  type="button"
+                  class="w-full text-left p-2 rounded border mb-2 hover:bg-gray-50 transition-colors"
+                  [class.border-blue-500]="selectedStopId() === stop.id"
+                  [class.bg-orange-50]="stop.status === 'NotVisited'"
+                  [class.border-orange-400]="stop.status === 'NotVisited'"
+                  (click)="onStopClick(stop)"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="font-medium truncate">{{ stop.sequence }}. {{ stop.name }}</div>
+                      <div class="text-xs text-gray-500">
+                        Planned: {{ stop.serviceMinutes }}m · Actual:
+                        {{ stopDurationMinutes(stop) ?? '—' }}m
+                      </div>
+                      @if (stop.driverInstruction) {
+                        <div class="text-xs text-gray-600 truncate">Note: {{ stop.driverInstruction }}</div>
+                      }
+                    </div>
+                    <p-tag
+                      [value]="stop.status ?? 'Pending'"
+                      [severity]="severityForStopStatus(stop.status)"
+                    />
+                  </div>
+                </button>
+                }
+              </div>
+
+            @if (selectedStop(); as s) {
+              <div class="mt-3 pt-3 border-t">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="font-semibold truncate">Stop {{ s.sequence }} · {{ s.name }}</div>
+                    <div class="text-xs text-gray-500">
+                      {{ s.latitude | number: '1.4-4' }}, {{ s.longitude | number: '1.4-4' }}
+                    </div>
+                    @if (s.driverInstruction) {
+                      <div class="text-xs text-gray-700 mt-1">Driver note: {{ s.driverInstruction }}</div>
+                    }
+                  </div>
+                  <p-tag [value]="s.status ?? 'Pending'" [severity]="severityForStopStatus(s.status)" />
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <div class="flex flex-col gap-2">
+                    <div class="flex gap-2">
+                      <p-button
+                        label="Start"
+                        icon="pi pi-play"
+                        size="small"
+                        (onClick)="startStop(s)"
+                        [disabled]="s.status === 'Completed'"
+                      />
+                      <p-button
+                        label="Stop"
+                        icon="pi pi-stop"
+                        size="small"
+                        severity="success"
+                        (onClick)="finishStop(s)"
+                        [disabled]="s.status === 'Completed'"
+                      />
+                      <p-button
+                        label="Maps"
+                        icon="pi pi-directions"
+                        size="small"
+                        severity="secondary"
+                        [outlined]="true"
+                        (onClick)="openInGoogleMaps(s)"
+                      />
+                    </div>
+                    <div>
+                      <p-button
+                        label="Not visited"
+                        icon="pi pi-ban"
+                        size="small"
+                        severity="warn"
+                        (onClick)="markNotVisited()"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <p-inputNumber
+                      class="w-32"
+                      [ngModel]="stopDurationMinutes(s)"
+                      (ngModelChange)="saveDuration(s, $event)"
+                      [min]="0"
+                      [max]="1440"
+                      placeholder="Actual (min)"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold mb-1">Arrived at (manual)</label>
+                    <p-datepicker
+                      [ngModel]="editingArrivedAt()"
+                      (ngModelChange)="onArrivedAtEditChange($event)"
+                      [showIcon]="true"
+                      [showTime]="true"
+                      hourFormat="24"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold mb-1">Completed at (manual)</label>
+                    <p-datepicker
+                      [ngModel]="editingCompletedAt()"
+                      (ngModelChange)="onCompletedAtEditChange($event)"
+                      [showIcon]="true"
+                      [showTime]="true"
+                      hourFormat="24"
+                    />
+                  </div>
+
+                  <div class="md:col-span-2 space-y-2">
+                    <div>
+                      <label class="block text-sm font-semibold mb-1">Remark</label>
+                      <textarea
+                        pInputTextarea
+                        class="w-full"
+                        [ngModel]="s.note"
+                        (ngModelChange)="saveNote(s, $event)"
+                        rows="3"
+                        placeholder="Optional remark…"
+                      ></textarea>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <div class="text-xs text-gray-500">
+                        Remark is required when marking Not visited.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
