@@ -61,6 +61,7 @@ Thumbs.db
 # Logs
 App_Data/
 *.log
+*.zip
 
 # IDEs and editors (frontend merge)
 .project
