@@ -43,13 +43,6 @@ export const routes: Routes = [
       import('@pages/weight-templates/weight-templates.page').then((m) => m.WeightTemplatesPage),
   },
   {
-    path: 'location-groups',
-    canMatch: [authGuard],
-    data: { roles: ['SuperAdmin', 'Admin'] },
-    loadComponent: () =>
-      import('@pages/location-groups/location-groups.page').then((m) => m.LocationGroupsPage),
-  },
-  {
     path: 'map',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin', 'Planner'] },

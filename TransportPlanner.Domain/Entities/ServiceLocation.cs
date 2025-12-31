@@ -26,5 +26,4 @@ public class ServiceLocation
     public ICollection<ServiceLocationException> Exceptions { get; set; } = new List<ServiceLocationException>();
     public ServiceLocationConstraint? Constraint { get; set; }
     public ICollection<WeightTemplateLocationLink> WeightTemplateLinks { get; set; } = new List<WeightTemplateLocationLink>();
-    public ICollection<LocationGroupMember> GroupMemberships { get; set; } = new List<LocationGroupMember>();
 }

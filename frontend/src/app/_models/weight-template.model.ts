@@ -11,7 +11,6 @@ export interface WeightTemplateDto {
   weightCost: number;
   weightDate: number;
   serviceLocationIds: number[];
-  locationGroupIds: number[];
 }
 
 export interface SaveWeightTemplateRequest {
@@ -26,5 +25,4 @@ export interface SaveWeightTemplateRequest {
   weightCost: number;
   weightDate: number;
   serviceLocationIds: number[];
-  locationGroupIds: number[];
 }

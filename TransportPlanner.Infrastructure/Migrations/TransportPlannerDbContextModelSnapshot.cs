@@ -22,21 +22,6 @@ namespace TransportPlanner.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("LocationGroupWeightTemplate", b =>
-                {
-                    b.Property<int>("LocationGroupsId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("WeightTemplatesId")
-                        .HasColumnType("int");
-
-                    b.HasKey("LocationGroupsId", "WeightTemplatesId");
-
-                    b.HasIndex("WeightTemplatesId");
-
-                    b.ToTable("LocationGroupWeightTemplate");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
@@ -405,45 +390,6 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("LearnedTravelStats", (string)null);
-                });
-
-            modelBuilder.Entity("TransportPlanner.Domain.Entities.LocationGroup", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int?>("OwnerId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("LocationGroups", (string)null);
-                });
-
-            modelBuilder.Entity("TransportPlanner.Domain.Entities.LocationGroupMember", b =>
-                {
-                    b.Property<int>("LocationGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ServiceLocationId")
-                        .HasColumnType("int");
-
-                    b.HasKey("LocationGroupId", "ServiceLocationId");
-
-                    b.HasIndex("ServiceLocationId");
-
-                    b.ToTable("LocationGroupMembers", (string)null);
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.PlanningCluster", b =>
@@ -1310,21 +1256,6 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("LocationGroupWeightTemplate", b =>
-                {
-                    b.HasOne("TransportPlanner.Domain.Entities.LocationGroup", null)
-                        .WithMany()
-                        .HasForeignKey("LocationGroupsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TransportPlanner.Domain.Entities.WeightTemplate", null)
-                        .WithMany()
-                        .HasForeignKey("WeightTemplatesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -1426,25 +1357,6 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Region");
-                });
-
-            modelBuilder.Entity("TransportPlanner.Domain.Entities.LocationGroupMember", b =>
-                {
-                    b.HasOne("TransportPlanner.Domain.Entities.LocationGroup", "LocationGroup")
-                        .WithMany("Members")
-                        .HasForeignKey("LocationGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TransportPlanner.Domain.Entities.ServiceLocation", "ServiceLocation")
-                        .WithMany("GroupMemberships")
-                        .HasForeignKey("ServiceLocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LocationGroup");
-
-                    b.Navigation("ServiceLocation");
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.PlanningClusterItem", b =>
@@ -1659,11 +1571,6 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Navigation("DriverServiceTypes");
                 });
 
-            modelBuilder.Entity("TransportPlanner.Domain.Entities.LocationGroup", b =>
-                {
-                    b.Navigation("Members");
-                });
-
             modelBuilder.Entity("TransportPlanner.Domain.Entities.PlanningCluster", b =>
                 {
                     b.Navigation("Items");
@@ -1695,8 +1602,6 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Navigation("Constraint");
 
                     b.Navigation("Exceptions");
-
-                    b.Navigation("GroupMemberships");
 
                     b.Navigation("OpeningHours");
 

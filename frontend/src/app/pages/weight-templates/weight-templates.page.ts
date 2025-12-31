@@ -13,14 +13,12 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { TagModule } from 'primeng/tag';
 import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
-import { LocationGroupsApiService } from '@services/location-groups-api.service';
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { AuthService } from '@services/auth.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { WeightTemplateDto, SaveWeightTemplateRequest } from '@models/weight-template.model';
-import type { LocationGroupDto } from '@models/location-group.model';
 import type { ServiceLocationDto } from '@models/service-location.model';
 import type { ServiceTypeDto } from '@models/service-type.model';
 import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
@@ -50,7 +48,6 @@ type Option = { label: string; value: number };
 })
 export class WeightTemplatesPage {
   private readonly api = inject(WeightTemplatesApiService);
-  private readonly locationGroupsApi = inject(LocationGroupsApiService);
   private readonly locationsApi = inject(ServiceLocationsApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
   private readonly serviceTypesApi = inject(ServiceTypesApiService);
@@ -63,7 +60,6 @@ export class WeightTemplatesPage {
   ownerOptions = signal<Option[]>([]);
   serviceTypeOptions = signal<Option[]>([]);
   locationOptions = signal<Option[]>([]);
-  locationGroupOptions = signal<Option[]>([]);
 
   selectedOwnerId = signal<number | null>(null);
   selectedServiceTypeId = signal<number | null>(null);
@@ -84,7 +80,6 @@ export class WeightTemplatesPage {
     weightCost: 10,
     weightDate: 10,
     serviceLocationIds: [],
-    locationGroupIds: [],
   });
 
   scopeOptions = [
@@ -92,7 +87,6 @@ export class WeightTemplatesPage {
     { label: 'Owner', value: 'Owner' },
     { label: 'Service type', value: 'ServiceType' },
     { label: 'Location', value: 'Location' },
-    { label: 'Location group', value: 'LocationGroup' },
   ];
 
   isSuperAdmin = computed(() => this.auth.currentUser()?.roles.includes('SuperAdmin') ?? false);
@@ -113,10 +107,8 @@ export class WeightTemplatesPage {
       this.loadTemplates(ownerId, this.selectedServiceTypeId());
       if (ownerId) {
         this.loadServiceLocations(ownerId);
-        this.loadLocationGroups(ownerId);
       } else {
         this.locationOptions.set([]);
-        this.locationGroupOptions.set([]);
       }
     });
   }
@@ -220,18 +212,6 @@ export class WeightTemplatesPage {
     });
   }
 
-  private loadLocationGroups(ownerId: number): void {
-    this.locationGroupsApi.getAll(ownerId).subscribe({
-      next: (groups: LocationGroupDto[]) => {
-        const options = groups.map((g) => ({ label: g.name, value: g.id }));
-        this.locationGroupOptions.set(options);
-      },
-      error: () => {
-        this.locationGroupOptions.set([]);
-      },
-    });
-  }
-
   openCreate(): void {
     this.isEdit.set(false);
     this.currentId = null;
@@ -247,7 +227,6 @@ export class WeightTemplatesPage {
       weightCost: 10,
       weightDate: 10,
       serviceLocationIds: [],
-      locationGroupIds: [],
     });
     this.showDialog.set(true);
   }
@@ -267,7 +246,6 @@ export class WeightTemplatesPage {
       weightCost: template.weightCost,
       weightDate: template.weightDate,
       serviceLocationIds: template.serviceLocationIds ?? [],
-      locationGroupIds: template.locationGroupIds ?? [],
     });
     this.showDialog.set(true);
   }
@@ -306,15 +284,6 @@ export class WeightTemplatesPage {
         severity: 'warn',
         summary: 'Validation',
         detail: 'Select at least one location for Location scope.',
-      });
-      return;
-    }
-
-    if (form.scopeType === 'LocationGroup' && (!form.locationGroupIds || form.locationGroupIds.length === 0)) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Validation',
-        detail: 'Select at least one location group for LocationGroup scope.',
       });
       return;
     }

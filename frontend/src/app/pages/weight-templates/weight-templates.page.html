@@ -165,22 +165,6 @@
       </div>
     }
 
-    @if (scopeTypeMatches('LocationGroup')) {
-      <div class="md:col-span-2">
-        <label class="block text-sm font-semibold mb-1">Location groups</label>
-        <p-multiSelect
-          [options]="locationGroupOptions()"
-          [ngModel]="form().locationGroupIds"
-          (ngModelChange)="onFormChange('locationGroupIds', $event)"
-          optionLabel="label"
-          optionValue="value"
-          [filter]="true"
-          [showClear]="true"
-          defaultLabel="Select groups"
-        />
-      </div>
-    }
-
     <div>
       <label class="block text-sm font-semibold mb-1">Weight - distance</label>
       <p-inputNumber

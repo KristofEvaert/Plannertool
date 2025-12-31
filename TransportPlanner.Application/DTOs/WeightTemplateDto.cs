@@ -14,7 +14,6 @@ public class WeightTemplateDto
     public decimal WeightCost { get; set; }
     public decimal WeightDate { get; set; }
     public List<int> ServiceLocationIds { get; set; } = new();
-    public List<int> LocationGroupIds { get; set; } = new();
 }
 
 public class SaveWeightTemplateRequest
@@ -30,5 +29,4 @@ public class SaveWeightTemplateRequest
     public decimal WeightCost { get; set; } = 1;
     public decimal WeightDate { get; set; } = 1;
     public List<int> ServiceLocationIds { get; set; } = new();
-    public List<int> LocationGroupIds { get; set; } = new();
 }

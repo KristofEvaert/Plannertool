@@ -141,25 +141,12 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     summary: 'Create reusable weight sets for auto generation.',
     functions: [
       'Create, edit, and delete templates (admin only).',
-      'Set scope by global, owner, service type, or location group.',
+      'Set scope by global, owner, service type, or location.',
       'Assign templates to locations or groups.',
     ],
     options: [
       'Filters for owner and service type.',
       'Weights include distance, travel time, due date, cost, and overtime.',
-    ],
-  },
-  {
-    id: 'location-groups',
-    title: 'Location Groups',
-    route: '/location-groups',
-    summary: 'Group service locations for template assignment.',
-    functions: [
-      'Create and edit location groups.',
-      'Add or remove service locations in the group.',
-    ],
-    options: [
-      'Owner filter for super admins.',
     ],
   },
   {

@@ -40,8 +40,6 @@ public class TransportPlannerDbContext : IdentityDbContext<ApplicationUser, Iden
     public DbSet<SystemCostSettings> SystemCostSettings { get; set; }
     public DbSet<WeightTemplate> WeightTemplates { get; set; }
     public DbSet<WeightTemplateLocationLink> WeightTemplateLocationLinks { get; set; }
-    public DbSet<LocationGroup> LocationGroups { get; set; }
-    public DbSet<LocationGroupMember> LocationGroupMembers { get; set; }
     public DbSet<TravelTimeRegion> TravelTimeRegions { get; set; }
     public DbSet<RegionSpeedProfile> RegionSpeedProfiles { get; set; }
     public DbSet<LearnedTravelStats> LearnedTravelStats { get; set; }
@@ -52,4 +50,3 @@ public class TransportPlannerDbContext : IdentityDbContext<ApplicationUser, Iden
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TransportPlannerDbContext).Assembly);
     }
 }
-

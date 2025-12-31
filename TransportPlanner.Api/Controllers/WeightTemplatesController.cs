@@ -49,7 +49,6 @@ public class WeightTemplatesController : ControllerBase
         var query = _dbContext.WeightTemplates
             .AsNoTracking()
             .Include(t => t.LocationLinks)
-            .Include(t => t.LocationGroups)
             .AsQueryable();
 
         if (ownerId.HasValue && ownerId.Value > 0)
@@ -83,7 +82,6 @@ public class WeightTemplatesController : ControllerBase
                 WeightCost = t.WeightCost,
                 WeightDate = t.WeightDate,
                 ServiceLocationIds = t.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
-                LocationGroupIds = t.LocationGroups.Select(g => g.Id).ToList()
             })
             .ToListAsync(cancellationToken);
 
@@ -100,7 +98,6 @@ public class WeightTemplatesController : ControllerBase
         var template = await _dbContext.WeightTemplates
             .AsNoTracking()
             .Include(t => t.LocationLinks)
-            .Include(t => t.LocationGroups)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
         if (template == null)
@@ -127,7 +124,6 @@ public class WeightTemplatesController : ControllerBase
             WeightCost = template.WeightCost,
             WeightDate = template.WeightDate,
             ServiceLocationIds = template.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
-            LocationGroupIds = template.LocationGroups.Select(g => g.Id).ToList()
         });
     }
 
@@ -160,14 +156,9 @@ public class WeightTemplatesController : ControllerBase
         }
 
         var locationIds = await ValidateServiceLocationsAsync(ownerId, request.ServiceLocationIds, cancellationToken);
-        var groupIds = await ValidateLocationGroupsAsync(ownerId, request.LocationGroupIds, cancellationToken);
         if (locationIds.Count != request.ServiceLocationIds.Count)
         {
             return BadRequest(new { message = "One or more service locations were not found." });
-        }
-        if (groupIds.Count != request.LocationGroupIds.Count)
-        {
-            return BadRequest(new { message = "One or more location groups were not found." });
         }
 
         var nowUtc = DateTime.UtcNow;
@@ -201,17 +192,6 @@ public class WeightTemplatesController : ControllerBase
             _dbContext.WeightTemplateLocationLinks.AddRange(links);
         }
 
-        if (groupIds.Count > 0)
-        {
-            var groups = await _dbContext.LocationGroups
-                .Where(g => groupIds.Contains(g.Id))
-                .ToListAsync(cancellationToken);
-            foreach (var group in groups)
-            {
-                template.LocationGroups.Add(group);
-            }
-        }
-
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Ok(await BuildDtoAsync(template.Id, cancellationToken));
@@ -242,7 +222,6 @@ public class WeightTemplatesController : ControllerBase
         }
 
         var template = await _dbContext.WeightTemplates
-            .Include(t => t.LocationGroups)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
         if (template == null)
@@ -262,14 +241,9 @@ public class WeightTemplatesController : ControllerBase
         }
 
         var locationIds = await ValidateServiceLocationsAsync(ownerId, request.ServiceLocationIds, cancellationToken);
-        var groupIds = await ValidateLocationGroupsAsync(ownerId, request.LocationGroupIds, cancellationToken);
         if (locationIds.Count != request.ServiceLocationIds.Count)
         {
             return BadRequest(new { message = "One or more service locations were not found." });
-        }
-        if (groupIds.Count != request.LocationGroupIds.Count)
-        {
-            return BadRequest(new { message = "One or more location groups were not found." });
         }
 
         template.Name = request.Name.Trim();
@@ -300,18 +274,6 @@ public class WeightTemplatesController : ControllerBase
                 ServiceLocationId = id
             });
             _dbContext.WeightTemplateLocationLinks.AddRange(links);
-        }
-
-        template.LocationGroups.Clear();
-        if (groupIds.Count > 0)
-        {
-            var groups = await _dbContext.LocationGroups
-                .Where(g => groupIds.Contains(g.Id))
-                .ToListAsync(cancellationToken);
-            foreach (var group in groups)
-            {
-                template.LocationGroups.Add(group);
-            }
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -392,26 +354,6 @@ public class WeightTemplatesController : ControllerBase
         return validIds;
     }
 
-    private async Task<List<int>> ValidateLocationGroupsAsync(
-        int? ownerId,
-        List<int> locationGroupIds,
-        CancellationToken cancellationToken)
-    {
-        if (locationGroupIds.Count == 0)
-        {
-            return new List<int>();
-        }
-
-        var query = _dbContext.LocationGroups.AsNoTracking().Where(g => locationGroupIds.Contains(g.Id));
-        if (ownerId.HasValue)
-        {
-            query = query.Where(g => g.OwnerId == ownerId.Value);
-        }
-
-        var validIds = await query.Select(g => g.Id).ToListAsync(cancellationToken);
-        return validIds;
-    }
-
     private static bool TryParseScopeType(string scopeType, out WeightTemplateScopeType parsed, out string? error)
     {
         if (Enum.TryParse<WeightTemplateScopeType>(scopeType, ignoreCase: true, out parsed))
@@ -439,8 +381,6 @@ public class WeightTemplatesController : ControllerBase
                 Fail("ServiceTypeId is required for ServiceType scope.", out error),
             WeightTemplateScopeType.Location when request.ServiceLocationIds.Count == 0 =>
                 Fail("ServiceLocationIds are required for Location scope.", out error),
-            WeightTemplateScopeType.LocationGroup when request.LocationGroupIds.Count == 0 =>
-                Fail("LocationGroupIds are required for LocationGroup scope.", out error),
             _ => true
         };
     }
@@ -456,7 +396,6 @@ public class WeightTemplatesController : ControllerBase
         var template = await _dbContext.WeightTemplates
             .AsNoTracking()
             .Include(t => t.LocationLinks)
-            .Include(t => t.LocationGroups)
             .FirstAsync(t => t.Id == templateId, cancellationToken);
 
         return new WeightTemplateDto
@@ -473,7 +412,6 @@ public class WeightTemplatesController : ControllerBase
             WeightCost = template.WeightCost,
             WeightDate = template.WeightDate,
             ServiceLocationIds = template.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
-            LocationGroupIds = template.LocationGroups.Select(g => g.Id).ToList()
         };
     }
 }

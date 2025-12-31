@@ -19,5 +19,4 @@ public class WeightTemplate
     public decimal WeightDate { get; set; } = 1;
 
     public ICollection<WeightTemplateLocationLink> LocationLinks { get; set; } = new List<WeightTemplateLocationLink>();
-    public ICollection<LocationGroup> LocationGroups { get; set; } = new List<LocationGroup>();
 }
