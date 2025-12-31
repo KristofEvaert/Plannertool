@@ -1103,6 +1103,9 @@ namespace TransportPlanner.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("OwnerId")
+                        .HasColumnType("int");
+
                     b.Property<string>("CurrencyCode")
                         .IsRequired()
                         .HasMaxLength(8)
@@ -1118,6 +1121,10 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerId")
+                        .IsUnique()
+                        .HasFilter("[OwnerId] IS NOT NULL");
 
                     b.ToTable("SystemCostSettings", (string)null);
                 });
@@ -1457,6 +1464,14 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Navigation("PlanningCluster");
 
                     b.Navigation("ServiceLocation");
+                });
+
+            modelBuilder.Entity("TransportPlanner.Domain.Entities.SystemCostSettings", b =>
+                {
+                    b.HasOne("TransportPlanner.Domain.Entities.ServiceLocationOwner", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.RegionSpeedProfile", b =>

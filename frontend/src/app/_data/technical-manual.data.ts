@@ -39,6 +39,29 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
   },
   {
+    id: 'seeder',
+    title: 'Seeder behavior',
+    summary: 'Seeder runs after migrations to create roles and travel-time model data.',
+    businessLogic: [
+      'DatabaseSeeder runs on API startup after migrations.',
+      'Seeds roles (SuperAdmin, Admin, Planner, Driver) and initial super admin user from configuration.',
+      'Does not seed service types, owners, drivers, or service locations.',
+      'Travel time model data is seeded only when regions and speed profiles are empty.',
+    ],
+    database: [
+      'TravelTimeRegions are inserted with explicit IDs from seed CSV using IDENTITY_INSERT.',
+      'RegionSpeedProfiles reference TravelTimeRegions by RegionId.',
+      'No seeding occurs for ServiceTypes, ServiceLocationOwners, Drivers, or ServiceLocations.',
+    ],
+    api: [
+      'No API endpoints; seeding runs during application startup in Program.cs.',
+    ],
+    notes: [
+      'InitialSuperAdmin credentials are read from configuration; missing values skip the seed.',
+      'To reseed travel time data, clear TravelTimeRegions and RegionSpeedProfiles and restart.',
+    ],
+  },
+  {
     id: 'planning',
     title: 'Routing and auto-generate',
     summary: 'Auto-generate creates routes per day or period with weighted scoring.',
@@ -98,14 +121,17 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     database: [
       'TravelTimeRegions, RegionSpeedProfiles define regional defaults.',
       'LearnedTravelStats stores aggregated averages by region and hour.',
-      'SystemCostSettings stores fuel/personnel cost values.',
+      'SystemCostSettings stores fuel/personnel cost values per owner (OwnerId).',
     ],
     api: [
       'SystemCostSettingsController: /api/system-cost-settings.',
+      'SystemCostSettingsController: /api/system-cost-settings/overview (SuperAdmin only).',
       'Travel time is used in route calculations within TravelTimeModelService.',
     ],
     notes: [
       'Travel time seed data is loaded automatically on first run.',
+      'Cost settings are resolved per owner; SuperAdmin supplies ownerId in API calls.',
+      'Overview endpoint returns the latest settings per owner and defaults to 0/EUR when missing.',
     ],
   },
   {

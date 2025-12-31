@@ -12,6 +12,15 @@ public class SystemCostSettingsConfiguration : IEntityTypeConfiguration<SystemCo
 
         builder.HasKey(x => x.Id);
 
+        builder.HasIndex(x => x.OwnerId)
+            .IsUnique()
+            .HasFilter("[OwnerId] IS NOT NULL");
+
+        builder.HasOne<ServiceLocationOwner>()
+            .WithMany()
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Property(x => x.FuelCostPerKm)
             .HasColumnType("decimal(18,4)");
 

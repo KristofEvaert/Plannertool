@@ -166,13 +166,16 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     id: 'cost-settings',
     title: 'Cost Settings',
     route: '/system-cost-settings',
-    summary: 'Set fuel and personnel cost inputs for route cost scoring.',
+    summary: 'Set fuel and personnel cost inputs per owner for route cost scoring.',
     functions: [
       'Update fuel cost per km and personnel cost per hour.',
       'Set currency code for display.',
+      'Select the owner when updating costs (SuperAdmin only).',
+      'SuperAdmin overview shows all owners with their current cost values.',
     ],
     options: [
-      'Save persists values used by auto-generate cost weighting.',
+      'Save stores the values for the selected owner; auto-generate uses them when cost weighting is enabled.',
+      'If an owner has no saved cost settings yet, the overview shows 0 and EUR as placeholders.',
     ],
   },
   {

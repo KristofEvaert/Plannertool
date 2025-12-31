@@ -112,7 +112,7 @@ public class AutoRoutesController : ControllerBase
             return BadRequest(new { message = "Driver is not available on this date." });
         }
 
-        var costSettings = await GetCostSettingsAsync(cancellationToken);
+        var costSettings = await GetCostSettingsAsync(request.OwnerId, cancellationToken);
         var weightTemplateResult = await ResolveWeightTemplateAsync(request.WeightTemplateId, request.OwnerId, cancellationToken);
         if (!string.IsNullOrEmpty(weightTemplateResult.Error))
         {
@@ -213,7 +213,7 @@ public class AutoRoutesController : ControllerBase
             return BadRequest(new { message = "No available drivers for this date/owner." });
         }
 
-        var costSettings = await GetCostSettingsAsync(cancellationToken);
+        var costSettings = await GetCostSettingsAsync(request.OwnerId, cancellationToken);
         var weightTemplateResult = await ResolveWeightTemplateAsync(request.WeightTemplateId, request.OwnerId, cancellationToken);
         if (!string.IsNullOrEmpty(weightTemplateResult.Error))
         {
@@ -734,10 +734,11 @@ public class AutoRoutesController : ControllerBase
             NormalizeWeight(overtime));
     }
 
-    private async Task<CostSettings> GetCostSettingsAsync(CancellationToken cancellationToken)
+    private async Task<CostSettings> GetCostSettingsAsync(int ownerId, CancellationToken cancellationToken)
     {
         var settings = await _dbContext.SystemCostSettings
             .AsNoTracking()
+            .Where(x => x.OwnerId == ownerId)
             .OrderByDescending(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
