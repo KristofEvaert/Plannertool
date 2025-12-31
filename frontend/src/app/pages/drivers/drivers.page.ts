@@ -20,6 +20,7 @@ import { DriversApiService } from '@services/drivers-api.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { ServiceLocationOwnersApiService, ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { AuthService } from '@services/auth.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { ServiceTypeDto } from '@models/service-type.model';
 import type {
@@ -60,6 +61,7 @@ export class DriversPage {
   private readonly availabilityApi = inject(DriverAvailabilityApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
   private readonly serviceTypesApi = inject(ServiceTypesApiService);
+  private readonly auth = inject(AuthService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
 
@@ -70,6 +72,7 @@ export class DriversPage {
   selectedDriver = signal<DriverDto | null>(null);
   selectedDate = signal<Date | null>(null);
   currentMonth = signal<Date>(new Date());
+  isSuperAdmin = computed(() => this.auth.currentUser()?.roles.includes('SuperAdmin') ?? false);
 
   // Filters
   ownerFilterId = signal<number | null>(null); // null = all
@@ -148,8 +151,12 @@ export class DriversPage {
 
   constructor() {
     this.loadOwners();
-    this.loadServiceTypes();
     this.loadDrivers();
+
+    effect(() => {
+      const ownerId = this.ownerFilterId();
+      this.loadServiceTypes(ownerId);
+    });
 
     // When selected driver changes, load availability for current month
     effect(() => {
@@ -179,6 +186,10 @@ export class DriversPage {
   }
 
   loadOwners(): void {
+    const current = this.auth.currentUser();
+    const isSuperAdmin = current?.roles.includes('SuperAdmin') ?? false;
+    const currentOwnerId = current?.ownerId ?? null;
+
     this.ownersApi
       .getAll(false)
       .pipe(
@@ -192,17 +203,24 @@ export class DriversPage {
         })
       )
       .subscribe((owners) => {
-        this.owners.set(owners);
+        const filtered = !isSuperAdmin && currentOwnerId
+          ? owners.filter((o) => o.id === currentOwnerId)
+          : owners;
+        this.owners.set(filtered);
+        if (!isSuperAdmin && currentOwnerId) {
+          this.ownerFilterId.set(currentOwnerId);
+        }
         // Set default owner in form if empty
-        if (owners.length > 0 && this.driverForm().ownerId === 0) {
-          this.driverForm.update(f => ({ ...f, ownerId: owners[0].id }));
+        if (filtered.length > 0 && this.driverForm().ownerId === 0) {
+          this.driverForm.update(f => ({ ...f, ownerId: filtered[0].id }));
         }
       });
   }
 
-  loadServiceTypes(): void {
+  loadServiceTypes(ownerId: number | null): void {
+    const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
     this.serviceTypesApi
-      .getAll(true)
+      .getAll(true, resolvedOwnerId ?? undefined)
       .pipe(
         catchError((err) => {
           this.messageService.add({

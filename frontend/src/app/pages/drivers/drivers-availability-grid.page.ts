@@ -217,8 +217,12 @@ export class DriversAvailabilityGridPage {
     }
 
     this.loadOwners();
-    this.loadServiceTypes();
     this.loadDrivers();
+
+    effect(() => {
+      const ownerFilter = this.ownerFilterId();
+      this.loadServiceTypes(ownerFilter);
+    });
 
     // Reload availability when drivers are loaded or date range changes
     effect(() => {
@@ -323,9 +327,10 @@ export class DriversAvailabilityGridPage {
       });
   }
 
-  loadServiceTypes(): void {
+  loadServiceTypes(ownerId: number | null): void {
+    const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
     this.serviceTypesApi
-      .getAll(true)
+      .getAll(true, resolvedOwnerId ?? undefined)
       .pipe(
         catchError((err) => {
           this.messageService.add({

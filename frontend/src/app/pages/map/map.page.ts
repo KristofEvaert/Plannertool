@@ -522,12 +522,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   private async loadInitialData(): Promise<void> {
     try {
-      const [serviceTypes, owners] = await Promise.all([
-        this.serviceTypesApi.getAll().toPromise(),
-        this.ownersApi.getAll().toPromise(),
-      ]);
-      
-      this.serviceTypes.set(serviceTypes || []);
+      const owners = await this.ownersApi.getAll().toPromise();
       const currentOwnerId = this.auth.currentUser()?.ownerId ?? null;
       const isSuperAdmin = (this.auth.currentUser()?.roles ?? []).includes('SuperAdmin');
       const filteredOwners = !isSuperAdmin && currentOwnerId
@@ -539,6 +534,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       } else if (!this.selectedOwnerId() && filteredOwners.length === 1) {
         this.selectedOwnerId.set(filteredOwners[0].id);
       }
+      await this.loadServiceTypesAsync(this.selectedOwnerId());
       this.loadWeightTemplates();
     } catch (error) {
       this.messageService.add({
@@ -546,6 +542,22 @@ export class MapPage implements AfterViewInit, OnDestroy {
         summary: 'Error',
         detail: 'Failed to load initial data',
       });
+    }
+  }
+
+  private async loadServiceTypesAsync(ownerId: number | null): Promise<void> {
+    const types = await this.serviceTypesApi.getAll(false, ownerId ?? undefined).toPromise();
+    const list = types || [];
+    this.serviceTypes.set(list);
+    const selected = this.selectedServiceTypeIds().filter((id) => list.some((t) => t.id === id));
+    if (selected.length > 0) {
+      this.selectedServiceTypeIds.set(selected);
+      return;
+    }
+    if (list.length > 0) {
+      this.selectedServiceTypeIds.set([list[0].id]);
+    } else {
+      this.selectedServiceTypeIds.set([]);
     }
   }
 
@@ -2502,12 +2514,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  onServiceTypeOrOwnerChange(): void {
+  async onServiceTypeOrOwnerChange(): Promise<void> {
     // Reset driver selection and availability when owner changes
     this.driversWithAvailability.set([]);
     this.selectedDriver.set(null);
     this.loadingDrivers.set(true);
     this.loadDriversWithAvailability().finally(() => this.loadingDrivers.set(false));
+    await this.loadServiceTypesAsync(this.selectedOwnerId());
     this.loadWeightTemplates();
 
     // When service types or owner changes, reload routes if owner + map context selected

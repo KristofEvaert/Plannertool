@@ -143,7 +143,9 @@ public class DriversBulkController : ControllerBase
             .AsNoTracking()
             .Where(d => d.IsActive);
 
-        if (isAuthenticated && !IsSuperAdmin && TryGetScopedOwner(out var scopedOwnerId))
+        var scopedOwnerId = 0;
+        var hasScopedOwner = isAuthenticated && !IsSuperAdmin && TryGetScopedOwner(out scopedOwnerId);
+        if (hasScopedOwner)
         {
             driverQuery = driverQuery.Where(d => d.OwnerId == scopedOwnerId);
         }
@@ -469,7 +471,9 @@ public class DriversBulkController : ControllerBase
             .AsNoTracking()
             .Where(d => d.IsActive);
 
-        if (isAuthenticated && !IsSuperAdmin && TryGetScopedOwner(out var scopedOwnerId))
+        var scopedOwnerId = 0;
+        var hasScopedOwner = isAuthenticated && !IsSuperAdmin && TryGetScopedOwner(out scopedOwnerId);
+        if (hasScopedOwner)
         {
             driverQuery = driverQuery.Where(d => d.OwnerId == scopedOwnerId);
         }
@@ -495,8 +499,16 @@ public class DriversBulkController : ControllerBase
             .Select(g => new { DriverId = g.Key, ServiceTypeIds = g.Select(x => x.ServiceTypeId).ToList() })
             .ToDictionaryAsync(x => x.DriverId, x => x.ServiceTypeIds, cancellationToken);
 
-        var serviceTypes = await _dbContext.ServiceTypes
+        var serviceTypesQuery = _dbContext.ServiceTypes
             .AsNoTracking()
+            .Where(st => st.IsActive);
+
+        if (hasScopedOwner)
+        {
+            serviceTypesQuery = serviceTypesQuery.Where(st => st.OwnerId == scopedOwnerId);
+        }
+
+        var serviceTypes = await serviceTypesQuery
             .OrderBy(st => st.Name)
             .Select(st => new { st.Id, st.Name })
             .ToListAsync(cancellationToken);
@@ -1080,13 +1092,16 @@ public class DriversBulkController : ControllerBase
         }
 
         var allRequestedIds = parsedItems.SelectMany(x => x.ServiceTypeIds).Distinct().ToList();
-        var validServiceTypeIds = allRequestedIds.Count == 0
-            ? new List<int>()
+        var serviceTypes = allRequestedIds.Count == 0
+            ? new List<(int Id, int? OwnerId)>()
             : await _dbContext.ServiceTypes
                 .AsNoTracking()
-                .Where(st => allRequestedIds.Contains(st.Id))
-                .Select(st => st.Id)
+                .Where(st => allRequestedIds.Contains(st.Id) && st.IsActive)
+                .Select(st => new ValueTuple<int, int?>(st.Id, st.OwnerId))
                 .ToListAsync(cancellationToken);
+
+        var serviceTypeOwners = serviceTypes.ToDictionary(s => s.Item1, s => s.Item2);
+        var validServiceTypeIds = serviceTypeOwners.Keys.ToList();
 
         var missingIds = new HashSet<int>(allRequestedIds.Except(validServiceTypeIds));
         if (missingIds.Count > 0)
@@ -1108,6 +1123,26 @@ public class DriversBulkController : ControllerBase
 
                 parsedItems.Remove(entry);
             }
+        }
+
+        foreach (var entry in parsedItems.ToList())
+        {
+            var mismatched = entry.ServiceTypeIds
+                .Where(id => serviceTypeOwners.TryGetValue(id, out var owner) && (!owner.HasValue || owner.Value != entry.Driver.OwnerId))
+                .ToList();
+            if (mismatched.Count == 0)
+            {
+                continue;
+            }
+
+            AddDriverServiceTypeError(
+                result,
+                entry.RowRef,
+                entry.Email ?? entry.Driver.ToolId.ToString(),
+                entry.Raw,
+                $"ServiceTypeIds do not match driver owner: {string.Join(", ", mismatched)}");
+
+            parsedItems.Remove(entry);
         }
 
         if (parsedItems.Count == 0)

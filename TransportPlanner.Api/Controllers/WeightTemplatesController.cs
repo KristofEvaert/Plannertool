@@ -46,6 +46,21 @@ public class WeightTemplatesController : ControllerBase
             return Forbid();
         }
 
+        if (serviceTypeId.HasValue && serviceTypeId.Value > 0)
+        {
+            var serviceType = await _dbContext.ServiceTypes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(st => st.Id == serviceTypeId.Value && st.IsActive, cancellationToken);
+            if (serviceType == null)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {serviceTypeId.Value} does not exist or is inactive." });
+            }
+            if (ownerId.HasValue && ownerId.Value > 0 && serviceType.OwnerId != ownerId.Value)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {serviceTypeId.Value} does not belong to OwnerId {ownerId.Value}." });
+            }
+        }
+
         var query = _dbContext.WeightTemplates
             .AsNoTracking()
             .Include(t => t.LocationLinks)
@@ -155,6 +170,26 @@ public class WeightTemplatesController : ControllerBase
             return Forbid();
         }
 
+        if (request.ServiceTypeId.HasValue)
+        {
+            var serviceType = await _dbContext.ServiceTypes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(st => st.Id == request.ServiceTypeId.Value && st.IsActive, cancellationToken);
+            if (serviceType == null)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not exist or is inactive." });
+            }
+            if (!serviceType.OwnerId.HasValue)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} is not assigned to an owner." });
+            }
+            if (ownerId.HasValue && serviceType.OwnerId.Value != ownerId.Value)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not belong to OwnerId {ownerId.Value}." });
+            }
+            ownerId ??= serviceType.OwnerId.Value;
+        }
+
         var locationIds = await ValidateServiceLocationsAsync(ownerId, request.ServiceLocationIds, cancellationToken);
         if (locationIds.Count != request.ServiceLocationIds.Count)
         {
@@ -238,6 +273,26 @@ public class WeightTemplatesController : ControllerBase
         if (request.OwnerId.HasValue && ownerId == null)
         {
             return Forbid();
+        }
+
+        if (request.ServiceTypeId.HasValue)
+        {
+            var serviceType = await _dbContext.ServiceTypes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(st => st.Id == request.ServiceTypeId.Value && st.IsActive, cancellationToken);
+            if (serviceType == null)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not exist or is inactive." });
+            }
+            if (!serviceType.OwnerId.HasValue)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} is not assigned to an owner." });
+            }
+            if (ownerId.HasValue && serviceType.OwnerId.Value != ownerId.Value)
+            {
+                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not belong to OwnerId {ownerId.Value}." });
+            }
+            ownerId ??= serviceType.OwnerId.Value;
         }
 
         var locationIds = await ValidateServiceLocationsAsync(ownerId, request.ServiceLocationIds, cancellationToken);

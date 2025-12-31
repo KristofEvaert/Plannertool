@@ -389,7 +389,7 @@ public class DriversController : ControllerBase
 
             var validServiceTypeIds = await _dbContext.ServiceTypes
                 .AsNoTracking()
-                .Where(st => requestedIds.Contains(st.Id))
+                .Where(st => requestedIds.Contains(st.Id) && st.IsActive && st.OwnerId == request.OwnerId)
                 .Select(st => st.Id)
                 .ToListAsync(cancellationToken);
 

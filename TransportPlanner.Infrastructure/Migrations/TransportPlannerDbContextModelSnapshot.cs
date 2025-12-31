@@ -1030,6 +1030,9 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("OwnerId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -1037,6 +1040,8 @@ namespace TransportPlanner.Infrastructure.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("ServiceTypes", (string)null);
                 });
@@ -1386,6 +1391,16 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("TransportPlanner.Domain.Entities.ServiceType", b =>
+                {
+                    b.HasOne("TransportPlanner.Domain.Entities.ServiceLocationOwner", "Owner")
+                        .WithMany("ServiceTypes")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Owner");
+                });
+
             modelBuilder.Entity("TransportPlanner.Domain.Entities.RegionSpeedProfile", b =>
                 {
                     b.HasOne("TransportPlanner.Domain.Entities.TravelTimeRegion", "Region")
@@ -1571,6 +1586,11 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Navigation("DriverServiceTypes");
                 });
 
+            modelBuilder.Entity("TransportPlanner.Domain.Entities.ServiceLocationOwner", b =>
+                {
+                    b.Navigation("ServiceTypes");
+                });
+
             modelBuilder.Entity("TransportPlanner.Domain.Entities.PlanningCluster", b =>
                 {
                     b.Navigation("Items");
@@ -1611,6 +1631,8 @@ namespace TransportPlanner.Infrastructure.Migrations
             modelBuilder.Entity("TransportPlanner.Domain.Entities.ServiceType", b =>
                 {
                     b.Navigation("DriverServiceTypes");
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.TravelTimeRegion", b =>

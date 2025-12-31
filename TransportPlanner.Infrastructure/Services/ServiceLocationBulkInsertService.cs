@@ -44,6 +44,17 @@ public class ServiceLocationBulkInsertService
             return result;
         }
 
+        if (serviceType.OwnerId != request.OwnerId)
+        {
+            result.Errors.Add(new BulkErrorDto
+            {
+                RowRef = "Request",
+                Message = $"ServiceTypeId {request.ServiceTypeId} does not belong to OwnerId {request.OwnerId}"
+            });
+            result.Skipped = request.Items.Count;
+            return result;
+        }
+
         // Validate OwnerId exists and is active
         var owner = await _dbContext.ServiceLocationOwners
             .FirstOrDefaultAsync(so => so.Id == request.OwnerId && so.IsActive, cancellationToken);

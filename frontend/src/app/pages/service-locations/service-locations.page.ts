@@ -184,16 +184,15 @@ export class ServiceLocationsPage {
     toDate.setDate(toDate.getDate() + 14);
     this.toDue.set(toDate);
     
-    // Load service types and owners
-    this.loadServiceTypes();
+    // Load owners first, then service types scoped to the selected owner
     this.loadOwners();
     
     // Don't auto-load - user must click "Load" button
   }
 
-  loadServiceTypes(): void {
+  loadServiceTypes(ownerId?: number | null): void {
     this.serviceTypesApi
-      .getAll(false)
+      .getAll(false, ownerId ?? undefined)
       .pipe(
         catchError((err) => {
           this.messageService.add({
@@ -206,16 +205,27 @@ export class ServiceLocationsPage {
       )
       .subscribe((types) => {
         this.serviceTypes.set(types);
+        const firstId = types[0]?.id ?? null;
         // Set default selected service type for bulk operations (first active one)
-        if (types.length > 0 && !this.selectedServiceTypeId()) {
-          this.selectedServiceTypeId.set(types[0].id);
-        }
-        // Set default service type in form (first active one)
         if (types.length > 0) {
+          const currentSelected = this.selectedServiceTypeId();
+          if (!currentSelected || !types.some((t) => t.id === currentSelected)) {
+            this.selectedServiceTypeId.set(firstId);
+          }
+
+          const currentForm = this.form();
+          if (!types.some((t) => t.id === currentForm.serviceTypeId)) {
+            this.form.set({
+              ...currentForm,
+              serviceTypeId: firstId ?? 0,
+            });
+          }
+        } else {
+          this.selectedServiceTypeId.set(null);
           const currentForm = this.form();
           this.form.set({
             ...currentForm,
-            serviceTypeId: types[0].id,
+            serviceTypeId: 0,
           });
         }
       });
@@ -259,7 +269,23 @@ export class ServiceLocationsPage {
         if (!isSuperAdmin && currentOwnerId) {
           this.ownerId.set(currentOwnerId);
         }
+
+        const serviceTypeOwnerId = this.selectedOwnerId() ?? this.ownerId() ?? currentOwnerId ?? null;
+        this.loadServiceTypes(serviceTypeOwnerId);
       });
+  }
+
+  onOwnerFilterChange(ownerId: number | null): void {
+    this.ownerId.set(ownerId);
+    if (ownerId) {
+      this.selectedOwnerId.set(ownerId);
+    }
+    this.loadServiceTypes(ownerId ?? this.selectedOwnerId() ?? null);
+  }
+
+  onBulkOwnerChange(ownerId: number | null): void {
+    this.selectedOwnerId.set(ownerId);
+    this.loadServiceTypes(ownerId ?? this.ownerId() ?? null);
   }
 
   loadData(resetPage = true): void {

@@ -100,7 +100,6 @@ export class WeightTemplatesPage {
 
   constructor() {
     this.loadOwners();
-    this.loadServiceTypes();
 
     effect(() => {
       const ownerId = this.selectedOwnerId();
@@ -110,6 +109,11 @@ export class WeightTemplatesPage {
       } else {
         this.locationOptions.set([]);
       }
+    });
+
+    effect(() => {
+      const ownerId = this.selectedOwnerId();
+      this.loadServiceTypes(ownerId);
     });
   }
 
@@ -163,11 +167,22 @@ export class WeightTemplatesPage {
     });
   }
 
-  private loadServiceTypes(): void {
-    this.serviceTypesApi.getAll(true).subscribe({
+  private loadServiceTypes(ownerId: number | null): void {
+    const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
+    this.serviceTypesApi.getAll(true, resolvedOwnerId ?? undefined).subscribe({
       next: (types: ServiceTypeDto[]) => {
         const opts = types.map((t) => ({ label: t.name, value: t.id }));
         this.serviceTypeOptions.set(opts);
+
+        const selectedFilter = this.selectedServiceTypeId();
+        if (selectedFilter && !opts.some((o) => o.value === selectedFilter)) {
+          this.selectedServiceTypeId.set(null);
+        }
+
+        const formServiceTypeId = this.form().serviceTypeId;
+        if (formServiceTypeId && !opts.some((o) => o.value === formServiceTypeId)) {
+          this.form.update((f) => ({ ...f, serviceTypeId: null }));
+        }
       },
       error: (err) => {
         this.messageService.add({

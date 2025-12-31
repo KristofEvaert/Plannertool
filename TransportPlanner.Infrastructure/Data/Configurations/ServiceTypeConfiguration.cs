@@ -32,6 +32,15 @@ public class ServiceTypeConfiguration : IEntityTypeConfiguration<ServiceType>
         builder.Property(st => st.IsActive)
             .HasDefaultValue(true);
 
+        builder.Property(st => st.OwnerId);
+
+        builder.HasIndex(st => st.OwnerId);
+
+        builder.HasOne(st => st.Owner)
+            .WithMany(o => o.ServiceTypes)
+            .HasForeignKey(st => st.OwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Property(st => st.CreatedAtUtc)
             .IsRequired();
 

@@ -13,8 +13,11 @@ export class ServiceTypesApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/service-types`;
 
-  getAll(includeInactive = false): Observable<ServiceTypeDto[]> {
-    const params = new HttpParams().set('includeInactive', includeInactive.toString());
+  getAll(includeInactive = false, ownerId?: number): Observable<ServiceTypeDto[]> {
+    let params = new HttpParams().set('includeInactive', includeInactive.toString());
+    if (ownerId && ownerId > 0) {
+      params = params.set('ownerId', ownerId.toString());
+    }
     return this.http.get<ServiceTypeDto[]>(this.baseUrl, { params });
   }
 

@@ -9,6 +9,8 @@ public class ServiceType
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+    public int? OwnerId { get; set; }
+    public ServiceLocationOwner? Owner { get; set; }
 
     public ICollection<DriverServiceType> DriverServiceTypes { get; set; } = new List<DriverServiceType>();
 }

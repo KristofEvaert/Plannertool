@@ -8,5 +8,6 @@ public class ServiceLocationOwner
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+    public ICollection<ServiceType> ServiceTypes { get; set; } = new List<ServiceType>();
 }
 

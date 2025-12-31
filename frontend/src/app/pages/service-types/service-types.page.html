@@ -7,11 +7,25 @@
         <app-help-manual [sectionId]="'service-types'"></app-help-manual>
       </div>
       <p-button
+        *ngIf="isSuperAdmin()"
         label="Add Service Type"
         icon="pi pi-plus"
         (onClick)="openAddDialog()"
       />
     </div>
+  </div>
+
+  <div class="mb-4" *ngIf="isSuperAdmin()">
+    <label class="block text-sm font-medium mb-1">Owner</label>
+    <p-dropdown
+      [options]="ownerFilterOptions()"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="ownerFilterId()"
+      (ngModelChange)="ownerFilterId.set($event); loadData()"
+      placeholder="All owners"
+      class="w-80"
+    />
   </div>
 
   <!-- Table -->
@@ -23,8 +37,10 @@
   >
     <ng-template pTemplate="header">
       <tr>
+        <th>ID</th>
         <th>Code</th>
         <th>Name</th>
+        <th>Owner</th>
         <th>Description</th>
         <th>Status</th>
         <th>Actions</th>
@@ -32,8 +48,10 @@
     </ng-template>
     <ng-template pTemplate="body" let-item>
       <tr>
+        <td class="font-mono text-sm">{{ item.id }}</td>
         <td class="font-mono font-semibold">{{ item.code }}</td>
         <td>{{ item.name }}</td>
+        <td>{{ item.ownerName || 'Unassigned' }}</td>
         <td>{{ item.description || '—' }}</td>
         <td>
           <span
@@ -47,13 +65,20 @@
           </span>
         </td>
         <td>
-          <span class="text-gray-400 text-sm">Read-only</span>
+          <p-button
+            *ngIf="isSuperAdmin()"
+            icon="pi pi-pencil"
+            [text]="true"
+            [rounded]="true"
+            (onClick)="openEditDialog(item)"
+          />
+          <span *ngIf="!isSuperAdmin()" class="text-gray-400 text-sm">Read-only</span>
         </td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="5" class="text-center text-gray-500 py-4">
+        <td colspan="7" class="text-center text-gray-500 py-4">
           No service types found.
         </td>
       </tr>
@@ -63,7 +88,7 @@
   <!-- Add/Edit Dialog -->
   <p-dialog
     [(visible)]="showDialogValue"
-    header="Add Service Type"
+    [header]="isEditMode() ? 'Edit Service Type' : 'Add Service Type'"
     [modal]="true"
     [style]="{ width: '500px' }"
     [appendTo]="'body'"
@@ -71,6 +96,18 @@
     (onHide)="showDialog.set(false)"
   >
     <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Owner *</label>
+        <p-dropdown
+          [options]="owners()"
+          optionLabel="name"
+          optionValue="id"
+          [ngModel]="form().ownerId"
+          (ngModelChange)="updateForm({ ownerId: $event })"
+          placeholder="Select owner"
+          class="w-full"
+        />
+      </div>
       <div>
         <label class="block text-sm font-medium mb-1">Code *</label>
         <input
@@ -100,6 +137,15 @@
           placeholder="Optional description"
           class="w-full"
         />
+      </div>
+      <div class="flex items-center gap-2">
+        <p-checkbox
+          [binary]="true"
+          [ngModel]="form().isActive"
+          (ngModelChange)="updateForm({ isActive: $event })"
+          inputId="serviceTypeActive"
+        ></p-checkbox>
+        <label for="serviceTypeActive" class="text-sm">Active</label>
       </div>
     </div>
     <ng-template pTemplate="footer">

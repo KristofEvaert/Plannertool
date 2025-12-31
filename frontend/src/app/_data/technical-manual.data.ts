@@ -77,6 +77,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'PlanningClusters and PlanningClusterItems group candidates.',
       'DriverAvailabilities, DayPlanLocks, DriverDayOverrides set day capacity.',
       'WeightTemplates and WeightTemplateLocationLinks store reusable weights.',
+      'ServiceTypes include OwnerId for owner-scoped selection.',
     ],
     api: [
       'RoutesController: create, update, clear, and override start/end locations.',
@@ -86,6 +87,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'Route start and end fall back to the driver default if no override exists.',
       'Weight templates support Global, Owner, ServiceType, and Location scopes only.',
       'ServiceLocation status switches between Open and Planned during route changes.',
+      'Service type filters are scoped to the selected owner.',
     ],
   },
   {
@@ -197,6 +199,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
     notes: [
       'Templates include available service types and driver emails.',
+      'Service type IDs are validated against the owner during bulk imports.',
     ],
   },
   {
@@ -227,6 +230,8 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'SuperAdmin and Admin manage templates, owners, and system settings.',
       'Planner can run auto-generate and manage planning without editing templates.',
       'Driver only accesses their own route execution flow.',
+      'Service type create/update is restricted to SuperAdmin.',
+      'Service types are owner-scoped; APIs enforce owner matching for lookups and assignments.',
     ],
     database: [
       'AspNetUsers, AspNetRoles, and AspNetUserRoles handle identity.',
@@ -238,6 +243,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
     notes: [
       'Owners are used to limit data visibility for staff.',
+      'SuperAdmin can select all owners when listing service types.',
     ],
   },
 ];

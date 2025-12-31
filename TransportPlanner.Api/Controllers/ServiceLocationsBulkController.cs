@@ -46,6 +46,35 @@ public class ServiceLocationsBulkController : ControllerBase
         return true;
     }
 
+    private async Task<ActionResult?> ValidateServiceTypeForOwnerAsync(
+        int serviceTypeId,
+        int ownerId,
+        CancellationToken cancellationToken)
+    {
+        var serviceType = await _dbContext.ServiceTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(st => st.Id == serviceTypeId && st.IsActive, cancellationToken);
+        if (serviceType == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"ServiceTypeId {serviceTypeId} is invalid or inactive."
+            });
+        }
+
+        if (serviceType.OwnerId != ownerId)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"ServiceTypeId {serviceTypeId} does not belong to OwnerId {ownerId}."
+            });
+        }
+
+        return null;
+    }
+
     public ServiceLocationsBulkController(
         ServiceLocationBulkInsertService bulkInsertService,
         TransportPlannerDbContext dbContext)
@@ -95,16 +124,10 @@ public class ServiceLocationsBulkController : ControllerBase
             });
         }
 
-        var serviceTypeExists = await _dbContext.ServiceTypes
-            .AsNoTracking()
-            .AnyAsync(st => st.Id == serviceTypeId && st.IsActive, cancellationToken);
-        if (!serviceTypeExists)
+        var serviceTypeError = await ValidateServiceTypeForOwnerAsync(serviceTypeId, ownerId, cancellationToken);
+        if (serviceTypeError != null)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = $"ServiceTypeId {serviceTypeId} is invalid or inactive."
-            });
+            return serviceTypeError;
         }
 
         var ownerExists = await _dbContext.ServiceLocationOwners
@@ -241,13 +264,21 @@ public class ServiceLocationsBulkController : ControllerBase
 
         // Validate ServiceTypeId exists
         var serviceType = await _dbContext.ServiceTypes
-            .FirstOrDefaultAsync(st => st.Id == serviceTypeId, cancellationToken);
+            .FirstOrDefaultAsync(st => st.Id == serviceTypeId && st.IsActive, cancellationToken);
         if (serviceType == null)
         {
             return BadRequest(new ProblemDetails 
             { 
                 Title = "Validation Error", 
-                Detail = $"ServiceTypeId {serviceTypeId} does not exist" 
+                Detail = $"ServiceTypeId {serviceTypeId} does not exist or is not active" 
+            });
+        }
+        if (serviceType.OwnerId != ownerId)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"ServiceTypeId {serviceTypeId} does not belong to OwnerId {ownerId}"
             });
         }
 
@@ -272,7 +303,7 @@ public class ServiceLocationsBulkController : ControllerBase
         
         // Get all active service types for dropdown
         var allServiceTypes = await _dbContext.ServiceTypes
-            .Where(st => st.IsActive)
+            .Where(st => st.IsActive && st.OwnerId == ownerId)
             .OrderBy(st => st.Name)
             .Select(st => new { st.Id, st.Name })
             .ToListAsync(cancellationToken);
@@ -494,10 +525,10 @@ public class ServiceLocationsBulkController : ControllerBase
 
             if (serviceType == null)
             {
-                return BadRequest(new ProblemDetails 
-                { 
-                    Title = "Validation Error", 
-                    Detail = $"ServiceTypeId {finalServiceTypeId} is invalid or inactive." 
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Validation Error",
+                    Detail = $"ServiceTypeId {finalServiceTypeId} is invalid or inactive."
                 });
             }
 
@@ -535,6 +566,15 @@ public class ServiceLocationsBulkController : ControllerBase
                 { 
                     Title = "Validation Error", 
                     Detail = $"OwnerId {finalOwnerId} is invalid or inactive." 
+                });
+            }
+
+            if (serviceType.OwnerId != finalOwnerId)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Validation Error",
+                    Detail = $"ServiceTypeId {finalServiceTypeId} does not belong to OwnerId {finalOwnerId}."
                 });
             }
 

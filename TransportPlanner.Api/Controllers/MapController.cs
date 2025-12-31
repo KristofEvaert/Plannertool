@@ -68,6 +68,24 @@ public class MapController : ControllerBase
             });
         }
 
+        var validServiceTypeIds = await _dbContext.ServiceTypes
+            .AsNoTracking()
+            .Where(st => selectedTypeIds.Contains(st.Id) && st.IsActive && st.OwnerId == ownerId)
+            .Select(st => st.Id)
+            .ToListAsync(cancellationToken);
+
+        if (validServiceTypeIds.Count != selectedTypeIds.Count)
+        {
+            var missing = selectedTypeIds.Except(validServiceTypeIds).ToList();
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"ServiceTypeIds not valid for owner: {string.Join(", ", missing)}"
+            });
+        }
+
+        selectedTypeIds = validServiceTypeIds;
+
         // Default date range: today to today + 60 days
         var fromDate = from?.Date ?? DateTime.Today;
         var toDate = to?.Date ?? DateTime.Today.AddDays(60);

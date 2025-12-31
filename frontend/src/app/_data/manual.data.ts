@@ -37,6 +37,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     ],
     options: [
       'Select the active day for driver routes.',
+      'Service type options follow the selected owner.',
       'Choose a weight template or set manual weights (time, distance, due date, cost, overtime).',
       'Enable or disable service type matching when planning.',
     ],
@@ -49,7 +50,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     functions: [
       'View and filter drivers by owner.',
       'Add or edit drivers, including start address and max work minutes.',
-      'Assign service types to drivers.',
+      'Assign service types to drivers (limited to the driver owner).',
       'Toggle active status.',
       'Maintain availability by date range.',
       'Download and upload Excel templates for availability and service types.',
@@ -63,13 +64,15 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     id: 'service-types',
     title: 'Service Types',
     route: '/service-types',
-    summary: 'Define and view service type catalog entries.',
+    summary: 'View the service type catalog per owner; SuperAdmin manages the list.',
     functions: [
-      'Create new service types with code, name, and description.',
-      'Review active and inactive service types.',
+      'SuperAdmin can create and edit service types with code, name, description, and owner.',
+      'Review active and inactive service types with their database IDs.',
     ],
     options: [
-      'Existing entries are read-only in the table.',
+      'Each service type belongs to an owner; other screens show types for the selected owner.',
+      'Owner filter is available for SuperAdmin, including an all-owners option.',
+      'Non-superadmins see a read-only list for their owner.',
     ],
   },
   {
@@ -85,6 +88,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Update due dates, priority dates, and instructions.',
     ],
     options: [
+      'Service type options are filtered by the selected owner.',
       'Bulk uploads use the selected owner and service type.',
       'Opening hours control planning feasibility for auto generation.',
     ],
@@ -142,10 +146,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     functions: [
       'Create, edit, and delete templates (admin only).',
       'Set scope by global, owner, service type, or location.',
-      'Assign templates to locations or groups.',
+      'Assign templates to locations.',
     ],
     options: [
       'Filters for owner and service type.',
+      'Service type options follow the selected owner.',
       'Weights include distance, travel time, due date, cost, and overtime.',
     ],
   },

@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TransportPlanner.Application.DTOs;
 using TransportPlanner.Domain.Entities;
 using TransportPlanner.Infrastructure.Data;
+using TransportPlanner.Infrastructure.Identity;
 
 namespace TransportPlanner.Api.Controllers;
 
@@ -13,6 +15,8 @@ namespace TransportPlanner.Api.Controllers;
 public class ServiceTypesController : ControllerBase
 {
     private readonly TransportPlannerDbContext _dbContext;
+    private bool IsSuperAdmin => User.IsInRole(AppRoles.SuperAdmin);
+    private int? CurrentOwnerId => int.TryParse(User.FindFirstValue("ownerId"), out var id) ? id : null;
 
     public ServiceTypesController(TransportPlannerDbContext dbContext)
     {
@@ -27,13 +31,32 @@ public class ServiceTypesController : ControllerBase
     [ProducesResponseType(typeof(List<ServiceTypeDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ServiceTypeDto>>> GetServiceTypes(
         [FromQuery] bool includeInactive = false,
+        [FromQuery] int? ownerId = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.ServiceTypes.AsNoTracking();
+        var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+        if (isAuthenticated && !IsSuperAdmin)
+        {
+            if (!CurrentOwnerId.HasValue)
+            {
+                return Forbid();
+            }
+            ownerId = CurrentOwnerId.Value;
+        }
+
+        var query = _dbContext.ServiceTypes
+            .AsNoTracking()
+            .Include(st => st.Owner)
+            .AsQueryable();
 
         if (!includeInactive)
         {
             query = query.Where(st => st.IsActive);
+        }
+
+        if (ownerId.HasValue && ownerId.Value > 0)
+        {
+            query = query.Where(st => st.OwnerId == ownerId.Value);
         }
 
         var serviceTypes = await query
@@ -44,7 +67,9 @@ public class ServiceTypesController : ControllerBase
                 Code = st.Code,
                 Name = st.Name,
                 Description = st.Description,
-                IsActive = st.IsActive
+                IsActive = st.IsActive,
+                OwnerId = st.OwnerId,
+                OwnerName = st.Owner != null ? st.Owner.Name : null
             })
             .ToListAsync(cancellationToken);
 
@@ -64,29 +89,40 @@ public class ServiceTypesController : ControllerBase
     {
         var serviceType = await _dbContext.ServiceTypes
             .AsNoTracking()
-            .Where(st => st.Id == id)
-            .Select(st => new ServiceTypeDto
-            {
-                Id = st.Id,
-                Code = st.Code,
-                Name = st.Name,
-                Description = st.Description,
-                IsActive = st.IsActive
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+            .Include(st => st.Owner)
+            .FirstOrDefaultAsync(st => st.Id == id, cancellationToken);
 
         if (serviceType == null)
         {
             return NotFound();
         }
 
-        return Ok(serviceType);
+        var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+        if (isAuthenticated && !IsSuperAdmin)
+        {
+            if (!CurrentOwnerId.HasValue || serviceType.OwnerId != CurrentOwnerId.Value)
+            {
+                return Forbid();
+            }
+        }
+
+        return Ok(new ServiceTypeDto
+        {
+            Id = serviceType.Id,
+            Code = serviceType.Code,
+            Name = serviceType.Name,
+            Description = serviceType.Description,
+            IsActive = serviceType.IsActive,
+            OwnerId = serviceType.OwnerId,
+            OwnerName = serviceType.Owner?.Name
+        });
     }
 
     /// <summary>
     /// Create a new service type
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
     [ProducesResponseType(typeof(ServiceTypeDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
@@ -113,6 +149,15 @@ public class ServiceTypesController : ControllerBase
             });
         }
 
+        if (!request.OwnerId.HasValue || request.OwnerId.Value <= 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = "OwnerId is required"
+            });
+        }
+
         // Validate code format: uppercase, no spaces, alphanumeric + underscore
         var codeUpper = request.Code.ToUpperInvariant().Trim();
         if (!System.Text.RegularExpressions.Regex.IsMatch(codeUpper, @"^[A-Z0-9_]+$"))
@@ -136,6 +181,18 @@ public class ServiceTypesController : ControllerBase
             });
         }
 
+        var owner = await _dbContext.ServiceLocationOwners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == request.OwnerId.Value && o.IsActive, cancellationToken);
+        if (owner == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"OwnerId {request.OwnerId.Value} does not exist or is not active"
+            });
+        }
+
         var now = DateTime.UtcNow;
         var serviceType = new ServiceType
         {
@@ -143,6 +200,7 @@ public class ServiceTypesController : ControllerBase
             Name = request.Name.Trim(),
             Description = request.Description?.Trim(),
             IsActive = true,
+            OwnerId = request.OwnerId.Value,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
@@ -156,7 +214,9 @@ public class ServiceTypesController : ControllerBase
             Code = serviceType.Code,
             Name = serviceType.Name,
             Description = serviceType.Description,
-            IsActive = serviceType.IsActive
+            IsActive = serviceType.IsActive,
+            OwnerId = serviceType.OwnerId,
+            OwnerName = owner.Name
         };
 
         return CreatedAtAction(nameof(GetServiceType), new { id = serviceType.Id }, dto);
@@ -166,6 +226,7 @@ public class ServiceTypesController : ControllerBase
     /// Update a service type
     /// </summary>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
     [ProducesResponseType(typeof(ServiceTypeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -202,6 +263,15 @@ public class ServiceTypesController : ControllerBase
             });
         }
 
+        if (!request.OwnerId.HasValue || request.OwnerId.Value <= 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = "OwnerId is required"
+            });
+        }
+
         // Validate code format
         var codeUpper = request.Code.ToUpperInvariant().Trim();
         if (!System.Text.RegularExpressions.Regex.IsMatch(codeUpper, @"^[A-Z0-9_]+$"))
@@ -228,6 +298,43 @@ public class ServiceTypesController : ControllerBase
             }
         }
 
+        var owner = await _dbContext.ServiceLocationOwners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == request.OwnerId.Value && o.IsActive, cancellationToken);
+        if (owner == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"OwnerId {request.OwnerId.Value} does not exist or is not active"
+            });
+        }
+
+        if (serviceType.OwnerId != request.OwnerId.Value)
+        {
+            var inUseByLocations = await _dbContext.ServiceLocations
+                .AnyAsync(sl => sl.ServiceTypeId == serviceType.Id && sl.OwnerId != request.OwnerId.Value, cancellationToken);
+            if (inUseByLocations)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Conflict",
+                    Detail = "Service type is already used by service locations for a different owner."
+                });
+            }
+
+            var inUseByDrivers = await _dbContext.DriverServiceTypes
+                .AnyAsync(dst => dst.ServiceTypeId == serviceType.Id && dst.Driver.OwnerId != request.OwnerId.Value, cancellationToken);
+            if (inUseByDrivers)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Conflict",
+                    Detail = "Service type is already assigned to drivers for a different owner."
+                });
+            }
+        }
+
         serviceType.Code = codeUpper;
         serviceType.Name = request.Name.Trim();
         serviceType.Description = request.Description?.Trim();
@@ -235,6 +342,7 @@ public class ServiceTypesController : ControllerBase
         {
             serviceType.IsActive = request.IsActive.Value;
         }
+        serviceType.OwnerId = request.OwnerId.Value;
         serviceType.UpdatedAtUtc = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -245,7 +353,9 @@ public class ServiceTypesController : ControllerBase
             Code = serviceType.Code,
             Name = serviceType.Name,
             Description = serviceType.Description,
-            IsActive = serviceType.IsActive
+            IsActive = serviceType.IsActive,
+            OwnerId = serviceType.OwnerId,
+            OwnerName = owner.Name
         };
 
         return Ok(dto);
@@ -255,6 +365,7 @@ public class ServiceTypesController : ControllerBase
     /// Activate a service type
     /// </summary>
     [HttpPost("{id:int}/activate")]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
     [ProducesResponseType(typeof(ServiceTypeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ServiceTypeDto>> ActivateServiceType(
@@ -262,6 +373,7 @@ public class ServiceTypesController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var serviceType = await _dbContext.ServiceTypes
+            .Include(st => st.Owner)
             .FirstOrDefaultAsync(st => st.Id == id, cancellationToken);
 
         if (serviceType == null)
@@ -280,7 +392,9 @@ public class ServiceTypesController : ControllerBase
             Code = serviceType.Code,
             Name = serviceType.Name,
             Description = serviceType.Description,
-            IsActive = serviceType.IsActive
+            IsActive = serviceType.IsActive,
+            OwnerId = serviceType.OwnerId,
+            OwnerName = serviceType.Owner?.Name
         };
 
         return Ok(dto);
@@ -290,6 +404,7 @@ public class ServiceTypesController : ControllerBase
     /// Deactivate a service type
     /// </summary>
     [HttpPost("{id:int}/deactivate")]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
     [ProducesResponseType(typeof(ServiceTypeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ServiceTypeDto>> DeactivateServiceType(
@@ -297,6 +412,7 @@ public class ServiceTypesController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var serviceType = await _dbContext.ServiceTypes
+            .Include(st => st.Owner)
             .FirstOrDefaultAsync(st => st.Id == id, cancellationToken);
 
         if (serviceType == null)
@@ -315,7 +431,9 @@ public class ServiceTypesController : ControllerBase
             Code = serviceType.Code,
             Name = serviceType.Name,
             Description = serviceType.Description,
-            IsActive = serviceType.IsActive
+            IsActive = serviceType.IsActive,
+            OwnerId = serviceType.OwnerId,
+            OwnerName = serviceType.Owner?.Name
         };
 
         return Ok(dto);

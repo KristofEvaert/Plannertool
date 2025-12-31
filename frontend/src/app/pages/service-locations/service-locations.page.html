@@ -58,7 +58,7 @@
           <label class="text-sm font-medium">Owner for Bulk:</label>
           <p-dropdown
             [ngModel]="selectedOwnerId()"
-            (ngModelChange)="selectedOwnerId.set($event)"
+            (ngModelChange)="onBulkOwnerChange($event)"
             [options]="owners()"
             optionLabel="name"
             optionValue="id"
@@ -103,7 +103,7 @@
         <label class="text-sm font-medium">Owner:</label>
         <p-dropdown
           [ngModel]="ownerId()"
-          (ngModelChange)="ownerId.set($event)"
+          (ngModelChange)="onOwnerFilterChange($event)"
           [options]="ownerFilterOptions()"
           optionLabel="label"
           optionValue="value"

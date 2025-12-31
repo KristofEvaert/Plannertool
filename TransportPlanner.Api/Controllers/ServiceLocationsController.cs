@@ -769,6 +769,27 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
+        var serviceType = await _dbContext.ServiceTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(st => st.Id == request.ServiceTypeId && st.IsActive, cancellationToken);
+        if (serviceType == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"ServiceTypeId {request.ServiceTypeId} does not exist or is not active"
+            });
+        }
+
+        if (serviceType.OwnerId != request.OwnerId)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = $"ServiceTypeId {request.ServiceTypeId} does not belong to OwnerId {request.OwnerId}"
+            });
+        }
+
         var now = DateTime.UtcNow;
         var serviceLocation = new ServiceLocation
         {

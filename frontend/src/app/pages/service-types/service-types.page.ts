@@ -1,19 +1,33 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
+import { DropdownModule } from 'primeng/dropdown';
 import { DialogModule } from 'primeng/dialog';
+import { CheckboxModule } from 'primeng/checkbox';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
+import { AuthService } from '@services/auth.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
   ServiceTypeDto,
   CreateServiceTypeRequest,
+  UpdateServiceTypeRequest,
 } from '@models/service-type.model';
 import { catchError, of } from 'rxjs';
+
+type ServiceTypeForm = {
+  code: string;
+  name: string;
+  description?: string;
+  ownerId: number | null;
+  isActive: boolean;
+};
+type OwnerFilterOption = { label: string; value: number | null };
 
 @Component({
   selector: 'app-service-types',
@@ -23,7 +37,9 @@ import { catchError, of } from 'rxjs';
     ButtonModule,
     TableModule,
     InputTextModule,
+    DropdownModule,
     DialogModule,
+    CheckboxModule,
     ToastModule,
     HelpManualComponent,
   ],
@@ -33,14 +49,25 @@ import { catchError, of } from 'rxjs';
 })
 export class ServiceTypesPage {
   private readonly api = inject(ServiceTypesApiService);
+  private readonly ownersApi = inject(ServiceLocationOwnersApiService);
+  private readonly auth = inject(AuthService);
   private readonly messageService = inject(MessageService);
 
   // Data
   items = signal<ServiceTypeDto[]>([]);
   loading = signal(false);
+  owners = signal<ServiceLocationOwnerDto[]>([]);
+  ownerFilterId = signal<number | null>(null);
+  isSuperAdmin = computed(() => this.auth.currentUser()?.roles.includes('SuperAdmin') ?? false);
+  ownerFilterOptions = computed<OwnerFilterOption[]>(() => [
+    { label: 'All owners', value: null },
+    ...this.owners().map((o) => ({ label: o.name, value: o.id })),
+  ]);
 
   // Dialog state
   showDialog = signal(false);
+  isEditMode = signal(false);
+  editingId = signal<number | null>(null);
 
   // Computed for two-way binding
   get showDialogValue(): boolean {
@@ -50,20 +77,26 @@ export class ServiceTypesPage {
     this.showDialog.set(value);
   }
 
-  form = signal<CreateServiceTypeRequest>({
+  form = signal<ServiceTypeForm>({
     code: '',
     name: '',
     description: '',
+    ownerId: null,
+    isActive: true,
   });
 
   constructor() {
-    this.loadData();
+    this.loadOwners();
   }
 
   loadData(): void {
+    const ownerId = this.isSuperAdmin()
+      ? this.ownerFilterId() ?? undefined
+      : this.auth.currentUser()?.ownerId ?? undefined;
+
     this.loading.set(true);
     this.api
-      .getAll(false)
+      .getAll(false, ownerId)
       .pipe(
         catchError((err) => {
           this.loading.set(false);
@@ -81,13 +114,68 @@ export class ServiceTypesPage {
       });
   }
 
+  loadOwners(): void {
+    const current = this.auth.currentUser();
+    const isSuperAdmin = current?.roles.includes('SuperAdmin') ?? false;
+    const currentOwnerId = current?.ownerId ?? null;
+
+    if (!isSuperAdmin && currentOwnerId) {
+      this.ownerFilterId.set(currentOwnerId);
+    }
+
+    this.ownersApi
+      .getAll(false)
+      .pipe(
+        catchError((err) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to load owners',
+          });
+          return of([]);
+        })
+      )
+      .subscribe((owners) => {
+        const filtered = !isSuperAdmin && currentOwnerId
+          ? owners.filter((o) => o.id === currentOwnerId)
+          : owners;
+        this.owners.set(filtered);
+        this.loadData();
+      });
+  }
+
   openAddDialog(): void {
+    const defaultOwnerId = this.ownerFilterId() ?? this.owners()[0]?.id ?? null;
+    this.isEditMode.set(false);
+    this.editingId.set(null);
     this.form.set({
       code: '',
       name: '',
       description: '',
+      ownerId: defaultOwnerId,
+      isActive: true,
     });
     this.showDialog.set(true);
+  }
+
+  openEditDialog(item: ServiceTypeDto): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+    this.isEditMode.set(true);
+    this.editingId.set(item.id);
+    this.form.set({
+      code: item.code,
+      name: item.name,
+      description: item.description ?? '',
+      ownerId: item.ownerId ?? this.ownerFilterId() ?? null,
+      isActive: item.isActive,
+    });
+    this.showDialog.set(true);
+  }
+
+  updateForm(values: Partial<ServiceTypeForm>): void {
+    this.form.update((current) => ({ ...current, ...values }));
   }
 
   save(): void {
@@ -111,6 +199,15 @@ export class ServiceTypesPage {
       return;
     }
 
+    if (!form.ownerId || form.ownerId <= 0) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Validation Error',
+        detail: 'Owner is required',
+      });
+      return;
+    }
+
     // Validate code format (uppercase, alphanumeric, underscores)
     const codeRegex = /^[A-Z0-9_]+$/;
     if (!codeRegex.test(form.code)) {
@@ -123,21 +220,28 @@ export class ServiceTypesPage {
     }
 
     this.loading.set(true);
-    const request: CreateServiceTypeRequest = {
+    const baseRequest = {
       code: form.code.trim().toUpperCase(),
       name: form.name.trim(),
       description: form.description?.trim() || undefined,
+      ownerId: form.ownerId,
     };
 
-    this.api
-      .create(request)
+    const request$ = this.isEditMode() && this.editingId()
+      ? this.api.update(this.editingId()!, {
+          ...baseRequest,
+          isActive: form.isActive,
+        } as UpdateServiceTypeRequest)
+      : this.api.create(baseRequest as CreateServiceTypeRequest);
+
+    request$
       .pipe(
         catchError((err) => {
           this.loading.set(false);
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: err.detail || err.message || 'Failed to create service type',
+            detail: err.detail || err.message || 'Failed to save service type',
           });
           return of(null);
         })
@@ -149,7 +253,7 @@ export class ServiceTypesPage {
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'Service type created',
+            detail: this.isEditMode() ? 'Service type updated' : 'Service type created',
           });
           this.loadData();
         }
