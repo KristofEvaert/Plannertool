@@ -6,6 +6,8 @@ import { DropdownModule } from 'primeng/dropdown';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { DatePickerModule } from 'primeng/datepicker';
 import { ToastModule } from 'primeng/toast';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
 import { MessageService } from 'primeng/api';
 import * as L from 'leaflet';
 import { HttpClient } from '@angular/common/http';
@@ -95,6 +97,8 @@ interface ArrivalWindow {
   endMinute: number;
 }
 
+type WeightTemplateOption = { label: string; value: number };
+
 @Component({
   selector: 'app-map',
   imports: [
@@ -105,6 +109,8 @@ interface ArrivalWindow {
     MultiSelectModule,
     DatePickerModule,
     ToastModule,
+    DialogModule,
+    InputTextModule,
     HelpManualComponent,
   ],
   providers: [MessageService],
@@ -435,15 +441,45 @@ export class MapPage implements AfterViewInit, OnDestroy {
   weightTemplates = signal<WeightTemplateDto[]>([]);
   selectedWeightTemplateId = signal<number | null>(null);
   enforceServiceTypeMatch = signal(true);
+  canManageTemplates = computed(() => {
+    const roles = this.auth.currentUser()?.roles ?? [];
+    return roles.includes('Admin') || roles.includes('SuperAdmin');
+  });
+  isSuperAdmin = computed(() => this.auth.currentUser()?.roles.includes('SuperAdmin') ?? false);
   selectedWeightTemplate = computed(() => {
     const id = this.selectedWeightTemplateId();
     return this.weightTemplates().find((template) => template.id === id) ?? null;
   });
-  activeWeightTime = computed(() => this.selectedWeightTemplate()?.weightTravelTime ?? this.weightTime());
-  activeWeightDistance = computed(() => this.selectedWeightTemplate()?.weightDistance ?? this.weightDistance());
-  activeWeightDate = computed(() => this.selectedWeightTemplate()?.weightDate ?? this.weightDate());
-  activeWeightCost = computed(() => this.selectedWeightTemplate()?.weightCost ?? this.weightCost());
-  activeWeightOvertime = computed(() => this.selectedWeightTemplate()?.weightOvertime ?? this.weightOvertime());
+  availableWeightTemplates = computed(() => {
+    const selectedTypes = this.selectedServiceTypeIds();
+    return this.weightTemplates().filter((template) =>
+      template.scopeType === 'Global' ||
+      (template.serviceTypeId != null && selectedTypes.includes(template.serviceTypeId))
+    );
+  });
+  weightTemplateOptions = computed<WeightTemplateOption[]>(() => {
+    const sorted = [...this.availableWeightTemplates()].sort((a, b) => {
+      const aGlobal = a.scopeType === 'Global';
+      const bGlobal = b.scopeType === 'Global';
+      if (aGlobal !== bGlobal) {
+        return aGlobal ? 1 : -1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    return sorted.map((template) => ({
+      label: template.scopeType === 'Global' ? `${template.name} (g)` : template.name,
+      value: template.id,
+    }));
+  });
+  activeWeightTime = computed(() => this.weightTime());
+  activeWeightDistance = computed(() => this.weightDistance());
+  activeWeightDate = computed(() => this.weightDate());
+  activeWeightCost = computed(() => this.weightCost());
+  activeWeightOvertime = computed(() => this.weightOvertime());
+  showTemplateNameDialog = signal(false);
+  newTemplateName = signal('');
+  templateSaveLoading = signal(false);
+  templateDialogMode = signal<'create' | 'update'>('create');
   selectedServiceTypesLegend = computed(() => {
     const ids = this.selectedServiceTypeIds();
     const all = this.serviceTypes();
@@ -508,6 +544,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
   endOverrideLongitude: number | null = null;
   showStartOverrideEditor = false;
   showEndOverrideEditor = false;
+
+  get showTemplateNameDialogValue(): boolean {
+    return this.showTemplateNameDialog();
+  }
+  set showTemplateNameDialogValue(value: boolean) {
+    this.showTemplateNameDialog.set(value);
+  }
 
   async ngAfterViewInit(): Promise<void> {
     await this.loadInitialData();
@@ -576,11 +619,189 @@ export class MapPage implements AfterViewInit, OnDestroy {
         if (selected && !templates?.some((t) => t.id === selected)) {
           this.selectedWeightTemplateId.set(null);
         }
+        this.syncWeightTemplateSelection();
+        const active = this.selectedWeightTemplate();
+        if (active) {
+          this.applyTemplateWeights(active);
+        }
       },
       error: () => {
         this.weightTemplates.set([]);
       },
     });
+  }
+
+  private syncWeightTemplateSelection(): void {
+    const available = this.availableWeightTemplates();
+    const selected = this.selectedWeightTemplateId();
+    if (selected && !available.some((t) => t.id === selected)) {
+      this.selectedWeightTemplateId.set(null);
+    }
+  }
+
+  onWeightTemplateChange(templateId: number | null): void {
+    this.selectedWeightTemplateId.set(templateId);
+    const template = this.weightTemplates().find((t) => t.id === templateId);
+    if (template) {
+      this.applyTemplateWeights(template);
+    }
+  }
+
+  private applyTemplateWeights(template: WeightTemplateDto): void {
+    this.weightTime.set(template.weightTravelTime);
+    this.weightDistance.set(template.weightDistance);
+    this.weightDate.set(template.weightDate);
+    this.weightCost.set(template.weightCost);
+    this.weightOvertime.set(template.weightOvertime);
+  }
+
+  canUpdateSelectedTemplate(): boolean {
+    const template = this.selectedWeightTemplate();
+    if (!template || !this.canManageTemplates()) {
+      return false;
+    }
+    if (template.scopeType === 'Global') {
+      return this.isSuperAdmin();
+    }
+    if (this.isSuperAdmin()) {
+      return true;
+    }
+    const ownerId = this.selectedOwnerId();
+    return ownerId != null && template.ownerId === ownerId;
+  }
+
+  openNewTemplateDialog(): void {
+    if (!this.canManageTemplates()) {
+      return;
+    }
+    this.templateDialogMode.set('create');
+    this.newTemplateName.set('');
+    this.showTemplateNameDialog.set(true);
+  }
+
+  openRenameTemplateDialog(): void {
+    if (!this.canUpdateSelectedTemplate()) {
+      return;
+    }
+    const template = this.selectedWeightTemplate();
+    if (!template) {
+      return;
+    }
+    this.templateDialogMode.set('update');
+    this.newTemplateName.set(template.name);
+    this.showTemplateNameDialog.set(true);
+  }
+
+  saveTemplateFromDialog(): void {
+    if (!this.canManageTemplates()) {
+      return;
+    }
+    if (this.templateDialogMode() === 'update') {
+      this.updateSelectedTemplate(this.newTemplateName().trim());
+      return;
+    }
+    this.saveNewTemplateFromMap();
+  }
+
+  private saveNewTemplateFromMap(): void {
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) {
+      this.messageService.add({ severity: 'warn', summary: 'Select owner', detail: 'Select an owner first.' });
+      return;
+    }
+    const selectedTypes = this.selectedServiceTypeIds();
+    if (selectedTypes.length !== 1) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Select one service type',
+        detail: 'Select exactly one service type to save a template.',
+      });
+      return;
+    }
+    const name = this.newTemplateName().trim();
+    if (!name) {
+      this.messageService.add({ severity: 'warn', summary: 'Name required', detail: 'Enter a template name.' });
+      return;
+    }
+
+    this.templateSaveLoading.set(true);
+    this.weightTemplatesApi
+      .create({
+        name,
+        scopeType: 'ServiceType',
+        ownerId,
+        serviceTypeId: selectedTypes[0],
+        isActive: true,
+        weightDistance: this.weightDistance(),
+        weightTravelTime: this.weightTime(),
+        weightOvertime: this.weightOvertime(),
+        weightCost: this.weightCost(),
+        weightDate: this.weightDate(),
+        serviceLocationIds: [],
+      })
+      .subscribe({
+        next: (created) => {
+          this.templateSaveLoading.set(false);
+          this.showTemplateNameDialog.set(false);
+          this.messageService.add({ severity: 'success', summary: 'Template created' });
+          this.loadWeightTemplates();
+          this.selectedWeightTemplateId.set(created.id);
+          this.applyTemplateWeights(created);
+        },
+        error: (err) => {
+          this.templateSaveLoading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Save failed',
+            detail: err?.error?.message || err?.message || 'Failed to save template',
+          });
+        },
+      });
+  }
+
+  private updateSelectedTemplate(nameOverride?: string): void {
+    const template = this.selectedWeightTemplate();
+    if (!template || !this.canUpdateSelectedTemplate()) {
+      return;
+    }
+
+    const name = (nameOverride ?? template.name).trim();
+    if (!name) {
+      this.messageService.add({ severity: 'warn', summary: 'Name required', detail: 'Enter a template name.' });
+      return;
+    }
+
+    this.templateSaveLoading.set(true);
+    this.weightTemplatesApi
+      .update(template.id, {
+        name,
+        scopeType: template.scopeType === 'Global' ? 'Global' : 'ServiceType',
+        ownerId: template.scopeType === 'Global' ? null : template.ownerId ?? this.selectedOwnerId(),
+        serviceTypeId: template.scopeType === 'Global' ? null : template.serviceTypeId ?? null,
+        isActive: template.isActive,
+        weightDistance: this.weightDistance(),
+        weightTravelTime: this.weightTime(),
+        weightOvertime: this.weightOvertime(),
+        weightCost: this.weightCost(),
+        weightDate: this.weightDate(),
+        serviceLocationIds: [],
+      })
+      .subscribe({
+        next: () => {
+          this.templateSaveLoading.set(false);
+          this.showTemplateNameDialog.set(false);
+          this.messageService.add({ severity: 'success', summary: 'Template updated' });
+          this.loadWeightTemplates();
+        },
+        error: (err) => {
+          this.templateSaveLoading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Update failed',
+            detail: err?.error?.message || err?.message || 'Failed to update template',
+          });
+        },
+      });
   }
 
   onLoad(): void {

@@ -12,9 +12,12 @@ export class WeightTemplatesApiService {
   getAll(
     ownerId?: number,
     serviceTypeId?: number,
-    includeInactive = false
+    includeInactive = false,
+    includeGlobal = true
   ): Observable<WeightTemplateDto[]> {
-    let params = new HttpParams().set('includeInactive', includeInactive.toString());
+    let params = new HttpParams()
+      .set('includeInactive', includeInactive.toString())
+      .set('includeGlobal', includeGlobal.toString());
     if (ownerId) {
       params = params.set('ownerId', ownerId.toString());
     }

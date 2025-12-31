@@ -5,25 +5,22 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { TagModule } from 'primeng/tag';
 import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
-import { ServiceLocationsApiService } from '@services/service-locations-api.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { AuthService } from '@services/auth.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { WeightTemplateDto, SaveWeightTemplateRequest } from '@models/weight-template.model';
-import type { ServiceLocationDto } from '@models/service-location.model';
 import type { ServiceTypeDto } from '@models/service-type.model';
 import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 
 type Option = { label: string; value: number };
+type OwnerFilterOption = { label: string; value: number | null };
 
 @Component({
   selector: 'app-weight-templates',
@@ -35,8 +32,6 @@ type Option = { label: string; value: number };
     ButtonModule,
     DialogModule,
     InputTextModule,
-    InputNumberModule,
-    MultiSelectModule,
     SelectModule,
     CheckboxModule,
     TagModule,
@@ -48,7 +43,6 @@ type Option = { label: string; value: number };
 })
 export class WeightTemplatesPage {
   private readonly api = inject(WeightTemplatesApiService);
-  private readonly locationsApi = inject(ServiceLocationsApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
   private readonly serviceTypesApi = inject(ServiceTypesApiService);
   private readonly auth = inject(AuthService);
@@ -59,7 +53,7 @@ export class WeightTemplatesPage {
 
   ownerOptions = signal<Option[]>([]);
   serviceTypeOptions = signal<Option[]>([]);
-  locationOptions = signal<Option[]>([]);
+  serviceTypeNameMap = signal<Map<number, string>>(new Map());
 
   selectedOwnerId = signal<number | null>(null);
   selectedServiceTypeId = signal<number | null>(null);
@@ -70,7 +64,7 @@ export class WeightTemplatesPage {
 
   form = signal<SaveWeightTemplateRequest>({
     name: '',
-    scopeType: 'Global',
+    scopeType: 'ServiceType',
     ownerId: null,
     serviceTypeId: null,
     isActive: true,
@@ -82,14 +76,24 @@ export class WeightTemplatesPage {
     serviceLocationIds: [],
   });
 
-  scopeOptions = [
-    { label: 'Global', value: 'Global' },
-    { label: 'Owner', value: 'Owner' },
-    { label: 'Service type', value: 'ServiceType' },
-    { label: 'Location', value: 'Location' },
-  ];
-
   isSuperAdmin = computed(() => this.auth.currentUser()?.roles.includes('SuperAdmin') ?? false);
+  isOwnerFilterUnscoped = computed(() => {
+    const ownerId = this.selectedOwnerId();
+    return ownerId == null || ownerId < 0;
+  });
+  scopeOptions = computed(() =>
+    this.isSuperAdmin()
+      ? [
+          { label: 'Global', value: 'Global' },
+          { label: 'Service type', value: 'ServiceType' },
+        ]
+      : [{ label: 'Service type', value: 'ServiceType' }]
+  );
+  ownerFilterOptions = computed<OwnerFilterOption[]>(() => [
+    { label: 'All owners', value: null },
+    { label: 'Global templates', value: -1 },
+    ...this.ownerOptions(),
+  ]);
 
   get showDialogValue(): boolean {
     return this.showDialog();
@@ -104,11 +108,6 @@ export class WeightTemplatesPage {
     effect(() => {
       const ownerId = this.selectedOwnerId();
       this.loadTemplates(ownerId, this.selectedServiceTypeId());
-      if (ownerId) {
-        this.loadServiceLocations(ownerId);
-      } else {
-        this.locationOptions.set([]);
-      }
     });
 
     effect(() => {
@@ -119,6 +118,14 @@ export class WeightTemplatesPage {
 
   onFormChange<K extends keyof SaveWeightTemplateRequest>(key: K, value: SaveWeightTemplateRequest[K]): void {
     this.form.update((f) => ({ ...f, [key]: value }));
+    if (key === 'ownerId' && typeof value === 'number') {
+      this.selectedOwnerId.set(value);
+      this.loadServiceTypes(value);
+      this.form.update((f) => ({ ...f, serviceTypeId: null }));
+    }
+    if (key === 'scopeType' && value === 'Global') {
+      this.form.update((f) => ({ ...f, ownerId: null, serviceTypeId: null, serviceLocationIds: [] }));
+    }
   }
 
   scopeTypeMatches(value: string): boolean {
@@ -133,8 +140,8 @@ export class WeightTemplatesPage {
 
   serviceTypeName(serviceTypeId?: number | null): string {
     if (!serviceTypeId) return '-';
-    const match = this.serviceTypeOptions().find((t) => t.value === serviceTypeId);
-    return match?.label ?? `ServiceType ${serviceTypeId}`;
+    const name = this.serviceTypeNameMap().get(serviceTypeId);
+    return name ?? `#${serviceTypeId}`;
   }
 
   private loadOwners(): void {
@@ -153,9 +160,6 @@ export class WeightTemplatesPage {
       next: (owners: ServiceLocationOwnerDto[]) => {
         const opts = owners.map((o) => ({ label: o.name, value: o.id }));
         this.ownerOptions.set(opts);
-        if (!this.selectedOwnerId() && opts.length > 0) {
-          this.selectedOwnerId.set(opts[0].value);
-        }
       },
       error: (err) => {
         this.messageService.add({
@@ -168,11 +172,21 @@ export class WeightTemplatesPage {
   }
 
   private loadServiceTypes(ownerId: number | null): void {
+    const isUnscopedOwner = ownerId == null || ownerId < 0;
+    if (this.isSuperAdmin() && isUnscopedOwner) {
+      this.serviceTypeOptions.set([]);
+      this.selectedServiceTypeId.set(null);
+      this.form.update((f) => ({ ...f, serviceTypeId: null }));
+      this.loadServiceTypeNamesForAll();
+      return;
+    }
+
     const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
     this.serviceTypesApi.getAll(true, resolvedOwnerId ?? undefined).subscribe({
       next: (types: ServiceTypeDto[]) => {
         const opts = types.map((t) => ({ label: t.name, value: t.id }));
         this.serviceTypeOptions.set(opts);
+        this.setServiceTypeNames(types);
 
         const selectedFilter = this.selectedServiceTypeId();
         if (selectedFilter && !opts.some((o) => o.value === selectedFilter)) {
@@ -194,12 +208,36 @@ export class WeightTemplatesPage {
     });
   }
 
+  private loadServiceTypeNamesForAll(): void {
+    this.serviceTypesApi.getAll(true).subscribe({
+      next: (types: ServiceTypeDto[]) => {
+        this.setServiceTypeNames(types);
+      },
+      error: () => {
+        this.serviceTypeNameMap.set(new Map());
+      },
+    });
+  }
+
+  private setServiceTypeNames(types: ServiceTypeDto[]): void {
+    const map = new Map<number, string>();
+    for (const type of types) {
+      map.set(type.id, type.name);
+    }
+    this.serviceTypeNameMap.set(map);
+  }
+
   private loadTemplates(ownerId: number | null, serviceTypeId: number | null): void {
     this.loading.set(true);
-    this.api.getAll(ownerId ?? undefined, serviceTypeId ?? undefined, true).subscribe({
+    const isGlobalOnly = ownerId != null && ownerId < 0;
+    const effectiveOwnerId = ownerId != null && ownerId > 0 ? ownerId : null;
+    const effectiveServiceTypeId = effectiveOwnerId ? serviceTypeId : null;
+    const includeGlobal = effectiveOwnerId == null && effectiveServiceTypeId == null;
+    this.api.getAll(effectiveOwnerId ?? undefined, effectiveServiceTypeId ?? undefined, true, includeGlobal).subscribe({
       next: (items) => {
         this.loading.set(false);
-        this.templates.set(items);
+        const filtered = isGlobalOnly ? items.filter((t) => t.scopeType === 'Global') : items;
+        this.templates.set(filtered);
       },
       error: (err) => {
         this.loading.set(false);
@@ -212,28 +250,14 @@ export class WeightTemplatesPage {
     });
   }
 
-  private loadServiceLocations(ownerId: number): void {
-    this.locationsApi.getList({ ownerId, page: 1, pageSize: 200, order: 'priorityThenDue' }).subscribe({
-      next: (result) => {
-        const options = result.items.map((loc: ServiceLocationDto) => ({
-          label: loc.address ? `${loc.name} - ${loc.address}` : loc.name,
-          value: loc.id,
-        }));
-        this.locationOptions.set(options);
-      },
-      error: () => {
-        this.locationOptions.set([]);
-      },
-    });
-  }
-
   openCreate(): void {
     this.isEdit.set(false);
     this.currentId = null;
+    const selectedOwnerId = this.selectedOwnerId();
     this.form.set({
       name: '',
-      scopeType: 'Global',
-      ownerId: this.selectedOwnerId(),
+      scopeType: 'ServiceType',
+      ownerId: selectedOwnerId != null && selectedOwnerId > 0 ? selectedOwnerId : null,
       serviceTypeId: null,
       isActive: true,
       weightDistance: 10,
@@ -249,10 +273,11 @@ export class WeightTemplatesPage {
   openEdit(template: WeightTemplateDto): void {
     this.isEdit.set(true);
     this.currentId = template.id;
+    const selectedOwnerId = this.selectedOwnerId();
     this.form.set({
       name: template.name,
-      scopeType: template.scopeType,
-      ownerId: template.ownerId ?? this.selectedOwnerId(),
+      scopeType: template.scopeType === 'Global' ? 'Global' : 'ServiceType',
+      ownerId: template.ownerId ?? (selectedOwnerId != null && selectedOwnerId > 0 ? selectedOwnerId : null),
       serviceTypeId: template.serviceTypeId ?? null,
       isActive: template.isActive,
       weightDistance: template.weightDistance,
@@ -263,6 +288,17 @@ export class WeightTemplatesPage {
       serviceLocationIds: template.serviceLocationIds ?? [],
     });
     this.showDialog.set(true);
+  }
+
+  canEditTemplate(template: WeightTemplateDto): boolean {
+    if (template.scopeType === 'Global') {
+      return this.isSuperAdmin();
+    }
+    if (this.isSuperAdmin()) {
+      return true;
+    }
+    const ownerId = this.auth.currentUser()?.ownerId ?? null;
+    return ownerId != null && template.ownerId === ownerId;
   }
 
   save(): void {
@@ -276,15 +312,6 @@ export class WeightTemplatesPage {
       return;
     }
 
-    if (form.scopeType === 'Owner' && !form.ownerId) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Validation',
-        detail: 'Owner is required for Owner scope.',
-      });
-      return;
-    }
-
     if (form.scopeType === 'ServiceType' && !form.serviceTypeId) {
       this.messageService.add({
         severity: 'warn',
@@ -294,19 +321,35 @@ export class WeightTemplatesPage {
       return;
     }
 
-    if (form.scopeType === 'Location' && (!form.serviceLocationIds || form.serviceLocationIds.length === 0)) {
+    if (form.scopeType === 'Global' && !this.isSuperAdmin()) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Validation',
-        detail: 'Select at least one location for Location scope.',
+        detail: 'Only SuperAdmin can create global templates.',
+      });
+      return;
+    }
+
+    if (this.isSuperAdmin() && form.scopeType === 'ServiceType' && !form.ownerId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Owner is required to create a service type template.',
       });
       return;
     }
 
     this.loading.set(true);
+    const normalized: SaveWeightTemplateRequest = {
+      ...form,
+      scopeType: form.scopeType === 'Global' ? 'Global' : 'ServiceType',
+      ownerId: form.scopeType === 'Global' ? null : form.ownerId,
+      serviceTypeId: form.scopeType === 'Global' ? null : form.serviceTypeId,
+      serviceLocationIds: [],
+    };
 
     if (this.isEdit() && this.currentId != null) {
-      this.api.update(this.currentId, form).subscribe({
+      this.api.update(this.currentId, normalized).subscribe({
         next: () => {
           this.loading.set(false);
           this.showDialog.set(false);
@@ -325,7 +368,7 @@ export class WeightTemplatesPage {
       return;
     }
 
-    this.api.create(form).subscribe({
+    this.api.create(normalized).subscribe({
       next: () => {
         this.loading.set(false);
         this.showDialog.set(false);
@@ -344,6 +387,9 @@ export class WeightTemplatesPage {
   }
 
   delete(template: WeightTemplateDto): void {
+    if (!this.canEditTemplate(template)) {
+      return;
+    }
     if (!confirm(`Delete template "${template.name}"?`)) return;
     this.loading.set(true);
     this.api.delete(template.id).subscribe({

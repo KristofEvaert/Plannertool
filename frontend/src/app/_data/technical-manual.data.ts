@@ -85,9 +85,10 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
     notes: [
       'Route start and end fall back to the driver default if no override exists.',
-      'Weight templates support Global, Owner, ServiceType, and Location scopes only.',
+      'Weight templates are ServiceType-scoped; Global templates are reserved for SuperAdmin.',
       'ServiceLocation status switches between Open and Planned during route changes.',
       'Service type filters are scoped to the selected owner.',
+      'SuperAdmin can query templates across all owners on the admin screen.',
     ],
   },
   {

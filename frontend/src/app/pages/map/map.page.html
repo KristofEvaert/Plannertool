@@ -187,15 +187,33 @@
           <div class="weight-row">
             <label class="weight-label">Template</label>
             <p-dropdown
-              [options]="weightTemplates()"
-              [(ngModel)]="selectedWeightTemplateId"
-              optionLabel="name"
-              optionValue="id"
+              [options]="weightTemplateOptions()"
+              [ngModel]="selectedWeightTemplateId()"
+              (ngModelChange)="onWeightTemplateChange($event)"
+              optionLabel="label"
+              optionValue="value"
               placeholder="Manual weights"
               [showClear]="true"
               [appendTo]="'body'"
               styleClass="w-full"
             />
+          </div>
+          <div class="weight-actions" *ngIf="canManageTemplates()">
+            <p-button
+              label="Save as new"
+              icon="pi pi-save"
+              size="small"
+              severity="secondary"
+              (onClick)="openNewTemplateDialog()"
+            ></p-button>
+            <p-button
+              label="Update template"
+              icon="pi pi-refresh"
+              size="small"
+              severity="secondary"
+              (onClick)="openRenameTemplateDialog()"
+              [disabled]="!canUpdateSelectedTemplate()"
+            ></p-button>
           </div>
           <div class="weight-row">
             <label class="weight-label">Driver Time</label>
@@ -205,7 +223,6 @@
               max="100"
               step="1"
               [(ngModel)]="weightTime"
-              [disabled]="selectedWeightTemplateId() !== null"
             />
             <span class="weight-value">{{ activeWeightTime() }}</span>
           </div>
@@ -217,7 +234,6 @@
               max="100"
               step="1"
               [(ngModel)]="weightDistance"
-              [disabled]="selectedWeightTemplateId() !== null"
             />
             <span class="weight-value">{{ activeWeightDistance() }}</span>
           </div>
@@ -229,7 +245,6 @@
               max="100"
               step="1"
               [(ngModel)]="weightDate"
-              [disabled]="selectedWeightTemplateId() !== null"
             />
             <span class="weight-value">{{ activeWeightDate() }}</span>
           </div>
@@ -241,7 +256,6 @@
               max="100"
               step="1"
               [(ngModel)]="weightCost"
-              [disabled]="selectedWeightTemplateId() !== null"
             />
             <span class="weight-value">{{ activeWeightCost() }}</span>
           </div>
@@ -253,7 +267,6 @@
               max="100"
               step="1"
               [(ngModel)]="weightOvertime"
-              [disabled]="selectedWeightTemplateId() !== null"
             />
             <span class="weight-value">{{ activeWeightOvertime() }}</span>
           </div>
@@ -491,4 +504,39 @@
 </div>
 
 <p-toast />
+
+<p-dialog
+  [(visible)]="showTemplateNameDialogValue"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [header]="templateDialogMode() === 'update' ? 'Update weight template' : 'Save weight template'"
+>
+  <div class="flex flex-col gap-4">
+    <div>
+      <label class="block text-sm font-semibold mb-1">Template name</label>
+      <input
+        pInputText
+        class="w-full"
+        [(ngModel)]="newTemplateName"
+        placeholder="Enter a name"
+      />
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2">
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="showTemplateNameDialog.set(false)"
+      />
+      <p-button
+        label="Save"
+        (onClick)="saveTemplateFromDialog()"
+        [loading]="templateSaveLoading()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
 

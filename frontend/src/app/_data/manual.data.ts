@@ -34,6 +34,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Manually build or adjust routes, reorder stops, and clear routes.',
       'Override route start and end locations and recalculate.',
       'Export the schedule for the selected filters.',
+      'Admins can save new weight templates or update and rename existing ones from the sliders.',
     ],
     options: [
       'Select the active day for driver routes.',
@@ -145,12 +146,14 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     summary: 'Create reusable weight sets for auto generation.',
     functions: [
       'Create, edit, and delete templates (admin only).',
-      'Set scope by global, owner, service type, or location.',
-      'Assign templates to locations.',
+      'Set scope by service type (global templates are SuperAdmin only).',
+      'Adjust weights with sliders.',
     ],
     options: [
       'Filters for owner and service type.',
+      'SuperAdmin can view templates across all owners.',
       'Service type options follow the selected owner.',
+      'Service type filtering is disabled until an owner is selected.',
       'Weights include distance, travel time, due date, cost, and overtime.',
     ],
   },

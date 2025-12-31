@@ -13,12 +13,12 @@
           <div class="w-64">
             <label class="block text-sm font-semibold mb-1">Owner</label>
             <p-select
-              [options]="ownerOptions()"
+              [options]="ownerFilterOptions()"
               [ngModel]="selectedOwnerId()"
               (ngModelChange)="selectedOwnerId.set($event)"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select owner"
+              placeholder="All owners"
               [filter]="true"
             />
           </div>
@@ -31,9 +31,10 @@
             (ngModelChange)="selectedServiceTypeId.set($event)"
             optionLabel="label"
             optionValue="value"
-            placeholder="All service types"
+            placeholder="Select owner first"
             [showClear]="true"
             [filter]="true"
+            [disabled]="isSuperAdmin() && isOwnerFilterUnscoped()"
           />
         </div>
       </div>
@@ -67,7 +68,7 @@
               <p-tag [value]="template.isActive ? 'Active' : 'Inactive'" />
             </td>
             <td class="text-right">
-              <div class="flex justify-end gap-2">
+              <div class="flex justify-end gap-2" *ngIf="canEditTemplate(template); else readOnly">
                 <p-button
                   label="Edit"
                   size="small"
@@ -82,6 +83,9 @@
                   (onClick)="delete(template)"
                 />
               </div>
+              <ng-template #readOnly>
+                <span class="text-sm text-gray-400">Read-only</span>
+              </ng-template>
             </td>
           </tr>
         </ng-template>
@@ -108,18 +112,20 @@
       />
     </div>
 
-    <div>
-      <label class="block text-sm font-semibold mb-1">Scope</label>
-      <p-select
-        [options]="scopeOptions"
-        [ngModel]="form().scopeType"
-        (ngModelChange)="onFormChange('scopeType', $event)"
-        optionLabel="label"
-        optionValue="value"
-      />
-    </div>
+    @if (isSuperAdmin()) {
+      <div>
+        <label class="block text-sm font-semibold mb-1">Scope</label>
+        <p-select
+          [options]="scopeOptions()"
+          [ngModel]="form().scopeType"
+          (ngModelChange)="onFormChange('scopeType', $event)"
+          optionLabel="label"
+          optionValue="value"
+        />
+      </div>
+    }
 
-    @if (scopeTypeMatches('Owner') && isSuperAdmin()) {
+    @if (scopeTypeMatches('ServiceType') && isSuperAdmin()) {
       <div>
         <label class="block text-sm font-semibold mb-1">Owner</label>
         <p-select
@@ -143,81 +149,91 @@
           (ngModelChange)="onFormChange('serviceTypeId', $event)"
           optionLabel="label"
           optionValue="value"
-          placeholder="Select service type"
+          placeholder="Select owner first"
           [filter]="true"
-        />
-      </div>
-    }
-
-    @if (scopeTypeMatches('Location')) {
-      <div class="md:col-span-2">
-        <label class="block text-sm font-semibold mb-1">Locations</label>
-        <p-multiSelect
-          [options]="locationOptions()"
-          [ngModel]="form().serviceLocationIds"
-          (ngModelChange)="onFormChange('serviceLocationIds', $event)"
-          optionLabel="label"
-          optionValue="value"
-          [filter]="true"
-          [showClear]="true"
-          defaultLabel="Select locations"
+          [disabled]="isSuperAdmin() && !form().ownerId"
         />
       </div>
     }
 
     <div>
       <label class="block text-sm font-semibold mb-1">Weight - distance</label>
-      <p-inputNumber
-        [ngModel]="form().weightDistance"
-        (ngModelChange)="onFormChange('weightDistance', $event)"
-        [min]="1"
-        [max]="100"
-        [step]="1"
-      />
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          step="1"
+          class="w-full"
+          [ngModel]="form().weightDistance"
+          (ngModelChange)="onFormChange('weightDistance', $event)"
+        />
+        <span class="text-sm font-semibold w-10 text-right">{{ form().weightDistance }}</span>
+      </div>
     </div>
 
     <div>
       <label class="block text-sm font-semibold mb-1">Weight - travel time</label>
-      <p-inputNumber
-        [ngModel]="form().weightTravelTime"
-        (ngModelChange)="onFormChange('weightTravelTime', $event)"
-        [min]="1"
-        [max]="100"
-        [step]="1"
-      />
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          step="1"
+          class="w-full"
+          [ngModel]="form().weightTravelTime"
+          (ngModelChange)="onFormChange('weightTravelTime', $event)"
+        />
+        <span class="text-sm font-semibold w-10 text-right">{{ form().weightTravelTime }}</span>
+      </div>
     </div>
 
     <div>
       <label class="block text-sm font-semibold mb-1">Weight - due date</label>
-      <p-inputNumber
-        [ngModel]="form().weightDate"
-        (ngModelChange)="onFormChange('weightDate', $event)"
-        [min]="1"
-        [max]="100"
-        [step]="1"
-      />
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          step="1"
+          class="w-full"
+          [ngModel]="form().weightDate"
+          (ngModelChange)="onFormChange('weightDate', $event)"
+        />
+        <span class="text-sm font-semibold w-10 text-right">{{ form().weightDate }}</span>
+      </div>
     </div>
 
     <div>
       <label class="block text-sm font-semibold mb-1">Weight - cost</label>
-      <p-inputNumber
-        [ngModel]="form().weightCost"
-        (ngModelChange)="onFormChange('weightCost', $event)"
-        [min]="1"
-        [max]="100"
-        [step]="1"
-      />
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          step="1"
+          class="w-full"
+          [ngModel]="form().weightCost"
+          (ngModelChange)="onFormChange('weightCost', $event)"
+        />
+        <span class="text-sm font-semibold w-10 text-right">{{ form().weightCost }}</span>
+      </div>
     </div>
 
     <div>
       <label class="block text-sm font-semibold mb-1">Weight - overtime</label>
-      <p-inputNumber
-        [ngModel]="form().weightOvertime"
-        (ngModelChange)="onFormChange('weightOvertime', $event)"
-        [min]="1"
-        [max]="100"
-        [step]="1"
-      />
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          step="1"
+          class="w-full"
+          [ngModel]="form().weightOvertime"
+          (ngModelChange)="onFormChange('weightOvertime', $event)"
+        />
+        <span class="text-sm font-semibold w-10 text-right">{{ form().weightOvertime }}</span>
+      </div>
     </div>
 
     <div class="flex items-center gap-2 mt-6">

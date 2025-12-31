@@ -33,6 +33,7 @@ public class WeightTemplatesController : ControllerBase
     public async Task<ActionResult<List<WeightTemplateDto>>> GetAll(
         [FromQuery] int? ownerId,
         [FromQuery] int? serviceTypeId,
+        [FromQuery] bool includeGlobal = true,
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
@@ -68,12 +69,21 @@ public class WeightTemplatesController : ControllerBase
 
         if (ownerId.HasValue && ownerId.Value > 0)
         {
-            query = query.Where(t => t.OwnerId == null || t.OwnerId == ownerId.Value);
+            query = includeGlobal
+                ? query.Where(t => t.OwnerId == null || t.OwnerId == ownerId.Value)
+                : query.Where(t => t.OwnerId == ownerId.Value);
         }
 
         if (serviceTypeId.HasValue && serviceTypeId.Value > 0)
         {
-            query = query.Where(t => t.ServiceTypeId == null || t.ServiceTypeId == serviceTypeId.Value);
+            query = includeGlobal
+                ? query.Where(t => t.ServiceTypeId == null || t.ServiceTypeId == serviceTypeId.Value)
+                : query.Where(t => t.ServiceTypeId == serviceTypeId.Value);
+        }
+
+        if (!includeGlobal)
+        {
+            query = query.Where(t => t.ScopeType != WeightTemplateScopeType.Global);
         }
 
         if (!includeInactive)
@@ -157,6 +167,16 @@ public class WeightTemplatesController : ControllerBase
         if (!TryParseScopeType(request.ScopeType, out var scopeType, out var scopeError))
         {
             return BadRequest(new { message = scopeError });
+        }
+
+        if (scopeType is WeightTemplateScopeType.Owner or WeightTemplateScopeType.Location)
+        {
+            return BadRequest(new { message = "Only Global and ServiceType scopes are supported." });
+        }
+
+        if (scopeType == WeightTemplateScopeType.Global && !IsSuperAdmin)
+        {
+            return Forbid();
         }
 
         if (!ValidateScopeRequirements(scopeType, request, out var validationError))
@@ -249,6 +269,16 @@ public class WeightTemplatesController : ControllerBase
         if (!TryParseScopeType(request.ScopeType, out var scopeType, out var scopeError))
         {
             return BadRequest(new { message = scopeError });
+        }
+
+        if (scopeType is WeightTemplateScopeType.Owner or WeightTemplateScopeType.Location)
+        {
+            return BadRequest(new { message = "Only Global and ServiceType scopes are supported." });
+        }
+
+        if (scopeType == WeightTemplateScopeType.Global && !IsSuperAdmin)
+        {
+            return Forbid();
         }
 
         if (!ValidateScopeRequirements(scopeType, request, out var validationError))
