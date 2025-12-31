@@ -19,6 +19,7 @@ public class ServiceLocation
     public ServiceLocationStatus Status { get; set; } = ServiceLocationStatus.Open;
     public bool IsActive { get; set; } = true;
     public string? DriverInstruction { get; set; }
+    public List<string> ExtraInstructions { get; set; } = new();
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

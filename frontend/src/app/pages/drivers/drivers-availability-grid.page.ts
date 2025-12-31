@@ -114,6 +114,14 @@ export class DriversAvailabilityGridPage {
     serviceTypeIds: [],
   });
 
+  driverFormServiceTypes = computed(() => {
+    const ownerId = this.driverForm().ownerId;
+    if (!ownerId) {
+      return [];
+    }
+    return this.serviceTypes().filter((type) => type.ownerId === ownerId);
+  });
+
   // Computed properties for dialog visibility (PrimeNG needs regular properties)
   get showDialogValue(): boolean {
     return this.showDialog();
@@ -218,11 +226,7 @@ export class DriversAvailabilityGridPage {
 
     this.loadOwners();
     this.loadDrivers();
-
-    effect(() => {
-      const ownerFilter = this.ownerFilterId();
-      this.loadServiceTypes(ownerFilter);
-    });
+    this.loadServiceTypes();
 
     // Reload availability when drivers are loaded or date range changes
     effect(() => {
@@ -327,8 +331,9 @@ export class DriversAvailabilityGridPage {
       });
   }
 
-  loadServiceTypes(ownerId: number | null): void {
-    const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
+  loadServiceTypes(): void {
+    const current = this.auth.currentUser();
+    const resolvedOwnerId = current?.roles.includes('SuperAdmin') ? null : current?.ownerId ?? null;
     this.serviceTypesApi
       .getAll(true, resolvedOwnerId ?? undefined)
       .pipe(
@@ -344,6 +349,27 @@ export class DriversAvailabilityGridPage {
       .subscribe((serviceTypes) => {
         this.serviceTypes.set(serviceTypes);
       });
+  }
+
+  onDriverFormOwnerChange(ownerId: number | null): void {
+    const nextOwnerId = ownerId ?? 0;
+    const allowedIds = new Set(
+      this.serviceTypes()
+        .filter((type) => type.ownerId === nextOwnerId)
+        .map((type) => type.id)
+    );
+    this.driverForm.update((current) => ({
+      ...current,
+      ownerId: nextOwnerId,
+      serviceTypeIds: (current.serviceTypeIds ?? []).filter((id) => allowedIds.has(id)),
+    }));
+  }
+
+  onDriverFormServiceTypesChange(serviceTypeIds: number[] | null): void {
+    this.driverForm.update((current) => ({
+      ...current,
+      serviceTypeIds: serviceTypeIds ?? [],
+    }));
   }
 
   getServiceTypeTooltip(driver: DriverDto): string {

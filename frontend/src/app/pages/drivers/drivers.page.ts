@@ -96,6 +96,14 @@ export class DriversPage {
     serviceTypeIds: [],
   });
 
+  driverFormServiceTypes = computed(() => {
+    const ownerId = this.driverForm().ownerId;
+    if (!ownerId) {
+      return [];
+    }
+    return this.serviceTypes().filter((type) => type.ownerId === ownerId);
+  });
+
   // Availability dialog
   showAvailabilityDialog = signal(false);
   availabilityForm = signal<UpsertAvailabilityRequest>({
@@ -152,11 +160,7 @@ export class DriversPage {
   constructor() {
     this.loadOwners();
     this.loadDrivers();
-
-    effect(() => {
-      const ownerId = this.ownerFilterId();
-      this.loadServiceTypes(ownerId);
-    });
+    this.loadServiceTypes();
 
     // When selected driver changes, load availability for current month
     effect(() => {
@@ -217,8 +221,9 @@ export class DriversPage {
       });
   }
 
-  loadServiceTypes(ownerId: number | null): void {
-    const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
+  loadServiceTypes(): void {
+    const current = this.auth.currentUser();
+    const resolvedOwnerId = this.isSuperAdmin() ? null : current?.ownerId ?? null;
     this.serviceTypesApi
       .getAll(true, resolvedOwnerId ?? undefined)
       .pipe(
@@ -234,6 +239,27 @@ export class DriversPage {
       .subscribe((serviceTypes) => {
         this.serviceTypes.set(serviceTypes);
       });
+  }
+
+  onDriverFormOwnerChange(ownerId: number | null): void {
+    const nextOwnerId = ownerId ?? 0;
+    const allowedIds = new Set(
+      this.serviceTypes()
+        .filter((type) => type.ownerId === nextOwnerId)
+        .map((type) => type.id)
+    );
+    this.driverForm.update((current) => ({
+      ...current,
+      ownerId: nextOwnerId,
+      serviceTypeIds: (current.serviceTypeIds ?? []).filter((id) => allowedIds.has(id)),
+    }));
+  }
+
+  onDriverFormServiceTypesChange(serviceTypeIds: number[] | null): void {
+    this.driverForm.update((current) => ({
+      ...current,
+      serviceTypeIds: serviceTypeIds ?? [],
+    }));
   }
 
   getServiceTypeTooltip(driver: DriverDto): string {

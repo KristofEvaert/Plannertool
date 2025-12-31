@@ -14,6 +14,8 @@ import type {
   ServiceLocationOpeningHoursDto,
   ServiceLocationExceptionDto,
   ServiceLocationConstraintDto,
+  ResolveServiceLocationGeoRequest,
+  ResolveServiceLocationGeoResponse,
 } from '@models/service-location.model';
 
 @Injectable({ providedIn: 'root' })
@@ -140,6 +142,10 @@ export class ServiceLocationsApiService {
 
   saveConstraints(toolId: string, request: ServiceLocationConstraintDto): Observable<ServiceLocationConstraintDto> {
     return this.http.put<ServiceLocationConstraintDto>(`${this.baseUrl}/${toolId}/constraints`, request);
+  }
+
+  resolveGeo(request: ResolveServiceLocationGeoRequest): Observable<ResolveServiceLocationGeoResponse> {
+    return this.http.post<ResolveServiceLocationGeoResponse>(`${this.baseUrl}/resolve-geo`, request);
   }
 }
 

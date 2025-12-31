@@ -19,6 +19,20 @@ public class ServiceLocationsController : ControllerBase
     private readonly TransportPlannerDbContext _dbContext;
     private readonly IGeocodingService _geocodingService;
 
+    public sealed class ResolveServiceLocationGeoRequest
+    {
+        public string? Address { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+    }
+
+    public sealed class ResolveServiceLocationGeoResponse
+    {
+        public string Address { get; set; } = string.Empty;
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+
     public ServiceLocationsController(TransportPlannerDbContext dbContext, IGeocodingService geocodingService)
     {
         _dbContext = dbContext;
@@ -55,6 +69,8 @@ public class ServiceLocationsController : ControllerBase
                 DayOfWeek = x.DayOfWeek,
                 OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
                 CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                OpenTime2 = x.OpenTime2.HasValue ? x.OpenTime2.Value.ToString("hh\\:mm") : null,
+                CloseTime2 = x.CloseTime2.HasValue ? x.CloseTime2.Value.ToString("hh\\:mm") : null,
                 IsClosed = x.IsClosed
             })
             .ToListAsync(cancellationToken);
@@ -92,6 +108,8 @@ public class ServiceLocationsController : ControllerBase
 
             var openTime = ParseTime(item.OpenTime);
             var closeTime = ParseTime(item.CloseTime);
+            var openTime2 = ParseTime(item.OpenTime2);
+            var closeTime2 = ParseTime(item.CloseTime2);
 
             if (!item.IsClosed && (!openTime.HasValue || !closeTime.HasValue))
             {
@@ -103,12 +121,30 @@ public class ServiceLocationsController : ControllerBase
                 return BadRequest(new { message = "OpenTime must be before CloseTime." });
             }
 
+            if (!item.IsClosed && (openTime2.HasValue ^ closeTime2.HasValue))
+            {
+                return BadRequest(new { message = "OpenTime2 and CloseTime2 are required together when using a lunch break." });
+            }
+
+            if (!item.IsClosed && openTime2.HasValue && closeTime2.HasValue && openTime2.Value >= closeTime2.Value)
+            {
+                return BadRequest(new { message = "OpenTime2 must be before CloseTime2." });
+            }
+
+            if (!item.IsClosed && openTime.HasValue && closeTime.HasValue && openTime2.HasValue && closeTime2.HasValue
+                && closeTime.Value > openTime2.Value)
+            {
+                return BadRequest(new { message = "CloseTime must be before OpenTime2 when using a lunch break." });
+            }
+
             normalized.Add(new ServiceLocationOpeningHours
             {
                 ServiceLocationId = serviceLocation.Id,
                 DayOfWeek = item.DayOfWeek,
                 OpenTime = item.IsClosed ? null : openTime,
                 CloseTime = item.IsClosed ? null : closeTime,
+                OpenTime2 = item.IsClosed ? null : openTime2,
+                CloseTime2 = item.IsClosed ? null : closeTime2,
                 IsClosed = item.IsClosed
             });
         }
@@ -128,6 +164,8 @@ public class ServiceLocationsController : ControllerBase
                 DayOfWeek = x.DayOfWeek,
                 OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
                 CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                OpenTime2 = x.OpenTime2.HasValue ? x.OpenTime2.Value.ToString("hh\\:mm") : null,
+                CloseTime2 = x.CloseTime2.HasValue ? x.CloseTime2.Value.ToString("hh\\:mm") : null,
                 IsClosed = x.IsClosed
             })
             .ToList();
@@ -334,6 +372,31 @@ public class ServiceLocationsController : ControllerBase
         });
     }
 
+    [HttpPost("resolve-geo")]
+    [ProducesResponseType(typeof(ResolveServiceLocationGeoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ResolveServiceLocationGeoResponse>> ResolveGeo(
+        [FromBody] ResolveServiceLocationGeoRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var (address, latitude, longitude, error) = await ResolveGeoAsync(request.Address, request.Latitude, request.Longitude, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = error
+            });
+        }
+
+        return Ok(new ResolveServiceLocationGeoResponse
+        {
+            Address = address ?? string.Empty,
+            Latitude = latitude ?? 0,
+            Longitude = longitude ?? 0
+        });
+    }
+
     private bool IsSuperAdmin => User.IsInRole(AppRoles.SuperAdmin);
     private int? CurrentOwnerId => int.TryParse(User.FindFirstValue("ownerId"), out var id) ? id : null;
     private bool TryResolveOwner(int? requestedOwnerId, out int ownerId, out ActionResult? forbidResult)
@@ -531,6 +594,7 @@ public class ServiceLocationsController : ControllerBase
             OwnerId = sl.OwnerId,
             OwnerName = owners.ContainsKey(sl.OwnerId) ? owners[sl.OwnerId] : string.Empty,
             DriverInstruction = sl.DriverInstruction,
+            ExtraInstructions = sl.ExtraInstructions,
             Remark = sl.Status == ServiceLocationStatus.NotVisited && noteLookup.TryGetValue(sl.Id, out var note)
                 ? note
                 : null
@@ -603,6 +667,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = latestNote
         };
 
@@ -639,94 +704,18 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
-        var address = request.Address?.Trim();
-        if (request.Latitude == 0)
-        {
-            request.Latitude = null;
-        }
-        if (request.Longitude == 0)
-        {
-            request.Longitude = null;
-        }
-        var hasAddress = !string.IsNullOrWhiteSpace(address);
-        var hasLatitude = request.Latitude.HasValue;
-        var hasLongitude = request.Longitude.HasValue;
-        if (hasLatitude != hasLongitude)
+        var (address, latitude, longitude, geoError) = await ResolveGeoAsync(
+            request.Address,
+            request.Latitude,
+            request.Longitude,
+            cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(geoError))
         {
             return BadRequest(new ProblemDetails
             {
                 Title = "Validation Error",
-                Detail = "Provide both Latitude and Longitude, or leave both empty"
-            });
-        }
-
-        if (!hasAddress && !hasLatitude)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Address or Latitude/Longitude is required"
-            });
-        }
-
-        if (!hasLatitude && hasAddress)
-        {
-            var geocode = await _geocodingService.GeocodeAddressAsync(address!, cancellationToken);
-            if (geocode == null)
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation Error",
-                    Detail = "Unable to resolve Latitude/Longitude from Address"
-                });
-            }
-            request.Latitude = geocode.Latitude;
-            request.Longitude = geocode.Longitude;
-            hasLatitude = true;
-            hasLongitude = true;
-        }
-        else if (!hasAddress && hasLatitude)
-        {
-            var reverseAddress = await _geocodingService.ReverseGeocodeAsync(request.Latitude!.Value, request.Longitude!.Value, cancellationToken);
-            if (string.IsNullOrWhiteSpace(reverseAddress))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation Error",
-                    Detail = "Unable to resolve Address from Latitude/Longitude"
-                });
-            }
-            address = reverseAddress;
-            hasAddress = true;
-        }
-
-        if (!hasLatitude || !hasLongitude)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Latitude and Longitude are required after geocoding"
-            });
-        }
-
-        var latitude = request.Latitude!.Value;
-        var longitude = request.Longitude!.Value;
-
-        if (latitude < -90 || latitude > 90)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Latitude must be between -90 and 90"
-            });
-        }
-
-        if (longitude < -180 || longitude > 180)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Longitude must be between -180 and 180"
+                Detail = geoError
             });
         }
 
@@ -807,6 +796,7 @@ public class ServiceLocationsController : ControllerBase
             Status = ServiceLocationStatus.Open,
             IsActive = true,
             DriverInstruction = string.IsNullOrWhiteSpace(request.DriverInstruction) ? null : request.DriverInstruction.Trim(),
+            ExtraInstructions = NormalizeInstructions(request.ExtraInstructions),
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
@@ -836,6 +826,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = null
         };
 
@@ -894,94 +885,18 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
-        var address = request.Address?.Trim();
-        if (request.Latitude == 0)
-        {
-            request.Latitude = null;
-        }
-        if (request.Longitude == 0)
-        {
-            request.Longitude = null;
-        }
-        var hasAddress = !string.IsNullOrWhiteSpace(address);
-        var hasLatitude = request.Latitude.HasValue;
-        var hasLongitude = request.Longitude.HasValue;
-        if (hasLatitude != hasLongitude)
+        var (address, latitude, longitude, geoError) = await ResolveGeoAsync(
+            request.Address,
+            request.Latitude,
+            request.Longitude,
+            cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(geoError))
         {
             return BadRequest(new ProblemDetails
             {
                 Title = "Validation Error",
-                Detail = "Provide both Latitude and Longitude, or leave both empty"
-            });
-        }
-
-        if (!hasAddress && !hasLatitude)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Address or Latitude/Longitude is required"
-            });
-        }
-
-        if (!hasLatitude && hasAddress)
-        {
-            var geocode = await _geocodingService.GeocodeAddressAsync(address!, cancellationToken);
-            if (geocode == null)
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation Error",
-                    Detail = "Unable to resolve Latitude/Longitude from Address"
-                });
-            }
-            request.Latitude = geocode.Latitude;
-            request.Longitude = geocode.Longitude;
-            hasLatitude = true;
-            hasLongitude = true;
-        }
-        else if (!hasAddress && hasLatitude)
-        {
-            var reverseAddress = await _geocodingService.ReverseGeocodeAsync(request.Latitude!.Value, request.Longitude!.Value, cancellationToken);
-            if (string.IsNullOrWhiteSpace(reverseAddress))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation Error",
-                    Detail = "Unable to resolve Address from Latitude/Longitude"
-                });
-            }
-            address = reverseAddress;
-            hasAddress = true;
-        }
-
-        if (!hasLatitude || !hasLongitude)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Latitude and Longitude are required after geocoding"
-            });
-        }
-
-        var latitude = request.Latitude!.Value;
-        var longitude = request.Longitude!.Value;
-
-        if (latitude < -90 || latitude > 90)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Latitude must be between -90 and 90"
-            });
-        }
-
-        if (longitude < -180 || longitude > 180)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation Error",
-                Detail = "Longitude must be between -180 and 180"
+                Detail = geoError
             });
         }
 
@@ -1035,6 +950,10 @@ public class ServiceLocationsController : ControllerBase
         serviceLocation.ServiceTypeId = request.ServiceTypeId; // Just an int, no FK constraint
         serviceLocation.OwnerId = request.OwnerId; // Just an int, no FK constraint
         serviceLocation.DriverInstruction = string.IsNullOrWhiteSpace(request.DriverInstruction) ? null : request.DriverInstruction.Trim();
+        if (request.ExtraInstructions != null)
+        {
+            serviceLocation.ExtraInstructions = NormalizeInstructions(request.ExtraInstructions);
+        }
         if (request.ServiceMinutes.HasValue)
         {
             serviceLocation.ServiceMinutes = request.ServiceMinutes.Value;
@@ -1066,6 +985,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = null
         };
 
@@ -1123,6 +1043,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = null
         };
 
@@ -1179,6 +1100,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = null
         };
 
@@ -1237,6 +1159,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = null
         };
 
@@ -1294,6 +1217,7 @@ public class ServiceLocationsController : ControllerBase
             Status = serviceLocation.Status.ToString(),
             IsActive = serviceLocation.IsActive,
             DriverInstruction = serviceLocation.DriverInstruction,
+            ExtraInstructions = serviceLocation.ExtraInstructions,
             Remark = null
         };
 
@@ -1364,6 +1288,92 @@ public class ServiceLocationsController : ControllerBase
         return TimeSpan.TryParseExact(value, "hh\\:mm", null, out var parsed)
             ? parsed
             : null;
+    }
+
+    private static List<string> NormalizeInstructions(IEnumerable<string>? instructions)
+    {
+        if (instructions == null)
+        {
+            return new List<string>();
+        }
+
+        return instructions
+            .Select(line => line?.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Cast<string>()
+            .ToList();
+    }
+
+    private async Task<(string? Address, double? Latitude, double? Longitude, string? Error)> ResolveGeoAsync(
+        string? address,
+        double? latitude,
+        double? longitude,
+        CancellationToken cancellationToken)
+    {
+        var trimmedAddress = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+
+        if (latitude == 0)
+        {
+            latitude = null;
+        }
+
+        if (longitude == 0)
+        {
+            longitude = null;
+        }
+
+        var hasAddress = !string.IsNullOrWhiteSpace(trimmedAddress);
+        var hasLatitude = latitude.HasValue;
+        var hasLongitude = longitude.HasValue;
+
+        if (hasLatitude != hasLongitude)
+        {
+            return (trimmedAddress, latitude, longitude, "Latitude and longitude must be both filled.");
+        }
+
+        if (!hasAddress && !hasLatitude)
+        {
+            return (trimmedAddress, latitude, longitude, "Provide an address or both latitude and longitude.");
+        }
+
+        if (!hasLatitude && hasAddress)
+        {
+            var geocode = await _geocodingService.GeocodeAddressAsync(trimmedAddress!, cancellationToken);
+            if (geocode == null)
+            {
+                return (trimmedAddress, latitude, longitude, "Unable to resolve Latitude/Longitude from Address.");
+            }
+
+            latitude = geocode.Latitude;
+            longitude = geocode.Longitude;
+        }
+        else if (!hasAddress && hasLatitude)
+        {
+            var reverseAddress = await _geocodingService.ReverseGeocodeAsync(latitude!.Value, longitude!.Value, cancellationToken);
+            if (string.IsNullOrWhiteSpace(reverseAddress))
+            {
+                return (trimmedAddress, latitude, longitude, "Unable to resolve Address from Latitude/Longitude.");
+            }
+
+            trimmedAddress = reverseAddress;
+        }
+
+        if (!latitude.HasValue || !longitude.HasValue)
+        {
+            return (trimmedAddress, latitude, longitude, "Latitude and longitude are required after geocoding.");
+        }
+
+        if (latitude < -90 || latitude > 90)
+        {
+            return (trimmedAddress, latitude, longitude, "Latitude must be between -90 and 90.");
+        }
+
+        if (longitude < -180 || longitude > 180)
+        {
+            return (trimmedAddress, latitude, longitude, "Longitude must be between -180 and 180.");
+        }
+
+        return (trimmedAddress, latitude, longitude, null);
     }
 
     private async Task RemoveFromFutureRoutesAsync(int serviceLocationId, CancellationToken cancellationToken)

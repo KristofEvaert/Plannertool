@@ -39,4 +39,28 @@ public class TimeWindowHelperTests
 
         Assert.False(ok);
     }
+
+    [Fact]
+    public void TrySchedule_UsesSecondWindowWhenLunchBreakConfigured()
+    {
+        var window = TimeWindowHelper.BuildWindow(
+            false,
+            new TimeSpan(9, 0, 0),
+            new TimeSpan(12, 0, 0),
+            new TimeSpan(13, 0, 0),
+            new TimeSpan(17, 0, 0));
+
+        var ok = TimeWindowHelper.TrySchedule(
+            window,
+            arrivalMinute: 12 * 60 + 10,
+            serviceMinutes: 30,
+            out var waitMinutes,
+            out var startServiceMinute,
+            out var endServiceMinute);
+
+        Assert.True(ok);
+        Assert.Equal(50, waitMinutes);
+        Assert.Equal(13 * 60, startServiceMinute);
+        Assert.Equal(13 * 60 + 30, endServiceMinute);
+    }
 }

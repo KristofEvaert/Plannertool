@@ -245,7 +245,8 @@
         <label class="block text-sm font-medium mb-1">Owner <span class="text-red-500">*</span></label>
         <p-dropdown
           [options]="owners()"
-          [(ngModel)]="driverForm().ownerId"
+          [ngModel]="driverForm().ownerId"
+          (ngModelChange)="onDriverFormOwnerChange($event)"
           optionLabel="name"
           optionValue="id"
           [style]="{ width: '100%' }"
@@ -255,14 +256,16 @@
       <div>
         <label class="block text-sm font-medium mb-1">Service Types</label>
         <p-multiSelect
-          [options]="serviceTypes()"
-          [(ngModel)]="driverForm().serviceTypeIds"
+          [options]="driverFormServiceTypes()"
+          [ngModel]="driverForm().serviceTypeIds"
+          (ngModelChange)="onDriverFormServiceTypesChange($event)"
           optionLabel="name"
           optionValue="id"
           [filter]="true"
           [display]="'chip'"
           [style]="{ width: '100%' }"
           placeholder="Select service types"
+          [disabled]="!driverForm().ownerId"
         />
       </div>
       <div class="grid grid-cols-2 gap-4">

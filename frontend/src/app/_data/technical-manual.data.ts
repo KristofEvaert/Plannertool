@@ -124,16 +124,19 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'Manual planning can override with a warning if outside hours.',
     ],
     database: [
-      'ServiceLocationOpeningHours: weekly hours (dayOfWeek, openTime, closeTime, isClosed).',
+      'ServiceLocationOpeningHours: weekly hours (dayOfWeek, openTime, closeTime, openTime2, closeTime2, isClosed).',
       'ServiceLocationExceptions: date-specific closures or modified hours.',
       'ServiceLocationConstraints: min and max visit duration.',
+      'ServiceLocations.ExtraInstructions stores visit checklist lines (JSON string).',
     ],
     api: [
       'ServiceLocationsController: CRUD for locations.',
       'Service location hours and exceptions endpoints under /api/service-locations.',
+      'ServiceLocationsController: POST /api/service-locations/resolve-geo to resolve address/coordinates.',
     ],
     notes: [
       'Dates are treated as local time (owner time zone).',
+      'Lunch breaks use openTime2/closeTime2 and must not overlap with the first window.',
     ],
   },
   {
@@ -268,6 +271,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     notes: [
       'Owners are used to limit data visibility for staff.',
       'SuperAdmin can select all owners when listing service types.',
+      'Driver service type assignments are owner-scoped in the UI and validated by owner in bulk imports.',
     ],
   },
 ];

@@ -25,12 +25,13 @@ import type {
   ServiceLocationOpeningHoursDto,
   ServiceLocationExceptionDto,
   ServiceLocationConstraintDto,
+  ResolveServiceLocationGeoRequest,
 } from '@models/service-location.model';
 import type { ServiceTypeDto } from '@models/service-type.model';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { toYmd } from '@utils/date.utils';
 
-type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & { label: string };
+type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & { label: string; hasLunchBreak?: boolean };
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
 
 @Component({
@@ -65,6 +66,7 @@ export class ServiceLocationsPage {
   totalCount = signal(0);
   loading = signal(false);
   serviceTypes = signal<ServiceTypeDto[]>([]);
+  formServiceTypes = signal<ServiceTypeDto[]>([]);
   owners = signal<ServiceLocationOwnerDto[]>([]);
   selectedServiceTypeId = signal<number | null>(null); // For bulk operations
   selectedOwnerId = signal<number | null>(null); // For bulk operations
@@ -95,14 +97,15 @@ export class ServiceLocationsPage {
     erpId: 0,
     name: '',
     address: '',
-    latitude: 50.8503, // Default Brussels
-    longitude: 4.3517,
+    latitude: null,
+    longitude: null,
     dueDate: toYmd(new Date()),
     priorityDate: undefined,
     serviceMinutes: 20,
     serviceTypeId: 0, // Will be set when service types are loaded
     ownerId: 0, // Will be set when owners are loaded
     driverInstruction: '',
+    extraInstructions: [],
   });
 
   readonly weekDayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -113,6 +116,9 @@ export class ServiceLocationsPage {
     minVisitDurationMinutes: null,
     maxVisitDurationMinutes: null,
   });
+  geoResolving = signal(false);
+  geoResolveFailed = signal(false);
+  geoValidationMessage = signal<string | null>(null);
 
   priorityDate = signal<Date | null>(null);
 
@@ -212,22 +218,43 @@ export class ServiceLocationsPage {
           if (!currentSelected || !types.some((t) => t.id === currentSelected)) {
             this.selectedServiceTypeId.set(firstId);
           }
-
-          const currentForm = this.form();
-          if (!types.some((t) => t.id === currentForm.serviceTypeId)) {
-            this.form.set({
-              ...currentForm,
-              serviceTypeId: firstId ?? 0,
-            });
-          }
         } else {
           this.selectedServiceTypeId.set(null);
-          const currentForm = this.form();
-          this.form.set({
-            ...currentForm,
-            serviceTypeId: 0,
-          });
         }
+      });
+  }
+
+  loadFormServiceTypes(ownerId: number | null): void {
+    if (!ownerId) {
+      this.formServiceTypes.set([]);
+      this.form.update((current) => ({
+        ...current,
+        serviceTypeId: 0,
+      }));
+      return;
+    }
+
+    this.serviceTypesApi
+      .getAll(false, ownerId)
+      .pipe(
+        catchError((err) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to load service types',
+          });
+          return of([]);
+        })
+      )
+      .subscribe((types) => {
+        this.formServiceTypes.set(types);
+        this.form.update((current) => {
+          const isValid = types.some((t) => t.id === current.serviceTypeId);
+          return {
+            ...current,
+            serviceTypeId: isValid ? current.serviceTypeId : (types[0]?.id ?? 0),
+          };
+        });
       });
   }
 
@@ -264,6 +291,7 @@ export class ServiceLocationsPage {
             ...currentForm,
             ownerId: filtered[0].id,
           });
+          this.loadFormServiceTypes(filtered[0].id);
         }
 
         if (!isSuperAdmin && currentOwnerId) {
@@ -286,6 +314,22 @@ export class ServiceLocationsPage {
   onBulkOwnerChange(ownerId: number | null): void {
     this.selectedOwnerId.set(ownerId);
     this.loadServiceTypes(ownerId ?? this.ownerId() ?? null);
+  }
+
+  onFormOwnerChange(ownerId: number | null): void {
+    const nextOwnerId = ownerId ?? 0;
+    this.form.update((current) => ({
+      ...current,
+      ownerId: nextOwnerId,
+    }));
+    this.loadFormServiceTypes(nextOwnerId);
+  }
+
+  updateFormServiceTypeId(serviceTypeId: number | null): void {
+    this.form.update((current) => ({
+      ...current,
+      serviceTypeId: serviceTypeId ?? 0,
+    }));
   }
 
   loadData(resetPage = true): void {
@@ -369,21 +413,25 @@ export class ServiceLocationsPage {
   openAddDialog(): void {
     this.isEditMode.set(false);
     this.selectedItem.set(null);
-    const defaultServiceTypeId = this.serviceTypes().length > 0 ? this.serviceTypes()[0].id : 0;
     const defaultOwnerId = this.owners().length > 0 ? this.owners()[0].id : 0;
     this.form.set({
       erpId: 0,
       name: '',
       address: '',
-      latitude: 50.8503,
-      longitude: 4.3517,
+      latitude: null,
+      longitude: null,
       dueDate: toYmd(new Date()),
       priorityDate: undefined,
       serviceMinutes: 20,
-      serviceTypeId: defaultServiceTypeId,
+      serviceTypeId: 0,
       ownerId: defaultOwnerId,
       driverInstruction: '',
+      extraInstructions: [],
     });
+    this.loadFormServiceTypes(defaultOwnerId);
+    this.geoResolveFailed.set(false);
+    this.geoResolving.set(false);
+    this.geoValidationMessage.set(null);
     this.useDefaultOpeningHours.set(true);
     this.openingHours.set(this.buildDefaultOpeningHours());
     this.exceptions.set([]);
@@ -394,19 +442,26 @@ export class ServiceLocationsPage {
   openEditDialog(item: ServiceLocationDto): void {
     this.isEditMode.set(true);
     this.selectedItem.set(item);
+    const latitude = item.latitude === 0 ? null : item.latitude;
+    const longitude = item.longitude === 0 ? null : item.longitude;
     this.form.set({
       erpId: item.erpId,
       name: item.name,
       address: item.address || '',
-      latitude: item.latitude,
-      longitude: item.longitude,
+      latitude,
+      longitude,
       dueDate: item.dueDate,
       priorityDate: item.priorityDate,
       serviceMinutes: item.serviceMinutes,
       serviceTypeId: item.serviceTypeId,
       ownerId: item.ownerId,
       driverInstruction: item.driverInstruction || '',
+      extraInstructions: item.extraInstructions ? [...item.extraInstructions] : [],
     });
+    this.loadFormServiceTypes(item.ownerId);
+    this.geoResolveFailed.set(false);
+    this.geoResolving.set(false);
+    this.geoValidationMessage.set(null);
     this.loadLocationExtras(item.toolId);
     this.showDialog.set(true);
   }
@@ -418,7 +473,10 @@ export class ServiceLocationsPage {
       label,
       openTime: '08:00',
       closeTime: '17:00',
+      openTime2: null,
+      closeTime2: null,
       isClosed: false,
+      hasLunchBreak: false,
     }));
   }
 
@@ -429,6 +487,9 @@ export class ServiceLocationsPage {
       if (!target) continue;
       target.openTime = item.openTime ?? target.openTime;
       target.closeTime = item.closeTime ?? target.closeTime;
+      target.openTime2 = item.openTime2 ?? null;
+      target.closeTime2 = item.closeTime2 ?? null;
+      target.hasLunchBreak = !!(item.openTime2 || item.closeTime2);
       target.isClosed = item.isClosed;
     }
     return rows;
@@ -470,10 +531,12 @@ export class ServiceLocationsPage {
   private saveLocationExtras(toolId: string) {
     const hoursPayload = this.useDefaultOpeningHours()
       ? []
-      : this.openingHours().map(({ label, ...rest }) => ({
+      : this.openingHours().map(({ label, hasLunchBreak, ...rest }) => ({
           ...rest,
           openTime: rest.isClosed ? null : rest.openTime || null,
           closeTime: rest.isClosed ? null : rest.closeTime || null,
+          openTime2: rest.isClosed || !hasLunchBreak ? null : rest.openTime2 || null,
+          closeTime2: rest.isClosed || !hasLunchBreak ? null : rest.closeTime2 || null,
         }));
 
     const exceptionsPayload = this.exceptions()
@@ -517,10 +580,244 @@ export class ServiceLocationsPage {
     this.exceptions.set([...rows]);
   }
 
+  toggleLunchBreak(row: OpeningHoursFormRow): void {
+    if (this.useDefaultOpeningHours() || row.isClosed) {
+      return;
+    }
+
+    const rows = this.openingHours();
+    const target = rows.find((item) => item.dayOfWeek === row.dayOfWeek);
+    if (!target) {
+      return;
+    }
+
+    const nextValue = !target.hasLunchBreak;
+    target.hasLunchBreak = nextValue;
+    if (!nextValue) {
+      target.openTime2 = null;
+      target.closeTime2 = null;
+    }
+
+    this.openingHours.set([...rows]);
+  }
+
+  onOpeningHoursClosedChange(row: OpeningHoursFormRow, isClosed: boolean): void {
+    const rows = this.openingHours();
+    const target = rows.find((item) => item.dayOfWeek === row.dayOfWeek);
+    if (!target) {
+      return;
+    }
+
+    target.isClosed = isClosed;
+    if (isClosed) {
+      target.hasLunchBreak = false;
+      target.openTime2 = null;
+      target.closeTime2 = null;
+    }
+
+    this.openingHours.set([...rows]);
+  }
+
+  addInstructionLine(): void {
+    const form = this.form();
+    const lines = [...(form.extraInstructions ?? [])];
+    const lastLine = lines[lines.length - 1];
+    if (typeof lastLine === 'string' && !lastLine.trim()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Fill in the current line before adding a new one.',
+      });
+      return;
+    }
+
+    lines.push('');
+    this.form.set({ ...form, extraInstructions: lines });
+  }
+
+  updateInstructionLine(index: number, value: string): void {
+    const form = this.form();
+    const lines = [...(form.extraInstructions ?? [])];
+    lines[index] = value;
+    this.form.set({ ...form, extraInstructions: lines });
+  }
+
+  removeInstructionLine(index: number): void {
+    const form = this.form();
+    const lines = [...(form.extraInstructions ?? [])];
+    lines.splice(index, 1);
+    this.form.set({ ...form, extraInstructions: lines });
+  }
+
+  private normalizeInstructions(lines?: string[] | null): string[] {
+    if (!lines) {
+      return [];
+    }
+
+    return lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  }
+
   openPriorityDialog(item: ServiceLocationDto): void {
     this.selectedItemForPriority.set(item);
     this.priorityDate.set(item.priorityDate ? new Date(item.priorityDate) : null);
     this.showPriorityDialog.set(true);
+  }
+
+  onAddressBlur(): void {
+    this.attemptGeoResolve();
+  }
+
+  onCoordinatesBlur(): void {
+    this.attemptGeoResolve();
+  }
+
+  private attemptGeoResolve(): void {
+    if (this.geoResolving()) {
+      return;
+    }
+
+    const form = this.form();
+    const address = form.address?.trim() ?? '';
+    const hasAddress = address.length > 0;
+    const hasLatitude = form.latitude !== null && form.latitude !== undefined;
+    const hasLongitude = form.longitude !== null && form.longitude !== undefined;
+
+    if (hasLatitude !== hasLongitude) {
+      this.geoValidationMessage.set('Latitude and longitude must be both filled.');
+      return;
+    }
+
+    if (!hasAddress && !hasLatitude) {
+      this.geoValidationMessage.set(null);
+      return;
+    }
+
+    this.geoValidationMessage.set(null);
+
+    if (hasAddress && (!hasLatitude || !hasLongitude)) {
+      this.resolveGeo({ address });
+      return;
+    }
+
+    if (!hasAddress && hasLatitude && hasLongitude) {
+      this.resolveGeo({ latitude: form.latitude, longitude: form.longitude });
+    }
+  }
+
+  private resolveGeo(request: ResolveServiceLocationGeoRequest): void {
+    this.geoResolving.set(true);
+    this.geoResolveFailed.set(false);
+
+    const payload: ResolveServiceLocationGeoRequest = {
+      address: request.address?.trim() || undefined,
+      latitude: request.latitude ?? null,
+      longitude: request.longitude ?? null,
+    };
+
+    this.api
+      .resolveGeo(payload)
+      .pipe(
+        finalize(() => this.geoResolving.set(false)),
+        catchError((err) => {
+          this.geoResolveFailed.set(true);
+          const message = err.detail || err.message || 'Unable to resolve address or coordinates.';
+          this.geoValidationMessage.set(message);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Geocoding failed',
+            detail: message,
+          });
+          return of(null);
+        })
+      )
+      .subscribe((result) => {
+        if (!result) {
+          return;
+        }
+        const current = this.form();
+        this.form.set({
+          ...current,
+          address: result.address,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        });
+        this.geoValidationMessage.set(null);
+      });
+  }
+
+  private getGeoValidationError(form: CreateServiceLocationRequest): string | null {
+    const address = form.address?.trim() ?? '';
+    const hasAddress = address.length > 0;
+    const hasLatitude = form.latitude !== null && form.latitude !== undefined;
+    const hasLongitude = form.longitude !== null && form.longitude !== undefined;
+
+    if (hasLatitude !== hasLongitude) {
+      return 'Latitude and longitude must be both filled.';
+    }
+
+    if (!hasAddress && !hasLatitude) {
+      return 'Provide an address or both latitude and longitude.';
+    }
+
+    return null;
+  }
+
+  private parseTimeToMinutes(value: string | null | undefined): number | null {
+    if (!value) {
+      return null;
+    }
+    const parts = value.split(':');
+    if (parts.length < 2) {
+      return null;
+    }
+    const hours = Number(parts[0]);
+    const minutes = Number(parts[1]);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return null;
+    }
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    return hours * 60 + minutes;
+  }
+
+  private validateOpeningHours(): string | null {
+    if (this.useDefaultOpeningHours()) {
+      return null;
+    }
+
+    for (const row of this.openingHours()) {
+      if (row.isClosed) {
+        continue;
+      }
+
+      const open1 = this.parseTimeToMinutes(row.openTime);
+      const close1 = this.parseTimeToMinutes(row.closeTime);
+      if (open1 === null || close1 === null) {
+        return `${row.label}: From1 and To1 are required.`;
+      }
+      if (open1 >= close1) {
+        return `${row.label}: From1 must be before To1.`;
+      }
+
+      if (row.hasLunchBreak) {
+        const open2 = this.parseTimeToMinutes(row.openTime2);
+        const close2 = this.parseTimeToMinutes(row.closeTime2);
+        if (open2 === null || close2 === null) {
+          return `${row.label}: From2 and To2 are required.`;
+        }
+        if (open2 >= close2) {
+          return `${row.label}: From2 must be before To2.`;
+        }
+        if (close1 > open2) {
+          return `${row.label}: From2 must be after To1.`;
+        }
+      }
+    }
+
+    return null;
   }
 
   save(): void {
@@ -546,6 +843,41 @@ export class ServiceLocationsPage {
       return;
     }
 
+    const geoError = this.getGeoValidationError(form);
+    if (geoError) {
+      this.geoValidationMessage.set(geoError);
+      return;
+    }
+
+    if (this.geoResolving()) {
+      this.geoValidationMessage.set('Resolving address or coordinates. Please wait.');
+      return;
+    }
+
+    if (this.geoResolveFailed()) {
+      const hasAddress = (form.address?.trim() ?? '').length > 0;
+      const hasLatitude = form.latitude !== null && form.latitude !== undefined;
+      const hasLongitude = form.longitude !== null && form.longitude !== undefined;
+      if (!(hasAddress && hasLatitude && hasLongitude)) {
+        return;
+      }
+      this.geoResolveFailed.set(false);
+    }
+
+    this.geoValidationMessage.set(null);
+
+    const openingHoursError = this.validateOpeningHours();
+    if (openingHoursError) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Validation Error',
+        detail: openingHoursError,
+      });
+      return;
+    }
+
+    const extraInstructions = this.normalizeInstructions(form.extraInstructions);
+
     this.loading.set(true);
     const request: CreateServiceLocationRequest | UpdateServiceLocationRequest = {
       erpId: form.erpId,
@@ -559,6 +891,7 @@ export class ServiceLocationsPage {
       serviceTypeId: form.serviceTypeId,
       ownerId: form.ownerId,
       driverInstruction: form.driverInstruction?.trim() || undefined,
+      extraInstructions,
     };
 
     const apiCall = isEdit && selected

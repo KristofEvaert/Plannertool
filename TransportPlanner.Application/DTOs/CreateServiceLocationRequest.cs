@@ -13,4 +13,5 @@ public class CreateServiceLocationRequest
     public int ServiceTypeId { get; set; } // Required
     public int OwnerId { get; set; } // Required
     public string? DriverInstruction { get; set; }
+    public List<string>? ExtraInstructions { get; set; }
 }

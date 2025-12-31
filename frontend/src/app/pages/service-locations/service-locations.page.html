@@ -300,6 +300,7 @@
         <input
           pInputText
           [(ngModel)]="form().address"
+          (blur)="onAddressBlur()"
           class="w-full"
         />
       </div>
@@ -313,26 +314,63 @@
           placeholder="Optional note shown to the driver"
         ></textarea>
       </div>
+      <div class="border-t border-gray-200 pt-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm font-semibold">Visit checklist / Instructions</div>
+          <p-button label="Add line" icon="pi pi-plus" size="small" (onClick)="addInstructionLine()" />
+        </div>
+        @if ((form().extraInstructions?.length ?? 0) === 0) {
+          <div class="text-xs text-gray-500">No instructions added yet.</div>
+        } @else {
+          <div class="space-y-2">
+            @for (line of form().extraInstructions ?? []; let idx = $index; track idx) {
+              <div class="flex items-center gap-2">
+                <input
+                  pInputText
+                  [ngModel]="line"
+                  (ngModelChange)="updateInstructionLine(idx, $event)"
+                  placeholder="Instruction line"
+                  class="w-full"
+                />
+                <p-button
+                  icon="pi pi-trash"
+                  severity="secondary"
+                  size="small"
+                  [outlined]="true"
+                  (onClick)="removeInstructionLine(idx)"
+                />
+              </div>
+            }
+          </div>
+        }
+      </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium mb-1">Latitude *</label>
+          <label class="block text-sm font-medium mb-1">Latitude</label>
           <p-inputNumber
             [(ngModel)]="form().latitude"
             [minFractionDigits]="6"
             [maxFractionDigits]="6"
+            (onBlur)="onCoordinatesBlur()"
             class="w-full"
           />
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">Longitude *</label>
+          <label class="block text-sm font-medium mb-1">Longitude</label>
           <p-inputNumber
             [(ngModel)]="form().longitude"
             [minFractionDigits]="6"
             [maxFractionDigits]="6"
+            (onBlur)="onCoordinatesBlur()"
             class="w-full"
           />
         </div>
       </div>
+      @if (geoValidationMessage()) {
+        <div class="text-xs text-red-600">
+          {{ geoValidationMessage() }}
+        </div>
+      }
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Due Date *</label>
@@ -370,25 +408,57 @@
         </label>
         <div class="space-y-2" [class.opacity-50]="useDefaultOpeningHours()">
           @for (row of openingHours(); track row.dayOfWeek) {
-            <div class="flex items-center gap-2 text-sm">
-              <span class="w-24 font-medium">{{ row.label }}</span>
-              <input
-                type="time"
-                [(ngModel)]="row.openTime"
-                [disabled]="useDefaultOpeningHours() || row.isClosed"
-                class="border rounded px-2 py-1 text-sm"
-              />
-              <span class="text-gray-500">to</span>
-              <input
-                type="time"
-                [(ngModel)]="row.closeTime"
-                [disabled]="useDefaultOpeningHours() || row.isClosed"
-                class="border rounded px-2 py-1 text-sm"
-              />
-              <label class="flex items-center gap-2 text-xs text-gray-600">
-                <input type="checkbox" [(ngModel)]="row.isClosed" [disabled]="useDefaultOpeningHours()" />
-                Closed
-              </label>
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-24 font-medium">{{ row.label }}</span>
+                <input
+                  type="time"
+                  [(ngModel)]="row.openTime"
+                  [disabled]="useDefaultOpeningHours() || row.isClosed"
+                  class="border rounded px-2 py-1 text-sm"
+                />
+                <span class="text-gray-500">to</span>
+                <input
+                  type="time"
+                  [(ngModel)]="row.closeTime"
+                  [disabled]="useDefaultOpeningHours() || row.isClosed"
+                  class="border rounded px-2 py-1 text-sm"
+                />
+                <label class="flex items-center gap-2 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    [ngModel]="row.isClosed"
+                    (ngModelChange)="onOpeningHoursClosedChange(row, $event)"
+                    [disabled]="useDefaultOpeningHours()"
+                  />
+                  Closed
+                </label>
+                <button
+                  type="button"
+                  class="text-xs text-blue-600 underline"
+                  [disabled]="useDefaultOpeningHours() || row.isClosed"
+                  (click)="toggleLunchBreak(row)"
+                >
+                  {{ row.hasLunchBreak ? 'Remove lunch break' : '+ Add lunch break' }}
+                </button>
+              </div>
+              @if (row.hasLunchBreak) {
+                <div class="flex items-center gap-2 text-sm pl-24">
+                  <input
+                    type="time"
+                    [(ngModel)]="row.openTime2"
+                    [disabled]="useDefaultOpeningHours() || row.isClosed"
+                    class="border rounded px-2 py-1 text-sm"
+                  />
+                  <span class="text-gray-500">to</span>
+                  <input
+                    type="time"
+                    [(ngModel)]="row.closeTime2"
+                    [disabled]="useDefaultOpeningHours() || row.isClosed"
+                    class="border rounded px-2 py-1 text-sm"
+                  />
+                </div>
+              }
             </div>
           }
         </div>
@@ -462,10 +532,11 @@
         </div>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Service Type *</label>
+        <label class="block text-sm font-medium mb-1">Owner *</label>
         <p-dropdown
-          [(ngModel)]="form().serviceTypeId"
-          [options]="serviceTypes()"
+          [ngModel]="form().ownerId"
+          (ngModelChange)="onFormOwnerChange($event)"
+          [options]="owners()"
           optionLabel="name"
           optionValue="id"
           [appendTo]="'body'"
@@ -473,14 +544,17 @@
         />
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Owner *</label>
+        <label class="block text-sm font-medium mb-1">Service Type *</label>
         <p-dropdown
-          [(ngModel)]="form().ownerId"
-          [options]="owners()"
+          [ngModel]="form().serviceTypeId"
+          (ngModelChange)="updateFormServiceTypeId($event)"
+          [options]="formServiceTypes()"
           optionLabel="name"
           optionValue="id"
           [appendTo]="'body'"
           class="w-full"
+          [disabled]="!form().ownerId"
+          placeholder="Select owner first"
         />
       </div>
     </div>

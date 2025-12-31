@@ -17,6 +17,7 @@ public class ServiceLocationDto
     public int OwnerId { get; set; }
     public string? OwnerName { get; set; } // Convenience field
     public string? DriverInstruction { get; set; }
+    public List<string> ExtraInstructions { get; set; } = new();
     public string Status { get; set; } = "Open"; // "Open", "Done", "Cancelled"
     public bool IsActive { get; set; }
     public string? Remark { get; set; }

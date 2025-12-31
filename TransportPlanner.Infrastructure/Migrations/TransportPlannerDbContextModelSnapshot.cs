@@ -822,6 +822,9 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("ExtraInstructions")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
 
@@ -944,6 +947,9 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<TimeSpan?>("CloseTime")
                         .HasColumnType("time");
 
+                    b.Property<TimeSpan?>("CloseTime2")
+                        .HasColumnType("time");
+
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("int");
 
@@ -951,6 +957,9 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<TimeSpan?>("OpenTime")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan?>("OpenTime2")
                         .HasColumnType("time");
 
                     b.Property<int>("ServiceLocationId")

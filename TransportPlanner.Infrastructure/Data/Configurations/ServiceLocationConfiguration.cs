@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TransportPlanner.Domain.Entities;
@@ -68,6 +69,13 @@ public class ServiceLocationConfiguration : IEntityTypeConfiguration<ServiceLoca
 
         builder.Property(sl => sl.DriverInstruction)
             .HasMaxLength(1000);
+
+        builder.Property(sl => sl.ExtraInstructions)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<string>()
+                    : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>());
 
         builder.HasIndex(sl => new { sl.ServiceTypeId, sl.Status, sl.DueDate });
         builder.HasIndex(sl => new { sl.OwnerId, sl.Status, sl.DueDate });

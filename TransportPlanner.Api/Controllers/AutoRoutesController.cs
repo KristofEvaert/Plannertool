@@ -820,7 +820,7 @@ public class AutoRoutesController : ControllerBase
 
             if (hoursLookup.TryGetValue(id, out var open))
             {
-                result[id] = TimeWindowHelper.BuildWindow(open.IsClosed, open.OpenTime, open.CloseTime);
+                result[id] = TimeWindowHelper.BuildWindow(open.IsClosed, open.OpenTime, open.CloseTime, open.OpenTime2, open.CloseTime2);
             }
         }
 

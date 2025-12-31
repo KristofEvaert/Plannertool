@@ -14,6 +14,7 @@ export interface ServiceLocationDto {
   ownerId: number; // FK to ServiceLocationOwners
   ownerName?: string; // Convenience field from backend
   driverInstruction?: string;
+  extraInstructions?: string[];
   status: 'Open' | 'Done' | 'Cancelled' | 'Planned' | 'NotVisited';
   isActive: boolean;
   remark?: string;
@@ -31,6 +32,7 @@ export interface CreateServiceLocationRequest {
   serviceTypeId: number; // Required FK to ServiceTypes
   ownerId: number; // Required FK to ServiceLocationOwners
   driverInstruction?: string;
+  extraInstructions?: string[];
 }
 
 export interface UpdateServiceLocationRequest {
@@ -45,6 +47,7 @@ export interface UpdateServiceLocationRequest {
   serviceTypeId: number; // Required FK to ServiceTypes
   ownerId: number; // Required FK to ServiceLocationOwners
   driverInstruction?: string;
+  extraInstructions?: string[];
 }
 
 export interface SetPriorityDateRequest {
@@ -107,6 +110,8 @@ export interface ServiceLocationOpeningHoursDto {
   dayOfWeek: number;
   openTime?: string | null;
   closeTime?: string | null;
+  openTime2?: string | null;
+  closeTime2?: string | null;
   isClosed: boolean;
 }
 
@@ -122,5 +127,17 @@ export interface ServiceLocationExceptionDto {
 export interface ServiceLocationConstraintDto {
   minVisitDurationMinutes?: number | null;
   maxVisitDurationMinutes?: number | null;
+}
+
+export interface ResolveServiceLocationGeoRequest {
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface ResolveServiceLocationGeoResponse {
+  address: string;
+  latitude: number;
+  longitude: number;
 }
 
