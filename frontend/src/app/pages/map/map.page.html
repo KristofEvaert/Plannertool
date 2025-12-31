@@ -42,6 +42,7 @@
         <p-datepicker
           id="fromDate"
           [(ngModel)]="fromDate"
+          (ngModelChange)="onDateRangeChange()"
           [showIcon]="true"
           dateFormat="yy-mm-dd"
           [style]="{ width: '100%' }"
@@ -55,6 +56,7 @@
         <p-datepicker
           id="toDate"
           [(ngModel)]="toDate"
+          (ngModelChange)="onDateRangeChange()"
           [showIcon]="true"
           dateFormat="yy-mm-dd"
           [style]="{ width: '100%' }"

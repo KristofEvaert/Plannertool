@@ -97,6 +97,14 @@ interface ArrivalWindow {
   endMinute: number;
 }
 
+interface MapPagePreferences {
+  ownerId?: number;
+  serviceTypeIds?: number[];
+  fromDate?: string;
+  toDate?: string;
+  weightTemplateId?: number | null;
+}
+
 type WeightTemplateOption = { label: string; value: number };
 
 @Component({
@@ -533,6 +541,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private routeSaveInFlight = new Set<string>();
   private routeSavePending = new Set<string>();
   private routeSaveLatest = new Map<string, RouteInfo>();
+  private hasSavedPreferences = false;
+  private hasAutoLoaded = false;
 
   // UI: selected stop index (within location waypoints only) for arrow-based reordering
   selectedRouteStopIndex = signal<number | null>(null);
@@ -553,6 +563,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   async ngAfterViewInit(): Promise<void> {
+    this.loadMapPreferences();
     await this.loadInitialData();
     this.initMap();
     this.initAreaSelection();
@@ -579,6 +590,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       }
       await this.loadServiceTypesAsync(this.selectedOwnerId());
       this.loadWeightTemplates();
+      this.autoLoadMapIfReady();
     } catch (error) {
       this.messageService.add({
         severity: 'error',
@@ -624,6 +636,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
         if (active) {
           this.applyTemplateWeights(active);
         }
+        this.saveMapPreferences();
       },
       error: () => {
         this.weightTemplates.set([]);
@@ -645,6 +658,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (template) {
       this.applyTemplateWeights(template);
     }
+    this.saveMapPreferences();
   }
 
   private applyTemplateWeights(template: WeightTemplateDto): void {
@@ -2743,11 +2757,107 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.loadDriversWithAvailability().finally(() => this.loadingDrivers.set(false));
     await this.loadServiceTypesAsync(this.selectedOwnerId());
     this.loadWeightTemplates();
+    this.saveMapPreferences();
 
     // When service types or owner changes, reload routes if owner + map context selected
     if (this.selectedOwnerId() && this.mapData()) {
       this.loadExistingRoutes();
     }
+  }
+
+  onDateRangeChange(): void {
+    this.saveMapPreferences();
+  }
+
+  private loadMapPreferences(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    const raw = localStorage.getItem(this.getMapPreferencesKey());
+    if (!raw) {
+      return;
+    }
+
+    let prefs: MapPagePreferences | null = null;
+    try {
+      prefs = JSON.parse(raw) as MapPagePreferences;
+    } catch {
+      return;
+    }
+
+    this.hasSavedPreferences = true;
+
+    if (prefs.ownerId != null && Number.isFinite(prefs.ownerId)) {
+      this.selectedOwnerId.set(prefs.ownerId);
+    }
+
+    if (Array.isArray(prefs.serviceTypeIds)) {
+      const ids = prefs.serviceTypeIds.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+      if (ids.length > 0) {
+        this.selectedServiceTypeIds.set(ids);
+      }
+    }
+
+    const fromDate = this.parseStoredDate(prefs.fromDate);
+    if (fromDate) {
+      this.fromDate.set(fromDate);
+    }
+
+    const toDate = this.parseStoredDate(prefs.toDate);
+    if (toDate) {
+      this.toDate.set(toDate);
+    }
+
+    if (prefs.weightTemplateId != null && Number.isFinite(prefs.weightTemplateId)) {
+      this.selectedWeightTemplateId.set(prefs.weightTemplateId);
+    }
+  }
+
+  private saveMapPreferences(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    const prefs: MapPagePreferences = {
+      ownerId: this.selectedOwnerId() ?? undefined,
+      serviceTypeIds: this.selectedServiceTypeIds(),
+      fromDate: this.fromDate()?.toISOString(),
+      toDate: this.toDate()?.toISOString(),
+      weightTemplateId: this.selectedWeightTemplateId(),
+    };
+
+    try {
+      localStorage.setItem(this.getMapPreferencesKey(), JSON.stringify(prefs));
+    } catch {
+      // Ignore localStorage errors (e.g. storage full or disabled).
+    }
+  }
+
+  private parseStoredDate(value?: string): Date | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private getMapPreferencesKey(): string {
+    const userId = this.auth.currentUser()?.id ?? 'anon';
+    return `tp_map_preferences_${userId}`;
+  }
+
+  private autoLoadMapIfReady(): void {
+    if (!this.hasSavedPreferences || this.hasAutoLoaded) {
+      return;
+    }
+    const ownerId = this.selectedOwnerId();
+    const serviceTypeIds = this.selectedServiceTypeIds();
+    if (!ownerId || serviceTypeIds.length === 0) {
+      return;
+    }
+    this.hasAutoLoaded = true;
+    this.onLoad();
   }
 
   private loadExistingRoutes(): void {
