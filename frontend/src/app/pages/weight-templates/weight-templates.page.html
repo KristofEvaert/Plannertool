@@ -1,0 +1,255 @@
+<p-toast></p-toast>
+<div class="pt-20 px-6 pb-6">
+  <div class="max-w-6xl mx-auto space-y-4">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div class="flex flex-wrap items-end gap-4">
+        @if (isSuperAdmin()) {
+          <div class="w-64">
+            <label class="block text-sm font-semibold mb-1">Owner</label>
+            <p-select
+              [options]="ownerOptions()"
+              [ngModel]="selectedOwnerId()"
+              (ngModelChange)="selectedOwnerId.set($event)"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select owner"
+              [filter]="true"
+            />
+          </div>
+        }
+        <div class="w-64">
+          <label class="block text-sm font-semibold mb-1">Service type</label>
+          <p-select
+            [options]="serviceTypeOptions()"
+            [ngModel]="selectedServiceTypeId()"
+            (ngModelChange)="selectedServiceTypeId.set($event)"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All service types"
+            [showClear]="true"
+            [filter]="true"
+          />
+        </div>
+      </div>
+      <p-button label="Add template" icon="pi pi-plus" (onClick)="openCreate()" />
+    </div>
+
+    <div class="card p-3">
+      <p-table [value]="templates()" [loading]="loading()">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Name</th>
+            <th>Scope</th>
+            <th>Owner</th>
+            <th>Service type</th>
+            <th>Weights</th>
+            <th>Active</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-template>
+          <tr>
+            <td class="font-medium">{{ template.name }}</td>
+            <td>{{ template.scopeType }}</td>
+            <td>{{ ownerName(template.ownerId) }}</td>
+            <td>{{ serviceTypeName(template.serviceTypeId) }}</td>
+            <td class="text-xs text-gray-600">
+              D {{ template.weightDistance }} / T {{ template.weightTravelTime }} / Date
+              {{ template.weightDate }} / Cost {{ template.weightCost }} / OT {{ template.weightOvertime }}
+            </td>
+            <td>
+              <p-tag [value]="template.isActive ? 'Active' : 'Inactive'" />
+            </td>
+            <td class="text-right">
+              <div class="flex justify-end gap-2">
+                <p-button
+                  label="Edit"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="openEdit(template)"
+                />
+                <p-button
+                  label="Delete"
+                  size="small"
+                  severity="danger"
+                  (onClick)="delete(template)"
+                />
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="showDialogValue"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '640px' }"
+  [header]="isEdit() ? 'Edit weight template' : 'Add weight template'"
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="md:col-span-2">
+      <label class="block text-sm font-semibold mb-1">Name</label>
+      <input
+        pInputText
+        class="w-full"
+        [ngModel]="form().name"
+        (ngModelChange)="onFormChange('name', $event)"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Scope</label>
+      <p-select
+        [options]="scopeOptions"
+        [ngModel]="form().scopeType"
+        (ngModelChange)="onFormChange('scopeType', $event)"
+        optionLabel="label"
+        optionValue="value"
+      />
+    </div>
+
+    @if (scopeTypeMatches('Owner') && isSuperAdmin()) {
+      <div>
+        <label class="block text-sm font-semibold mb-1">Owner</label>
+        <p-select
+          [options]="ownerOptions()"
+          [ngModel]="form().ownerId"
+          (ngModelChange)="onFormChange('ownerId', $event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select owner"
+          [filter]="true"
+        />
+      </div>
+    }
+
+    @if (scopeTypeMatches('ServiceType')) {
+      <div>
+        <label class="block text-sm font-semibold mb-1">Service type</label>
+        <p-select
+          [options]="serviceTypeOptions()"
+          [ngModel]="form().serviceTypeId"
+          (ngModelChange)="onFormChange('serviceTypeId', $event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select service type"
+          [filter]="true"
+        />
+      </div>
+    }
+
+    @if (scopeTypeMatches('Location')) {
+      <div class="md:col-span-2">
+        <label class="block text-sm font-semibold mb-1">Locations</label>
+        <p-multiSelect
+          [options]="locationOptions()"
+          [ngModel]="form().serviceLocationIds"
+          (ngModelChange)="onFormChange('serviceLocationIds', $event)"
+          optionLabel="label"
+          optionValue="value"
+          [filter]="true"
+          [showClear]="true"
+          defaultLabel="Select locations"
+        />
+      </div>
+    }
+
+    @if (scopeTypeMatches('LocationGroup')) {
+      <div class="md:col-span-2">
+        <label class="block text-sm font-semibold mb-1">Location groups</label>
+        <p-multiSelect
+          [options]="locationGroupOptions()"
+          [ngModel]="form().locationGroupIds"
+          (ngModelChange)="onFormChange('locationGroupIds', $event)"
+          optionLabel="label"
+          optionValue="value"
+          [filter]="true"
+          [showClear]="true"
+          defaultLabel="Select groups"
+        />
+      </div>
+    }
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Weight - distance</label>
+      <p-inputNumber
+        [ngModel]="form().weightDistance"
+        (ngModelChange)="onFormChange('weightDistance', $event)"
+        [min]="1"
+        [max]="100"
+        [step]="1"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Weight - travel time</label>
+      <p-inputNumber
+        [ngModel]="form().weightTravelTime"
+        (ngModelChange)="onFormChange('weightTravelTime', $event)"
+        [min]="1"
+        [max]="100"
+        [step]="1"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Weight - due date</label>
+      <p-inputNumber
+        [ngModel]="form().weightDate"
+        (ngModelChange)="onFormChange('weightDate', $event)"
+        [min]="1"
+        [max]="100"
+        [step]="1"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Weight - cost</label>
+      <p-inputNumber
+        [ngModel]="form().weightCost"
+        (ngModelChange)="onFormChange('weightCost', $event)"
+        [min]="1"
+        [max]="100"
+        [step]="1"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Weight - overtime</label>
+      <p-inputNumber
+        [ngModel]="form().weightOvertime"
+        (ngModelChange)="onFormChange('weightOvertime', $event)"
+        [min]="1"
+        [max]="100"
+        [step]="1"
+      />
+    </div>
+
+    <div class="flex items-center gap-2 mt-6">
+      <p-checkbox
+        [binary]="true"
+        [ngModel]="form().isActive"
+        (ngModelChange)="onFormChange('isActive', $event)"
+        inputId="template-active"
+      />
+      <label for="template-active" class="text-sm">Active</label>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2">
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="showDialog.set(false)"
+      />
+      <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+    </div>
+  </ng-template>
+</p-dialog>

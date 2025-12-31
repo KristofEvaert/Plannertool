@@ -36,6 +36,20 @@ export const routes: Routes = [
     loadComponent: () => import('@pages/service-types/service-types.page').then((m) => m.ServiceTypesPage),
   },
   {
+    path: 'weight-templates',
+    canMatch: [authGuard],
+    data: { roles: ['SuperAdmin', 'Admin'] },
+    loadComponent: () =>
+      import('@pages/weight-templates/weight-templates.page').then((m) => m.WeightTemplatesPage),
+  },
+  {
+    path: 'location-groups',
+    canMatch: [authGuard],
+    data: { roles: ['SuperAdmin', 'Admin'] },
+    loadComponent: () =>
+      import('@pages/location-groups/location-groups.page').then((m) => m.LocationGroupsPage),
+  },
+  {
     path: 'map',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin', 'Planner'] },
@@ -54,6 +68,13 @@ export const routes: Routes = [
     data: { roles: ['SuperAdmin', 'Admin'] },
     loadComponent: () =>
       import('@pages/users/users.page').then((m) => m.UsersPage),
+  },
+  {
+    path: 'system-cost-settings',
+    canMatch: [authGuard],
+    data: { roles: ['SuperAdmin', 'Admin'] },
+    loadComponent: () =>
+      import('@pages/system-cost-settings/system-cost-settings.page').then((m) => m.SystemCostSettingsPage),
   },
   {
     path: 'owners',

@@ -13,4 +13,5 @@ public class DriverDto
     public int OwnerId { get; set; }
     public string? OwnerName { get; set; } // Convenience field from backend
     public bool IsActive { get; set; }
+    public List<int> ServiceTypeIds { get; set; } = new();
 }

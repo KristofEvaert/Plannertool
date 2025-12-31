@@ -65,6 +65,9 @@ export class NavbarComponent {
         }
         if (isAdmin) {
           items.push({ label: 'Users/Roles', routerLink: '/users' });
+          items.push({ label: 'Weight Templates', routerLink: '/weight-templates' });
+          items.push({ label: 'Location Groups', routerLink: '/location-groups' });
+          items.push({ label: 'Cost Settings', routerLink: '/system-cost-settings' });
         }
         if (isSuperAdmin) {
           items.push({ label: 'Owners', routerLink: '/owners' });

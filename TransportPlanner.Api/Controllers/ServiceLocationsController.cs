@@ -25,6 +25,315 @@ public class ServiceLocationsController : ControllerBase
         _geocodingService = geocodingService;
     }
 
+    [HttpGet("{toolId:guid}/opening-hours")]
+    [ProducesResponseType(typeof(List<ServiceLocationOpeningHoursDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ServiceLocationOpeningHoursDto>>> GetOpeningHours(
+        Guid toolId,
+        CancellationToken cancellationToken = default)
+    {
+        var serviceLocation = await _dbContext.ServiceLocations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sl => sl.ToolId == toolId, cancellationToken);
+
+        if (serviceLocation == null)
+        {
+            return NotFound();
+        }
+
+        if (!CanAccessOwner(serviceLocation.OwnerId))
+        {
+            return Forbid();
+        }
+
+        var hours = await _dbContext.ServiceLocationOpeningHours
+            .AsNoTracking()
+            .Where(x => x.ServiceLocationId == serviceLocation.Id)
+            .OrderBy(x => x.DayOfWeek)
+            .Select(x => new ServiceLocationOpeningHoursDto
+            {
+                Id = x.Id,
+                DayOfWeek = x.DayOfWeek,
+                OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
+                CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                IsClosed = x.IsClosed
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(hours);
+    }
+
+    [HttpPut("{toolId:guid}/opening-hours")]
+    [ProducesResponseType(typeof(List<ServiceLocationOpeningHoursDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ServiceLocationOpeningHoursDto>>> SaveOpeningHours(
+        Guid toolId,
+        [FromBody] SaveServiceLocationOpeningHoursRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var serviceLocation = await _dbContext.ServiceLocations
+            .FirstOrDefaultAsync(sl => sl.ToolId == toolId, cancellationToken);
+
+        if (serviceLocation == null)
+        {
+            return NotFound();
+        }
+
+        if (!CanAccessOwner(serviceLocation.OwnerId))
+        {
+            return Forbid();
+        }
+
+        var normalized = new List<ServiceLocationOpeningHours>();
+        foreach (var item in request.Items)
+        {
+            if (item.DayOfWeek < 0 || item.DayOfWeek > 6)
+            {
+                return BadRequest(new { message = "DayOfWeek must be between 0 and 6." });
+            }
+
+            var openTime = ParseTime(item.OpenTime);
+            var closeTime = ParseTime(item.CloseTime);
+
+            if (!item.IsClosed && (!openTime.HasValue || !closeTime.HasValue))
+            {
+                return BadRequest(new { message = "OpenTime and CloseTime are required when not closed." });
+            }
+
+            if (openTime.HasValue && closeTime.HasValue && openTime.Value >= closeTime.Value)
+            {
+                return BadRequest(new { message = "OpenTime must be before CloseTime." });
+            }
+
+            normalized.Add(new ServiceLocationOpeningHours
+            {
+                ServiceLocationId = serviceLocation.Id,
+                DayOfWeek = item.DayOfWeek,
+                OpenTime = item.IsClosed ? null : openTime,
+                CloseTime = item.IsClosed ? null : closeTime,
+                IsClosed = item.IsClosed
+            });
+        }
+
+        await _dbContext.ServiceLocationOpeningHours
+            .Where(x => x.ServiceLocationId == serviceLocation.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        _dbContext.ServiceLocationOpeningHours.AddRange(normalized);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var result = normalized
+            .OrderBy(x => x.DayOfWeek)
+            .Select(x => new ServiceLocationOpeningHoursDto
+            {
+                Id = x.Id,
+                DayOfWeek = x.DayOfWeek,
+                OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
+                CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                IsClosed = x.IsClosed
+            })
+            .ToList();
+
+        return Ok(result);
+    }
+
+    [HttpGet("{toolId:guid}/exceptions")]
+    [ProducesResponseType(typeof(List<ServiceLocationExceptionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ServiceLocationExceptionDto>>> GetExceptions(
+        Guid toolId,
+        CancellationToken cancellationToken = default)
+    {
+        var serviceLocation = await _dbContext.ServiceLocations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sl => sl.ToolId == toolId, cancellationToken);
+
+        if (serviceLocation == null)
+        {
+            return NotFound();
+        }
+
+        if (!CanAccessOwner(serviceLocation.OwnerId))
+        {
+            return Forbid();
+        }
+
+        var items = await _dbContext.ServiceLocationExceptions
+            .AsNoTracking()
+            .Where(x => x.ServiceLocationId == serviceLocation.Id)
+            .OrderBy(x => x.Date)
+            .Select(x => new ServiceLocationExceptionDto
+            {
+                Id = x.Id,
+                Date = x.Date.Date,
+                OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
+                CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                IsClosed = x.IsClosed,
+                Note = x.Note
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(items);
+    }
+
+    [HttpPut("{toolId:guid}/exceptions")]
+    [ProducesResponseType(typeof(List<ServiceLocationExceptionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ServiceLocationExceptionDto>>> SaveExceptions(
+        Guid toolId,
+        [FromBody] SaveServiceLocationExceptionsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var serviceLocation = await _dbContext.ServiceLocations
+            .FirstOrDefaultAsync(sl => sl.ToolId == toolId, cancellationToken);
+
+        if (serviceLocation == null)
+        {
+            return NotFound();
+        }
+
+        if (!CanAccessOwner(serviceLocation.OwnerId))
+        {
+            return Forbid();
+        }
+
+        var normalized = new List<ServiceLocationException>();
+        foreach (var item in request.Items)
+        {
+            var openTime = ParseTime(item.OpenTime);
+            var closeTime = ParseTime(item.CloseTime);
+
+            if (!item.IsClosed && (!openTime.HasValue || !closeTime.HasValue))
+            {
+                return BadRequest(new { message = "OpenTime and CloseTime are required when not closed." });
+            }
+
+            if (openTime.HasValue && closeTime.HasValue && openTime.Value >= closeTime.Value)
+            {
+                return BadRequest(new { message = "OpenTime must be before CloseTime." });
+            }
+
+            normalized.Add(new ServiceLocationException
+            {
+                ServiceLocationId = serviceLocation.Id,
+                Date = item.Date.Date,
+                OpenTime = item.IsClosed ? null : openTime,
+                CloseTime = item.IsClosed ? null : closeTime,
+                IsClosed = item.IsClosed,
+                Note = string.IsNullOrWhiteSpace(item.Note) ? null : item.Note.Trim()
+            });
+        }
+
+        await _dbContext.ServiceLocationExceptions
+            .Where(x => x.ServiceLocationId == serviceLocation.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        _dbContext.ServiceLocationExceptions.AddRange(normalized);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var result = normalized
+            .OrderBy(x => x.Date)
+            .Select(x => new ServiceLocationExceptionDto
+            {
+                Id = x.Id,
+                Date = x.Date.Date,
+                OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
+                CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                IsClosed = x.IsClosed,
+                Note = x.Note
+            })
+            .ToList();
+
+        return Ok(result);
+    }
+
+    [HttpGet("{toolId:guid}/constraints")]
+    [ProducesResponseType(typeof(ServiceLocationConstraintDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ServiceLocationConstraintDto>> GetConstraints(
+        Guid toolId,
+        CancellationToken cancellationToken = default)
+    {
+        var serviceLocation = await _dbContext.ServiceLocations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sl => sl.ToolId == toolId, cancellationToken);
+
+        if (serviceLocation == null)
+        {
+            return NotFound();
+        }
+
+        if (!CanAccessOwner(serviceLocation.OwnerId))
+        {
+            return Forbid();
+        }
+
+        var constraint = await _dbContext.ServiceLocationConstraints
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ServiceLocationId == serviceLocation.Id, cancellationToken);
+
+        return Ok(new ServiceLocationConstraintDto
+        {
+            MinVisitDurationMinutes = constraint?.MinVisitDurationMinutes,
+            MaxVisitDurationMinutes = constraint?.MaxVisitDurationMinutes
+        });
+    }
+
+    [HttpPut("{toolId:guid}/constraints")]
+    [ProducesResponseType(typeof(ServiceLocationConstraintDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ServiceLocationConstraintDto>> SaveConstraints(
+        Guid toolId,
+        [FromBody] ServiceLocationConstraintDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var serviceLocation = await _dbContext.ServiceLocations
+            .FirstOrDefaultAsync(sl => sl.ToolId == toolId, cancellationToken);
+
+        if (serviceLocation == null)
+        {
+            return NotFound();
+        }
+
+        if (!CanAccessOwner(serviceLocation.OwnerId))
+        {
+            return Forbid();
+        }
+
+        if (request.MinVisitDurationMinutes.HasValue && request.MinVisitDurationMinutes.Value < 0)
+        {
+            return BadRequest(new { message = "MinVisitDurationMinutes must be >= 0." });
+        }
+
+        if (request.MaxVisitDurationMinutes.HasValue && request.MaxVisitDurationMinutes.Value < 0)
+        {
+            return BadRequest(new { message = "MaxVisitDurationMinutes must be >= 0." });
+        }
+
+        if (request.MinVisitDurationMinutes.HasValue && request.MaxVisitDurationMinutes.HasValue
+            && request.MinVisitDurationMinutes.Value > request.MaxVisitDurationMinutes.Value)
+        {
+            return BadRequest(new { message = "MinVisitDurationMinutes must be <= MaxVisitDurationMinutes." });
+        }
+
+        var constraint = await _dbContext.ServiceLocationConstraints
+            .FirstOrDefaultAsync(x => x.ServiceLocationId == serviceLocation.Id, cancellationToken);
+
+        if (constraint == null)
+        {
+            constraint = new ServiceLocationConstraint
+            {
+                ServiceLocationId = serviceLocation.Id
+            };
+            _dbContext.ServiceLocationConstraints.Add(constraint);
+        }
+
+        constraint.MinVisitDurationMinutes = request.MinVisitDurationMinutes;
+        constraint.MaxVisitDurationMinutes = request.MaxVisitDurationMinutes;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(new ServiceLocationConstraintDto
+        {
+            MinVisitDurationMinutes = constraint.MinVisitDurationMinutes,
+            MaxVisitDurationMinutes = constraint.MaxVisitDurationMinutes
+        });
+    }
+
     private bool IsSuperAdmin => User.IsInRole(AppRoles.SuperAdmin);
     private int? CurrentOwnerId => int.TryParse(User.FindFirstValue("ownerId"), out var id) ? id : null;
     private bool TryResolveOwner(int? requestedOwnerId, out int ownerId, out ActionResult? forbidResult)
@@ -205,6 +514,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dtos = items.Select(sl => new ServiceLocationDto
         {
+            Id = sl.Id,
             ToolId = sl.ToolId,
             ErpId = sl.ErpId,
             Name = sl.Name,
@@ -276,6 +586,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -487,6 +798,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -716,6 +1028,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -772,6 +1085,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -827,6 +1141,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -875,6 +1190,8 @@ public class ServiceLocationsController : ControllerBase
         serviceLocation.Status = ServiceLocationStatus.Open;
         serviceLocation.UpdatedAtUtc = DateTime.UtcNow;
 
+        await RemoveFromFutureRoutesAsync(serviceLocation.Id, cancellationToken);
+
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var serviceTypeName = await GetServiceTypeNameAsync(serviceLocation.ServiceTypeId, cancellationToken);
@@ -882,6 +1199,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -938,6 +1256,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -993,6 +1312,7 @@ public class ServiceLocationsController : ControllerBase
 
         var dto = new ServiceLocationDto
         {
+            Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
             Name = serviceLocation.Name,
@@ -1011,5 +1331,52 @@ public class ServiceLocationsController : ControllerBase
         };
 
         return Ok(dto);
+    }
+
+    private static TimeSpan? ParseTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return TimeSpan.TryParseExact(value, "hh\\:mm", null, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private async Task RemoveFromFutureRoutesAsync(int serviceLocationId, CancellationToken cancellationToken)
+    {
+        var today = DateTime.Today;
+        var affectedRouteIds = await _dbContext.RouteStops
+            .Where(rs => rs.ServiceLocationId == serviceLocationId && rs.Route.Date.Date >= today)
+            .Select(rs => rs.RouteId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (affectedRouteIds.Count == 0)
+        {
+            return;
+        }
+
+        await _dbContext.RouteStops
+            .Where(rs => rs.ServiceLocationId == serviceLocationId && rs.Route.Date.Date >= today)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        foreach (var routeId in affectedRouteIds)
+        {
+            var remainingCount = await _dbContext.RouteStops
+                .Where(rs => rs.RouteId == routeId)
+                .CountAsync(cancellationToken);
+
+            if (remainingCount == 0)
+            {
+                var route = await _dbContext.Routes.FirstOrDefaultAsync(r => r.Id == routeId, cancellationToken);
+                if (route != null)
+                {
+                    _dbContext.Routes.Remove(route);
+                }
+            }
+        }
     }
 }

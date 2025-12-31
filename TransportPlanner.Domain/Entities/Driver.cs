@@ -20,4 +20,5 @@ public class Driver
     
     // Navigation
     public ICollection<DriverAvailability> Availabilities { get; set; } = new List<DriverAvailability>();
+    public ICollection<DriverServiceType> DriverServiceTypes { get; set; } = new List<DriverServiceType>();
 }

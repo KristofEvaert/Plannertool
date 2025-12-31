@@ -10,6 +10,12 @@
           [outlined]="true"
           (onClick)="downloadTemplate()"
         />
+        <p-button
+          label="Download Service Types Template"
+          icon="pi pi-download"
+          [outlined]="true"
+          (onClick)="downloadServiceTypesTemplate()"
+        />
         <input
           type="file"
           accept=".xlsx,.xls"
@@ -21,7 +27,13 @@
           label="Upload Availability Excel"
           icon="pi pi-upload"
           [outlined]="true"
-          (onClick)="fileInput.click()"
+          (onClick)="triggerUpload('availability', fileInput)"
+        />
+        <p-button
+          label="Upload Service Types Excel"
+          icon="pi pi-upload"
+          [outlined]="true"
+          (onClick)="triggerUpload('serviceTypes', fileInput)"
         />
       </div>
     </div>
@@ -86,7 +98,7 @@
         />
       </div>
       <div class="text-sm text-gray-600">
-        Showing: {{ availableDrivers().length }} drivers · {{ formatDateFull(startDate()) }} → {{ formatDateFull(endDate()) }}
+        Showing: {{ availableDrivers().length }} drivers | {{ formatDateFull(startDate()) }} -> {{ formatDateFull(endDate()) }}
       </div>
     </div>
   </div>
@@ -128,7 +140,13 @@
           >
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0">
-                <div class="truncate">{{ driver.name }}</div>
+                <div
+                  class="truncate"
+                  pTooltip="{{ getServiceTypeTooltip(driver) }}"
+                  tooltipPosition="top"
+                >
+                  {{ driver.name }}
+                </div>
                 <div class="text-xs text-gray-500 truncate">ERP: {{ driver.erpId }}</div>
                 @if (driver.ownerName) {
                   <div class="text-xs text-gray-500 truncate">Owner: {{ driver.ownerName }}</div>
@@ -164,7 +182,7 @@
               >
                 <div class="bg-blue-500 text-white rounded px-2 py-1 text-xs shadow-sm">
                   <div class="font-medium">
-                    {{ minutesToHHmm(availability.startMinuteOfDay) }}–{{
+                    {{ minutesToHHmm(availability.startMinuteOfDay) }}-{{
                       minutesToHHmm(availability.endMinuteOfDay)
                     }}
                   </div>
@@ -179,7 +197,7 @@
                 [class.bg-gray-50]="$even"
                 (click)="onCellClick({ driver, date, availability: null })"
               >
-                <div class="text-gray-400 text-center text-xs py-2">—</div>
+                <div class="text-gray-400 text-center text-xs py-2">-</div>
               </div>
             }
           }
@@ -306,6 +324,21 @@
           optionValue="id"
           [style]="{ width: '100%' }"
           placeholder="Select Owner"
+          [appendTo]="'body'"
+          [baseZIndex]="10001"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Service Types</label>
+        <p-multiSelect
+          [options]="serviceTypes()"
+          [(ngModel)]="driverForm().serviceTypeIds"
+          optionLabel="name"
+          optionValue="id"
+          [filter]="true"
+          [display]="'chip'"
+          [style]="{ width: '100%' }"
+          placeholder="Select service types"
           [appendTo]="'body'"
           [baseZIndex]="10001"
         />

@@ -14,12 +14,20 @@ export interface RouteStopDto {
   longitude: number;
   serviceMinutes: number;
   actualServiceMinutes?: number;
+  actualArrivalUtc?: string;
+  actualDepartureUtc?: string;
   travelKmFromPrev: number;
   travelMinutesFromPrev: number;
   status?: string;
   arrivedAtUtc?: string;
   completedAtUtc?: string;
   note?: string;
+  driverNote?: string;
+  issueCode?: string;
+  followUpRequired?: boolean;
+  proofStatus?: string;
+  lastUpdatedByUserId?: string;
+  lastUpdatedUtc?: string;
   driverInstruction?: string;
   remark?: string;
 }
@@ -38,6 +46,13 @@ export interface RouteDto {
   driverName: string;
   driverStartLatitude?: number;
   driverStartLongitude?: number;
+  startAddress?: string;
+  startLatitude?: number;
+  startLongitude?: number;
+  endAddress?: string;
+  endLatitude?: number;
+  endLongitude?: number;
+  weightTemplateId?: number;
   totalMinutes: number;
   totalKm: number;
   status: string;
@@ -62,6 +77,13 @@ export interface CreateRouteRequest {
   driverToolId: string; // Use ToolId (Guid as string) instead of driverId
   totalMinutes: number;
   totalKm: number;
+  startAddress?: string;
+  startLatitude?: number;
+  startLongitude?: number;
+  endAddress?: string;
+  endLatitude?: number;
+  endLongitude?: number;
+  weightTemplateId?: number;
   stops: CreateRouteStopRequest[];
 }
 
@@ -70,6 +92,10 @@ export interface UpdateRouteStopRequest {
   completedAtUtc?: string;
   actualServiceMinutes?: number;
   note?: string;
+  driverNote?: string;
+  issueCode?: string;
+  followUpRequired?: boolean;
+  proofStatus?: string;
   status?: string;
 }
 
@@ -114,6 +140,18 @@ export class RoutesApiService {
     return this.http.patch<RouteStopDto>(`${this.baseUrl}/stops/${routeStopId}`, request);
   }
 
+  arriveStop(routeStopId: number, arrivedAtUtc?: string): Observable<RouteStopDto> {
+    return this.http.post<RouteStopDto>(`${environment.apiBaseUrl}/api/routeStops/${routeStopId}/arrive`, {
+      arrivedAtUtc,
+    });
+  }
+
+  departStop(routeStopId: number, departedAtUtc?: string): Observable<RouteStopDto> {
+    return this.http.post<RouteStopDto>(`${environment.apiBaseUrl}/api/routeStops/${routeStopId}/depart`, {
+      departedAtUtc,
+    });
+  }
+
   upsertRoute(request: CreateRouteRequest): Observable<RouteDto> {
     return this.http.post<RouteDto>(this.baseUrl, request);
   }
@@ -130,21 +168,65 @@ export class RoutesApiService {
     return this.http.post<RouteDto[]>(`${this.baseUrl}/fix-day`, {}, { params });
   }
 
-  autoGenerateRoute(date: Date, driverToolId: string, ownerId: number, serviceLocationToolIds: string[]): Observable<RouteDto> {
+  deleteDriverDayRoute(date: Date, driverToolId: string, ownerId: number): Observable<void> {
+    const params = new HttpParams()
+      .set('date', toYmd(date))
+      .set('driverToolId', driverToolId)
+      .set('ownerId', ownerId.toString());
+    return this.http.delete<void>(`${this.baseUrl}/driver-day`, { params });
+  }
+
+  deleteDayRoutes(date: Date, ownerId: number): Observable<{ deletedRoutes: number; skippedFixed: number }> {
+    const params = new HttpParams()
+      .set('date', toYmd(date))
+      .set('ownerId', ownerId.toString());
+    return this.http.delete<{ deletedRoutes: number; skippedFixed: number }>(`${this.baseUrl}/day`, { params });
+  }
+
+  autoGenerateRoute(
+    date: Date,
+    driverToolId: string,
+    ownerId: number,
+    serviceLocationToolIds: string[],
+    weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
+    requireServiceTypeMatch?: boolean,
+    weightTemplateId?: number
+  ): Observable<RouteDto> {
     const body = {
       date: toYmd(date),
       driverToolId,
       ownerId,
       serviceLocationToolIds,
+      weightTime: weights?.time,
+      weightDistance: weights?.distance,
+      weightDate: weights?.date,
+      weightCost: weights?.cost,
+      weightOvertime: weights?.overtime,
+      weightTemplateId,
+      requireServiceTypeMatch,
     };
     return this.http.post<RouteDto>(`${this.baseUrl}/auto-generate`, body);
   }
 
-  autoGenerateRoutesForAll(date: Date, ownerId: number, serviceLocationToolIds: string[]): Observable<AutoGenerateAllResponse> {
+  autoGenerateRoutesForAll(
+    date: Date,
+    ownerId: number,
+    serviceLocationToolIds: string[],
+    weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
+    requireServiceTypeMatch?: boolean,
+    weightTemplateId?: number
+  ): Observable<AutoGenerateAllResponse> {
     const body = {
       date: toYmd(date),
       ownerId,
       serviceLocationToolIds,
+      weightTime: weights?.time,
+      weightDistance: weights?.distance,
+      weightDate: weights?.date,
+      weightCost: weights?.cost,
+      weightOvertime: weights?.overtime,
+      weightTemplateId,
+      requireServiceTypeMatch,
     };
     return this.http.post<AutoGenerateAllResponse>(`${this.baseUrl}/auto-generate/all`, body);
   }

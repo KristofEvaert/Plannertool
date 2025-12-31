@@ -130,7 +130,7 @@
         <div class="drivers-section-header">
           <h2 class="drivers-section-title">Available Drivers</h2>
           <p-button
-            label="Auto-generate all"
+            label="Auto-generate day"
             icon="pi pi-bolt"
             size="small"
             severity="secondary"
@@ -138,7 +138,32 @@
             [loading]="autoGenerateLoading()"
             [disabled]="!selectedOwnerId() || !(mapData()?.items?.length)"
           ></p-button>
-        </div>
+          <p-button
+            label="Auto-generate period"
+            icon="pi pi-calendar"
+            size="small"
+            severity="secondary"
+            (onClick)="autoGenerateForPeriod()"
+            [loading]="autoGeneratePeriodLoading()"
+            [disabled]="!selectedOwnerId() || !(mapData()?.items?.length)"
+          ></p-button>
+            <p-button
+              label="Clear day routes"
+              icon="pi pi-trash"
+              size="small"
+              severity="secondary"
+              (onClick)="clearAllRoutesForDay()"
+              [disabled]="driverRoutes().size === 0"
+            ></p-button>
+            <p-button
+              label="Export schedule"
+              icon="pi pi-download"
+              size="small"
+              severity="secondary"
+              (onClick)="exportRoutes()"
+              [disabled]="!selectedOwnerId() || selectedServiceTypeIds().length === 0"
+            ></p-button>
+          </div>
         
         <div class="date-picker-container">
           <label for="driverDate" class="date-picker-label">Select Date</label>
@@ -152,6 +177,88 @@
             [appendTo]="'body'"
             [baseZIndex]="1000"
           />
+        </div>
+
+        <div class="auto-generate-weights">
+          <div class="auto-generate-title">Auto-generate weights</div>
+          <div class="weight-row">
+            <label class="weight-label">Template</label>
+            <p-dropdown
+              [options]="weightTemplates()"
+              [(ngModel)]="selectedWeightTemplateId"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Manual weights"
+              [showClear]="true"
+              [appendTo]="'body'"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Driver Time</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              [(ngModel)]="weightTime"
+              [disabled]="selectedWeightTemplateId() !== null"
+            />
+            <span class="weight-value">{{ activeWeightTime() }}</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Distance</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              [(ngModel)]="weightDistance"
+              [disabled]="selectedWeightTemplateId() !== null"
+            />
+            <span class="weight-value">{{ activeWeightDistance() }}</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Due Date</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              [(ngModel)]="weightDate"
+              [disabled]="selectedWeightTemplateId() !== null"
+            />
+            <span class="weight-value">{{ activeWeightDate() }}</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Cost</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              [(ngModel)]="weightCost"
+              [disabled]="selectedWeightTemplateId() !== null"
+            />
+            <span class="weight-value">{{ activeWeightCost() }}</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Overtime</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              [(ngModel)]="weightOvertime"
+              [disabled]="selectedWeightTemplateId() !== null"
+            />
+            <span class="weight-value">{{ activeWeightOvertime() }}</span>
+          </div>
+          <label class="weight-checkbox">
+            <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
+            <span>Enforce service type match</span>
+          </label>
+          <div class="weight-hint">Higher means more important.</div>
         </div>
 
         <div class="drivers-list" *ngIf="!loadingDrivers()">
@@ -204,9 +311,57 @@
                 </span>
               </div>
               <div class="route-locations" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 0">
-                <div class="route-location-item route-start" *ngIf="getStartWaypoint(getCurrentRouteForDisplay()!) as startWp">
+                <div
+                  class="route-location-item route-start route-location-clickable"
+                  *ngIf="getStartWaypoint(getCurrentRouteForDisplay()!) as startWp"
+                  (click)="toggleStartOverrideEditor()"
+                >
                   <span class="route-location-label">Start</span>
                   <span class="route-location-name">{{ startWp.name }}</span>
+                  <span class="route-location-coords">
+                    {{ startWp.latitude.toFixed(6) }}, {{ startWp.longitude.toFixed(6) }}
+                  </span>
+                  <div class="route-override-editor" *ngIf="showStartOverrideEditor">
+                    <input
+                      type="text"
+                      class="route-override-input"
+                      placeholder="Start address (optional)"
+                      [(ngModel)]="startOverrideAddress"
+                      (click)="$event.stopPropagation()"
+                    />
+                    <div class="route-override-coords">
+                      <input
+                        type="number"
+                        class="route-override-input"
+                        placeholder="Lat"
+                        [(ngModel)]="startOverrideLatitude"
+                        (click)="$event.stopPropagation()"
+                      />
+                      <input
+                        type="number"
+                        class="route-override-input"
+                        placeholder="Lng"
+                        [(ngModel)]="startOverrideLongitude"
+                        (click)="$event.stopPropagation()"
+                      />
+                    </div>
+                    <div class="route-override-actions">
+                      <button
+                        type="button"
+                        class="route-override-btn"
+                        (click)="$event.stopPropagation(); applyStartOverride()"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        type="button"
+                        class="route-override-btn secondary"
+                        (click)="$event.stopPropagation(); clearStartOverride()"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -251,9 +406,57 @@
                   </div>
                 </div>
 
-                <div class="route-location-item route-end" *ngIf="getEndWaypoint(getCurrentRouteForDisplay()!) as endWp">
+                <div
+                  class="route-location-item route-end route-location-clickable"
+                  *ngIf="getEndWaypoint(getCurrentRouteForDisplay()!) as endWp"
+                  (click)="toggleEndOverrideEditor()"
+                >
                   <span class="route-location-label">End</span>
                   <span class="route-location-name">{{ endWp.name }}</span>
+                  <span class="route-location-coords">
+                    {{ endWp.latitude.toFixed(6) }}, {{ endWp.longitude.toFixed(6) }}
+                  </span>
+                  <div class="route-override-editor" *ngIf="showEndOverrideEditor">
+                    <input
+                      type="text"
+                      class="route-override-input"
+                      placeholder="End address (optional)"
+                      [(ngModel)]="endOverrideAddress"
+                      (click)="$event.stopPropagation()"
+                    />
+                    <div class="route-override-coords">
+                      <input
+                        type="number"
+                        class="route-override-input"
+                        placeholder="Lat"
+                        [(ngModel)]="endOverrideLatitude"
+                        (click)="$event.stopPropagation()"
+                      />
+                      <input
+                        type="number"
+                        class="route-override-input"
+                        placeholder="Lng"
+                        [(ngModel)]="endOverrideLongitude"
+                        (click)="$event.stopPropagation()"
+                      />
+                    </div>
+                    <div class="route-override-actions">
+                      <button
+                        type="button"
+                        class="route-override-btn"
+                        (click)="$event.stopPropagation(); applyEndOverride()"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        type="button"
+                        class="route-override-btn secondary"
+                        (click)="$event.stopPropagation(); clearEndOverride()"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="route-actions" *ngIf="isBuildingRoute() && getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId">

@@ -28,6 +28,7 @@ public class ServiceLocationBulkInsertService
     {
         var result = new BulkInsertResultDto();
         var now = DateTime.UtcNow;
+        var openStatusLocationIds = new List<int>();
 
         // Validate ServiceTypeId exists and is active
         var serviceType = await _dbContext.ServiceTypes
@@ -256,6 +257,7 @@ public class ServiceLocationBulkInsertService
                 if (existingServiceLocation.Status == ServiceLocationStatus.Done && (dueDateChanged || priorityDateChanged))
                 {
                     existingServiceLocation.Status = ServiceLocationStatus.Open;
+                    openStatusLocationIds.Add(existingServiceLocation.Id);
                 }
                 existingServiceLocation.UpdatedAtUtc = now;
                 
@@ -293,10 +295,54 @@ public class ServiceLocationBulkInsertService
         if (result.Inserted > 0 || result.Updated > 0)
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
+            if (openStatusLocationIds.Count > 0)
+            {
+                await RemoveFromFutureRoutesAsync(openStatusLocationIds, cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
             _logger.LogInformation("Inserted {InsertedCount} and updated {UpdatedCount} service locations", result.Inserted, result.Updated);
         }
 
         return result;
+    }
+
+    private async Task RemoveFromFutureRoutesAsync(List<int> serviceLocationIds, CancellationToken cancellationToken)
+    {
+        var today = DateTime.Today;
+        var affectedRouteIds = await _dbContext.RouteStops
+            .Where(rs => rs.ServiceLocationId.HasValue
+                && serviceLocationIds.Contains(rs.ServiceLocationId.Value)
+                && rs.Route.Date.Date >= today)
+            .Select(rs => rs.RouteId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (affectedRouteIds.Count == 0)
+        {
+            return;
+        }
+
+        await _dbContext.RouteStops
+            .Where(rs => rs.ServiceLocationId.HasValue
+                && serviceLocationIds.Contains(rs.ServiceLocationId.Value)
+                && rs.Route.Date.Date >= today)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        foreach (var routeId in affectedRouteIds)
+        {
+            var remainingCount = await _dbContext.RouteStops
+                .Where(rs => rs.RouteId == routeId)
+                .CountAsync(cancellationToken);
+
+            if (remainingCount == 0)
+            {
+                var route = await _dbContext.Routes.FirstOrDefaultAsync(r => r.Id == routeId, cancellationToken);
+                if (route != null)
+                {
+                    _dbContext.Routes.Remove(route);
+                }
+            }
+        }
     }
 }
 

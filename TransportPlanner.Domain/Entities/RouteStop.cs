@@ -35,16 +35,25 @@ public class RouteStop
     public bool ManualAdded { get; set; } = false; // True if manually added by user
     public DateTime? ArrivedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public DateTime? ActualArrivalUtc { get; set; }
+    public DateTime? ActualDepartureUtc { get; set; }
     
     /// <summary>
     /// Actual visit duration in minutes (recorded by driver). Nullable until the stop is completed or manually entered.
     /// </summary>
     public int? ActualServiceMinutes { get; set; }
     public string? Note { get; set; }
+    public string? DriverNote { get; set; }
+    public string? IssueCode { get; set; }
+    public bool FollowUpRequired { get; set; }
+    public RouteStopProofStatus ProofStatus { get; set; } = RouteStopProofStatus.None;
+    public Guid? LastUpdatedByUserId { get; set; }
+    public DateTime? LastUpdatedUtc { get; set; }
     
     // Navigation
     public Route Route { get; set; } = null!;
     public PlanningCluster? PlanningCluster { get; set; }
     public ServiceLocation? ServiceLocation { get; set; }
+    public ICollection<RouteStopEvent> Events { get; set; } = new List<RouteStopEvent>();
 }
 

@@ -127,6 +127,9 @@ public class DatabaseSeeder
         {
             _logger.LogInformation("Service locations already exist. Skipping seed.");
         }
+
+        // Seed travel time model data (regions + speed profiles) if empty
+        await SeedTravelTimeModelAsync(cancellationToken);
     }
 
     private async Task ClearSeedDataAsync(CancellationToken cancellationToken)
@@ -736,5 +739,60 @@ public class DatabaseSeeder
         }
 
         await _userManager.AddToRoleAsync(user, AppRoles.SuperAdmin);
+    }
+
+    private async Task SeedTravelTimeModelAsync(CancellationToken cancellationToken)
+    {
+        var hasRegions = await _dbContext.TravelTimeRegions.AnyAsync(cancellationToken);
+        var hasProfiles = await _dbContext.RegionSpeedProfiles.AnyAsync(cancellationToken);
+
+        if (hasRegions && hasProfiles)
+        {
+            _logger.LogInformation("Travel time model data already exists. Skipping seed.");
+            return;
+        }
+
+        _logger.LogInformation("Seeding travel time model data...");
+
+        if (!hasRegions)
+        {
+            var regions = TravelTimeSeedParser.ParseRegions(TravelTimeSeedData.RegionsCsv);
+            if (regions.Count > 0)
+            {
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+                await _dbContext.Database.ExecuteSqlRawAsync(
+                    "SET IDENTITY_INSERT [dbo].[TravelTimeRegions] ON",
+                    cancellationToken);
+                try
+                {
+                    _dbContext.TravelTimeRegions.AddRange(regions);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    await _dbContext.Database.ExecuteSqlRawAsync(
+                        "SET IDENTITY_INSERT [dbo].[TravelTimeRegions] OFF",
+                        cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                catch
+                {
+                    await _dbContext.Database.ExecuteSqlRawAsync(
+                        "SET IDENTITY_INSERT [dbo].[TravelTimeRegions] OFF",
+                        cancellationToken);
+                    await transaction.RollbackAsync(cancellationToken);
+                    throw;
+                }
+            }
+        }
+
+        if (!hasProfiles)
+        {
+            var profiles = TravelTimeSeedParser.ParseSpeedProfiles(TravelTimeSeedData.SpeedProfilesCsv);
+            if (profiles.Count > 0)
+            {
+                _dbContext.RegionSpeedProfiles.AddRange(profiles);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        _logger.LogInformation("Travel time model seed completed.");
     }
 }

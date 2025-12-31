@@ -59,7 +59,14 @@
               </ng-template>
               <ng-template pTemplate="body" let-driver>
                 <tr [class.bg-blue-50]="selectedDriver()?.toolId === driver.toolId">
-                  <td>{{ driver.name }}</td>
+                  <td>
+                    <span
+                      pTooltip="{{ getServiceTypeTooltip(driver) }}"
+                      tooltipPosition="top"
+                    >
+                      {{ driver.name }}
+                    </span>
+                  </td>
                   <td>{{ driver.erpId }}</td>
                   <td>
                     @if (editingOwnerId() === driver.toolId) {
@@ -240,6 +247,19 @@
           optionValue="id"
           [style]="{ width: '100%' }"
           placeholder="Select Owner"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Service Types</label>
+        <p-multiSelect
+          [options]="serviceTypes()"
+          [(ngModel)]="driverForm().serviceTypeIds"
+          optionLabel="name"
+          optionValue="id"
+          [filter]="true"
+          [display]="'chip'"
+          [style]="{ width: '100%' }"
+          placeholder="Select service types"
         />
       </div>
       <div class="grid grid-cols-2 gap-4">

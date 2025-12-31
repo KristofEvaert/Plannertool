@@ -16,6 +16,9 @@ import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextarea } from 'primeng/inputtextarea';
 import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { CheckboxModule } from 'primeng/checkbox';
 import { DriversApiService } from '@services/drivers-api.service';
 import {
   RoutesApiService,
@@ -23,12 +26,15 @@ import {
   type RouteStopDto,
   type UpdateRouteStopRequest,
 } from '@services/routes-api.service';
+import { RouteMessagesApiService } from '@services/route-messages-api.service';
+import { RouteChangeNotificationsApiService } from '@services/route-change-notifications-api.service';
 import {
   ServiceLocationOwnersApiService,
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
 import { AuthService } from '@services/auth.service';
+import type { RouteChangeNotificationDto } from '@models/route-change-notification.model';
 
 type DriverOption = { label: string; value: string };
 type OwnerOption = { label: string; value: number };
@@ -45,7 +51,10 @@ type OwnerOption = { label: string; value: number };
     InputNumberModule,
     InputTextarea,
     TagModule,
+    ToastModule,
+    CheckboxModule,
   ],
+  providers: [MessageService],
   templateUrl: './driver.page.html',
   styleUrl: './driver.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,10 +62,13 @@ type OwnerOption = { label: string; value: number };
 export class DriverPage {
   private readonly driversApi = inject(DriversApiService);
   private readonly routesApi = inject(RoutesApiService);
+  private readonly routeMessagesApi = inject(RouteMessagesApiService);
+  private readonly routeChangeNotificationsApi = inject(RouteChangeNotificationsApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
   private readonly serviceLocationsApi = inject(ServiceLocationsApiService);
   private readonly zone = inject(NgZone);
   private readonly auth = inject(AuthService);
+  private readonly messageService = inject(MessageService);
 
   private map: L.Map | null = null;
   private routeLayerGroup: L.LayerGroup | null = null;
@@ -70,6 +82,7 @@ export class DriverPage {
 
   route = signal<RouteDto | null>(null);
   selectedStopId = signal<number | null>(null);
+  routeChangeNotifications = signal<RouteChangeNotificationDto[]>([]);
 
   driverOptions = signal<DriverOption[]>([]);
   ownerOptions = signal<OwnerOption[]>([]);
@@ -78,12 +91,38 @@ export class DriverPage {
   editingArrivedAt = signal<Date | null>(null);
   editingCompletedAt = signal<Date | null>(null);
 
+  routeMessageText = signal('');
+  routeMessageCategory = signal('Info');
+  stopMessageText = signal('');
+  stopMessageCategory = signal('Info');
+  sendingMessage = signal(false);
+
+  readonly issueOptions = [
+    { label: 'None', value: '' },
+    { label: 'Customer not present', value: 'CustomerNotPresent' },
+    { label: 'Access denied', value: 'AccessDenied' },
+    { label: 'Device missing', value: 'DeviceMissing' },
+    { label: 'Traffic delay', value: 'TrafficDelay' },
+    { label: 'Other', value: 'Other' },
+  ];
+
+  readonly messageCategoryOptions = [
+    { label: 'Info', value: 'Info' },
+    { label: 'Delay', value: 'Delay' },
+    { label: 'Issue', value: 'Issue' },
+    { label: 'Other', value: 'Other' },
+  ];
+
   selectedStop = computed(() => {
     const route = this.route();
     const stopId = this.selectedStopId();
     if (!route || !stopId) return null;
     return route.stops.find((s) => s.id === stopId) ?? null;
   });
+
+  activeRouteChangeNotifications = computed(() =>
+    this.routeChangeNotifications().filter((n) => !n.acknowledgedUtc)
+  );
 
   constructor() {
     this.loadLookups();
@@ -187,9 +226,14 @@ export class DriverPage {
     });
   }
 
-  startStop(stop: RouteStopDto): void {
+  arriveStop(stop: RouteStopDto): void {
     const nowUtc = new Date().toISOString();
-    this.updateStop(stop.id, { arrivedAtUtc: nowUtc });
+    this.routesApi.arriveStop(stop.id, nowUtc).subscribe({
+      next: (updated) => this.applyStopUpdate(updated),
+      error: (err) => {
+        this.error.set(err?.message ?? 'Failed to mark arrival');
+      },
+    });
   }
 
   async markNotVisited(): Promise<void> {
@@ -229,6 +273,7 @@ export class DriverPage {
     return this.routesApi.getDriverDayRoute(date, driverToolId, ownerId, true).subscribe({
       next: (route) => {
         this.route.set(route);
+        this.loadRouteNotifications(route?.id ?? null);
         this.loading.set(false);
         this.scheduleMapRefresh();
       },
@@ -239,14 +284,46 @@ export class DriverPage {
     });
   }
 
-  finishStop(stop: RouteStopDto): void {
-    const nowUtc = new Date().toISOString();
-    const duration = this.computeDurationMinutes(stop.arrivedAtUtc, nowUtc);
-    const patch: UpdateRouteStopRequest = { completedAtUtc: nowUtc };
-    if (duration != null) {
-      patch.actualServiceMinutes = duration;
+  private loadRouteNotifications(routeId: number | null): void {
+    if (!routeId) {
+      this.routeChangeNotifications.set([]);
+      return;
     }
-    this.updateStop(stop.id, patch);
+    this.routeChangeNotificationsApi.getNotifications(routeId, false).subscribe({
+      next: (items) => {
+        this.routeChangeNotifications.set(items);
+      },
+      error: () => {
+        this.routeChangeNotifications.set([]);
+      },
+    });
+  }
+
+  acknowledgeNotification(notification: RouteChangeNotificationDto): void {
+    this.routeChangeNotificationsApi.acknowledge(notification.id).subscribe({
+      next: () => {
+        this.routeChangeNotifications.update((items) =>
+          items.map((n) => (n.id === notification.id ? { ...n, acknowledgedUtc: new Date().toISOString() } : n))
+        );
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err?.error?.message || err?.message || 'Failed to acknowledge change',
+        });
+      },
+    });
+  }
+
+  departStop(stop: RouteStopDto): void {
+    const nowUtc = new Date().toISOString();
+    this.routesApi.departStop(stop.id, nowUtc).subscribe({
+      next: (updated) => this.applyStopUpdate(updated),
+      error: (err) => {
+        this.error.set(err?.message ?? 'Failed to mark departure');
+      },
+    });
   }
 
   saveDuration(stop: RouteStopDto, minutes: number | null | undefined): void {
@@ -264,6 +341,18 @@ export class DriverPage {
     this.updateStop(stop.id, { note: note ?? '' });
   }
 
+  saveDriverNote(stop: RouteStopDto, note: string | null | undefined): void {
+    this.updateStop(stop.id, { driverNote: note ?? '' });
+  }
+
+  saveIssueCode(stop: RouteStopDto, issueCode: string | null | undefined): void {
+    this.updateStop(stop.id, { issueCode: issueCode ?? '' });
+  }
+
+  saveFollowUpRequired(stop: RouteStopDto, required: boolean | null | undefined): void {
+    this.updateStop(stop.id, { followUpRequired: !!required });
+  }
+
   saveArrivedAt(stop: RouteStopDto, arrivedAt: Date | null | undefined): void {
     if (!arrivedAt) return;
     this.updateStop(stop.id, { arrivedAtUtc: arrivedAt.toISOString() });
@@ -277,44 +366,118 @@ export class DriverPage {
   private updateStop(routeStopId: number, patch: UpdateRouteStopRequest): void {
     this.routesApi.updateRouteStop(routeStopId, patch).subscribe({
       next: (updated) => {
-        const route = this.route();
-        if (!route) return;
-
-        // Ensure local stop carries a computed duration when timestamps exist.
-        const finalUpdated: RouteStopDto = (() => {
-          const maybeDuration = this.computeDurationMinutes(updated.arrivedAtUtc, updated.completedAtUtc);
-          if (maybeDuration != null && updated.actualServiceMinutes == null) {
-            return { ...updated, actualServiceMinutes: maybeDuration };
-          }
-          return updated;
-        })();
-
-        const nextStops = route.stops.map((s) => (s.id === finalUpdated.id ? { ...s, ...finalUpdated } : s));
-        this.route.set({ ...route, stops: nextStops });
-        this.scheduleMapRefresh();
-
-        // Ensure the actual ServiceLocation is marked Done when the driver completes a stop.
-        // The backend also attempts to do this, but this extra call guarantees it even if other
-        // planning operations are occurring in parallel.
-        const shouldMarkDone =
-          (patch.completedAtUtc != null || patch.actualServiceMinutes != null) &&
-          updated.status === 'Completed' &&
-          !!updated.serviceLocationToolId;
-
-        if (shouldMarkDone) {
-          this.serviceLocationsApi.markDone(updated.serviceLocationToolId!).subscribe({
-            // No-op: service location list views will reflect it on next refresh.
-            error: (err) => {
-              // Don't block driver UX on a secondary update.
-              this.error.set(err?.message ?? 'Failed to mark service location as completed');
-            },
-          });
-        }
+        this.applyStopUpdate(updated);
       },
       error: (err) => {
         this.error.set(err?.message ?? 'Failed to update stop');
       },
     });
+  }
+
+  private applyStopUpdate(updated: RouteStopDto): void {
+    const route = this.route();
+    if (!route) return;
+
+    // Ensure local stop carries a computed duration when timestamps exist.
+    const finalUpdated: RouteStopDto = (() => {
+      const maybeDuration = this.computeDurationMinutes(updated.arrivedAtUtc, updated.completedAtUtc);
+      if (maybeDuration != null && updated.actualServiceMinutes == null) {
+        return { ...updated, actualServiceMinutes: maybeDuration };
+      }
+      return updated;
+    })();
+
+    const nextStops = route.stops.map((s) => (s.id === finalUpdated.id ? { ...s, ...finalUpdated } : s));
+    this.route.set({ ...route, stops: nextStops });
+    this.scheduleMapRefresh();
+
+    if (updated.status === 'Completed' && updated.serviceLocationToolId) {
+      this.serviceLocationsApi.markDone(updated.serviceLocationToolId).subscribe({
+        error: (err) => {
+          this.error.set(err?.message ?? 'Failed to mark service location as completed');
+        },
+      });
+    }
+  }
+
+  sendRouteMessage(): void {
+    const route = this.route();
+    if (!route) return;
+    const messageText = this.routeMessageText().trim();
+    if (!messageText) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Message is required.',
+      });
+      return;
+    }
+    this.sendingMessage.set(true);
+    this.routeMessagesApi
+      .createMessage({
+        routeId: route.id,
+        routeStopId: null,
+        messageText,
+        category: this.routeMessageCategory(),
+      })
+      .subscribe({
+        next: () => {
+          this.sendingMessage.set(false);
+          this.routeMessageText.set('');
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Message sent',
+            detail: 'Planner has been notified.',
+          });
+        },
+        error: (err) => {
+          this.sendingMessage.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err?.error?.message || err?.message || 'Failed to send message',
+          });
+        },
+      });
+  }
+
+  sendStopMessage(stop: RouteStopDto): void {
+    const messageText = this.stopMessageText().trim();
+    if (!messageText) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Message is required.',
+      });
+      return;
+    }
+    this.sendingMessage.set(true);
+    this.routeMessagesApi
+      .createMessage({
+        routeId: this.route()!.id,
+        routeStopId: stop.id,
+        messageText,
+        category: this.stopMessageCategory(),
+      })
+      .subscribe({
+        next: () => {
+          this.sendingMessage.set(false);
+          this.stopMessageText.set('');
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Message sent',
+            detail: 'Planner has been notified.',
+          });
+        },
+        error: (err) => {
+          this.sendingMessage.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err?.error?.message || err?.message || 'Failed to send message',
+          });
+        },
+      });
   }
 
   private scheduleMapRefresh(): void {

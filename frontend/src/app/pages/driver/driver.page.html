@@ -1,3 +1,4 @@
+<p-toast></p-toast>
 <div class="pt-20 px-6 pb-6">
   <div class="max-w-7xl mx-auto">
     <div class="flex flex-col gap-4">
@@ -40,6 +41,24 @@
       @if (error()) {
         <div class="p-3 rounded border border-red-200 bg-red-50 text-red-700">
           {{ error() }}
+        </div>
+      }
+
+      @if (activeRouteChangeNotifications().length > 0) {
+        <div class="p-3 rounded border border-amber-200 bg-amber-50 text-amber-900">
+          <div class="font-semibold">Route updated</div>
+          <div class="text-sm text-amber-800">
+            Your planner adjusted your route. Review the updated stops before continuing.
+          </div>
+          <div class="flex flex-wrap gap-2 mt-2">
+            @for (notification of activeRouteChangeNotifications(); track notification.id) {
+              <p-button
+                label="Acknowledge"
+                size="small"
+                (onClick)="acknowledgeNotification(notification)"
+              />
+            }
+          </div>
         </div>
       }
 
@@ -101,6 +120,42 @@
                 }
               </div>
 
+              <div class="mt-3 pt-3 border-t">
+                <div class="font-semibold mb-2">Message planner (route)</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-semibold mb-1">Category</label>
+                    <p-select
+                      [options]="messageCategoryOptions"
+                      [ngModel]="routeMessageCategory()"
+                      (ngModelChange)="routeMessageCategory.set($event)"
+                      optionLabel="label"
+                      optionValue="value"
+                    />
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold mb-1">Message</label>
+                    <textarea
+                      pInputTextarea
+                      class="w-full"
+                      [ngModel]="routeMessageText()"
+                      (ngModelChange)="routeMessageText.set($event)"
+                      rows="2"
+                      placeholder="Share an update with the planner..."
+                    ></textarea>
+                  </div>
+                  <div class="md:col-span-2">
+                    <p-button
+                      label="Send message"
+                      icon="pi pi-send"
+                      size="small"
+                      (onClick)="sendRouteMessage()"
+                      [loading]="sendingMessage()"
+                    />
+                  </div>
+                </div>
+              </div>
+
             @if (selectedStop(); as s) {
               <div class="mt-3 pt-3 border-t">
                 <div class="flex items-start justify-between gap-2">
@@ -120,18 +175,18 @@
                   <div class="flex flex-col gap-2">
                     <div class="flex gap-2">
                       <p-button
-                        label="Start"
+                        label="Arrive"
                         icon="pi pi-play"
                         size="small"
-                        (onClick)="startStop(s)"
-                        [disabled]="s.status === 'Completed'"
+                        (onClick)="arriveStop(s)"
+                        [disabled]="s.status === 'Completed' || s.status === 'Arrived'"
                       />
                       <p-button
-                        label="Stop"
+                        label="Depart"
                         icon="pi pi-stop"
                         size="small"
                         severity="success"
-                        (onClick)="finishStop(s)"
+                        (onClick)="departStop(s)"
                         [disabled]="s.status === 'Completed'"
                       />
                       <p-button
@@ -187,6 +242,27 @@
                     />
                   </div>
 
+                  <div>
+                    <label class="block text-sm font-semibold mb-1">Issue</label>
+                    <p-select
+                      [options]="issueOptions"
+                      [ngModel]="s.issueCode ?? ''"
+                      (ngModelChange)="saveIssueCode(s, $event)"
+                      optionLabel="label"
+                      optionValue="value"
+                    />
+                  </div>
+
+                  <div class="flex items-center gap-2 mt-6">
+                    <p-checkbox
+                      [binary]="true"
+                      [ngModel]="s.followUpRequired"
+                      (ngModelChange)="saveFollowUpRequired(s, $event)"
+                      [inputId]="'follow-up-' + s.id"
+                    />
+                    <label [for]="'follow-up-' + s.id" class="text-sm">Follow-up required</label>
+                  </div>
+
                   <div class="md:col-span-2 space-y-2">
                     <div>
                       <label class="block text-sm font-semibold mb-1">Remark</label>
@@ -202,6 +278,54 @@
                     <div class="flex flex-col gap-2">
                       <div class="text-xs text-gray-500">
                         Remark is required when marking Not visited.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="md:col-span-2 space-y-3">
+                    <div>
+                      <label class="block text-sm font-semibold mb-1">Driver note</label>
+                      <textarea
+                        pInputTextarea
+                        class="w-full"
+                        [ngModel]="s.driverNote"
+                        (ngModelChange)="saveDriverNote(s, $event)"
+                        rows="2"
+                        placeholder="Optional note for the planner..."
+                      ></textarea>
+                    </div>
+                    <div class="border-t pt-2">
+                      <div class="font-semibold mb-2">Message planner (stop)</div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label class="block text-sm font-semibold mb-1">Category</label>
+                          <p-select
+                            [options]="messageCategoryOptions"
+                            [ngModel]="stopMessageCategory()"
+                            (ngModelChange)="stopMessageCategory.set($event)"
+                            optionLabel="label"
+                            optionValue="value"
+                          />
+                        </div>
+                        <div class="md:col-span-2">
+                          <label class="block text-sm font-semibold mb-1">Message</label>
+                          <textarea
+                            pInputTextarea
+                            class="w-full"
+                            [ngModel]="stopMessageText()"
+                            (ngModelChange)="stopMessageText.set($event)"
+                            rows="2"
+                            placeholder="Send a note about this stop..."
+                          ></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                          <p-button
+                            label="Send message"
+                            icon="pi pi-send"
+                            size="small"
+                            (onClick)="sendStopMessage(s)"
+                            [loading]="sendingMessage()"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -11,6 +11,9 @@ import type {
   ServiceLocationListParams,
   BulkInsertServiceLocationsRequest,
   BulkInsertResultDto,
+  ServiceLocationOpeningHoursDto,
+  ServiceLocationExceptionDto,
+  ServiceLocationConstraintDto,
 } from '@models/service-location.model';
 
 @Injectable({ providedIn: 'root' })
@@ -109,6 +112,34 @@ export class ServiceLocationsApiService {
       .set('serviceTypeId', serviceTypeId.toString())
       .set('ownerId', ownerId.toString());
     return this.http.post<BulkInsertResultDto>(`${this.baseUrl}/bulk/excel`, formData, { params });
+  }
+
+  getOpeningHours(toolId: string): Observable<ServiceLocationOpeningHoursDto[]> {
+    return this.http.get<ServiceLocationOpeningHoursDto[]>(`${this.baseUrl}/${toolId}/opening-hours`);
+  }
+
+  saveOpeningHours(toolId: string, items: ServiceLocationOpeningHoursDto[]): Observable<ServiceLocationOpeningHoursDto[]> {
+    return this.http.put<ServiceLocationOpeningHoursDto[]>(`${this.baseUrl}/${toolId}/opening-hours`, {
+      items,
+    });
+  }
+
+  getExceptions(toolId: string): Observable<ServiceLocationExceptionDto[]> {
+    return this.http.get<ServiceLocationExceptionDto[]>(`${this.baseUrl}/${toolId}/exceptions`);
+  }
+
+  saveExceptions(toolId: string, items: ServiceLocationExceptionDto[]): Observable<ServiceLocationExceptionDto[]> {
+    return this.http.put<ServiceLocationExceptionDto[]>(`${this.baseUrl}/${toolId}/exceptions`, {
+      items,
+    });
+  }
+
+  getConstraints(toolId: string): Observable<ServiceLocationConstraintDto> {
+    return this.http.get<ServiceLocationConstraintDto>(`${this.baseUrl}/${toolId}/constraints`);
+  }
+
+  saveConstraints(toolId: string, request: ServiceLocationConstraintDto): Observable<ServiceLocationConstraintDto> {
+    return this.http.put<ServiceLocationConstraintDto>(`${this.baseUrl}/${toolId}/constraints`, request);
   }
 }
 

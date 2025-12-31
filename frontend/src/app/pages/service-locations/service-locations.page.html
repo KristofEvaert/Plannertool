@@ -359,6 +359,105 @@
           class="w-full"
         />
       </div>
+      <div class="border-t border-gray-200 pt-3">
+        <div class="text-sm font-semibold mb-2">Opening Hours</div>
+        <label class="flex items-center gap-2 text-sm mb-3">
+          <input type="checkbox" [(ngModel)]="useDefaultOpeningHours" />
+          <span>Always open (no weekly schedule)</span>
+        </label>
+        <div class="space-y-2" [class.opacity-50]="useDefaultOpeningHours()">
+          @for (row of openingHours(); track row.dayOfWeek) {
+            <div class="flex items-center gap-2 text-sm">
+              <span class="w-24 font-medium">{{ row.label }}</span>
+              <input
+                type="time"
+                [(ngModel)]="row.openTime"
+                [disabled]="useDefaultOpeningHours() || row.isClosed"
+                class="border rounded px-2 py-1 text-sm"
+              />
+              <span class="text-gray-500">to</span>
+              <input
+                type="time"
+                [(ngModel)]="row.closeTime"
+                [disabled]="useDefaultOpeningHours() || row.isClosed"
+                class="border rounded px-2 py-1 text-sm"
+              />
+              <label class="flex items-center gap-2 text-xs text-gray-600">
+                <input type="checkbox" [(ngModel)]="row.isClosed" [disabled]="useDefaultOpeningHours()" />
+                Closed
+              </label>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="border-t border-gray-200 pt-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm font-semibold">Exceptions</div>
+          <p-button label="Add Exception" icon="pi pi-plus" size="small" (onClick)="addExceptionRow()" />
+        </div>
+        <div class="space-y-2">
+          @for (ex of exceptions(); let idx = $index; track idx) {
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+              <input type="date" [(ngModel)]="ex.date" class="border rounded px-2 py-1" />
+              <input
+                type="time"
+                [(ngModel)]="ex.openTime"
+                [disabled]="ex.isClosed"
+                class="border rounded px-2 py-1"
+              />
+              <span class="text-gray-500">to</span>
+              <input
+                type="time"
+                [(ngModel)]="ex.closeTime"
+                [disabled]="ex.isClosed"
+                class="border rounded px-2 py-1"
+              />
+              <label class="flex items-center gap-1 text-xs text-gray-600">
+                <input type="checkbox" [(ngModel)]="ex.isClosed" />
+                Closed
+              </label>
+              <input
+                type="text"
+                [(ngModel)]="ex.note"
+                placeholder="Note"
+                class="border rounded px-2 py-1 flex-1 min-w-[160px]"
+              />
+              <p-button
+                icon="pi pi-trash"
+                severity="secondary"
+                size="small"
+                [outlined]="true"
+                (onClick)="removeExceptionRow(idx)"
+              />
+            </div>
+          }
+        </div>
+      </div>
+      <div class="border-t border-gray-200 pt-3">
+        <div class="text-sm font-semibold mb-2">Visit Duration Constraints (minutes)</div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Min Visit Duration</label>
+            <p-inputNumber
+              [ngModel]="constraints().minVisitDurationMinutes"
+              (ngModelChange)="updateMinVisitDuration($event)"
+              [min]="0"
+              [max]="240"
+              class="w-full"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Max Visit Duration</label>
+            <p-inputNumber
+              [ngModel]="constraints().maxVisitDurationMinutes"
+              (ngModelChange)="updateMaxVisitDuration($event)"
+              [min]="0"
+              [max]="240"
+              class="w-full"
+            />
+          </div>
+        </div>
+      </div>
       <div>
         <label class="block text-sm font-medium mb-1">Service Type *</label>
         <p-dropdown

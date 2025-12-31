@@ -11,4 +11,5 @@ public class UpdateDriverRequest
     public int MaxWorkMinutesPerDay { get; set; }
     public int OwnerId { get; set; } // Required
     public bool IsActive { get; set; }
+    public List<int>? ServiceTypeIds { get; set; }
 }

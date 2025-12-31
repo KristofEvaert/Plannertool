@@ -5,15 +5,19 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { CalendarModule } from 'primeng/calendar';
 import { DropdownModule } from 'primeng/dropdown';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { forkJoin, catchError, of } from 'rxjs';
 import { DriversApiService } from '@services/drivers-api.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { ServiceLocationOwnersApiService, ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import type { ServiceTypeDto } from '@models/service-type.model';
 import {
   DriversBulkApiService,
 } from '@services/drivers-bulk-api.service';
@@ -48,10 +52,12 @@ interface GridCell {
     DialogModule,
     CalendarModule,
     DropdownModule,
+    MultiSelectModule,
     ToastModule,
     ConfirmDialogModule,
     InputTextModule,
     InputNumberModule,
+    TooltipModule,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './drivers-availability-grid.page.html',
@@ -62,17 +68,20 @@ export class DriversAvailabilityGridPage {
   private readonly availabilityApi = inject(DriverAvailabilityApiService);
   private readonly bulkApi = inject(DriversBulkApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
+  private readonly serviceTypesApi = inject(ServiceTypesApiService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly auth = inject(AuthService);
 
   drivers = signal<DriverDto[]>([]);
   owners = signal<ServiceLocationOwnerDto[]>([]);
+  serviceTypes = signal<ServiceTypeDto[]>([]);
   loading = signal(false);
   startDate = signal<Date>(this.getMondayOfWeek(new Date()));
   visibleDays = signal<number>(14);
   availabilityMap = signal<AvailabilityMap>({});
   driverColumnWidth = signal(200);
+  pendingUploadKind: 'availability' | 'serviceTypes' | null = null;
 
   // Filters
   ownerFilterId = signal<number | null>(null); // null = all owners
@@ -100,6 +109,7 @@ export class DriversAvailabilityGridPage {
     maxWorkMinutesPerDay: 480,
     ownerId: 0, // Will be set when owners are loaded
     isActive: true,
+    serviceTypeIds: [],
   });
 
   // Computed properties for dialog visibility (PrimeNG needs regular properties)
@@ -205,6 +215,7 @@ export class DriversAvailabilityGridPage {
     }
 
     this.loadOwners();
+    this.loadServiceTypes();
     this.loadDrivers();
 
     // Reload availability when drivers are loaded or date range changes
@@ -308,6 +319,35 @@ export class DriversAvailabilityGridPage {
           this.driverForm.update(f => ({ ...f, ownerId: effective[0].id }));
         }
       });
+  }
+
+  loadServiceTypes(): void {
+    this.serviceTypesApi
+      .getAll(true)
+      .pipe(
+        catchError((err) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to load service types',
+          });
+          return of([]);
+        })
+      )
+      .subscribe((serviceTypes) => {
+        this.serviceTypes.set(serviceTypes);
+      });
+  }
+
+  getServiceTypeTooltip(driver: DriverDto): string {
+    const ids = driver.serviceTypeIds ?? [];
+    if (ids.length === 0) {
+      return 'No service types';
+    }
+
+    const map = new Map(this.serviceTypes().map((st) => [st.id, st.name]));
+    const names = ids.map((id) => map.get(id) ?? `#${id}`);
+    return names.join(', ');
   }
 
   loadDrivers(): void {
@@ -567,12 +607,54 @@ export class DriversAvailabilityGridPage {
       });
   }
 
+  downloadServiceTypesTemplate(): void {
+    this.bulkApi
+      .downloadServiceTypesTemplateExcel()
+      .pipe(
+        catchError((err) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to download service types template',
+          });
+          return of(null);
+        })
+      )
+      .subscribe((blob) => {
+        if (blob) {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `driver-service-types-template.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Template downloaded',
+          });
+        }
+      });
+  }
+
+  triggerUpload(kind: 'availability' | 'serviceTypes', input: HTMLInputElement): void {
+    this.pendingUploadKind = kind;
+    input.click();
+  }
+
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      this.uploadExcel(file);
+      if (this.pendingUploadKind === 'serviceTypes') {
+        this.uploadServiceTypesExcel(file);
+      } else {
+        this.uploadExcel(file);
+      }
       input.value = '';
+      this.pendingUploadKind = null;
     }
   }
 
@@ -616,6 +698,40 @@ export class DriversAvailabilityGridPage {
       });
   }
 
+  uploadServiceTypesExcel(file: File): void {
+    this.loading.set(true);
+    this.bulkApi
+      .uploadServiceTypesExcel(file)
+      .pipe(
+        catchError((err) => {
+          this.loading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to upload service types file',
+          });
+          return of(null);
+        })
+      )
+      .subscribe((result) => {
+        this.loading.set(false);
+        if (result) {
+          this.loadDrivers();
+          const message = `Updated: ${result.updated}`;
+          this.messageService.add({
+            severity: result.errors.length > 0 ? 'warn' : 'success',
+            summary: 'Upload Complete',
+            detail: message + (result.errors.length > 0 ? ` (${result.errors.length} errors)` : ''),
+            life: 5000,
+          });
+
+          if (result.errors.length > 0) {
+            console.error('Bulk upload errors:', result.errors);
+          }
+        }
+      });
+  }
+
   // Driver CRUD operations
   openEditDriverDialog(driver: DriverDto): void {
     this.isEditMode.set(true);
@@ -630,6 +746,7 @@ export class DriversAvailabilityGridPage {
       maxWorkMinutesPerDay: driver.maxWorkMinutesPerDay,
       ownerId: driver.ownerId,
       isActive: driver.isActive,
+      serviceTypeIds: driver.serviceTypeIds ? [...driver.serviceTypeIds] : [],
     });
     this.showDriverDialog.set(true);
   }
@@ -678,6 +795,7 @@ export class DriversAvailabilityGridPage {
         maxWorkMinutesPerDay: form.maxWorkMinutesPerDay,
         ownerId: form.ownerId,
         isActive: form.isActive,
+        serviceTypeIds: form.serviceTypeIds ? [...form.serviceTypeIds] : [],
       };
       this.driversApi
         .updateDriver(selected.toolId, updateReq)

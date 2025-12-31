@@ -57,6 +57,23 @@ public class DriversController : ControllerBase
         return owner?.Name ?? string.Empty;
     }
 
+    private async Task<Dictionary<int, List<int>>> GetServiceTypeIdsByDriverAsync(
+        List<int> driverIds,
+        CancellationToken cancellationToken)
+    {
+        if (driverIds.Count == 0)
+        {
+            return new Dictionary<int, List<int>>();
+        }
+
+        return await _dbContext.DriverServiceTypes
+            .AsNoTracking()
+            .Where(dst => driverIds.Contains(dst.DriverId))
+            .GroupBy(dst => dst.DriverId)
+            .Select(g => new { DriverId = g.Key, ServiceTypeIds = g.Select(x => x.ServiceTypeId).ToList() })
+            .ToDictionaryAsync(x => x.DriverId, x => x.ServiceTypeIds, cancellationToken);
+    }
+
     /// <summary>
     /// Gets all drivers
     /// </summary>
@@ -90,6 +107,10 @@ public class DriversController : ControllerBase
             .OrderBy(d => d.Name)
             .ToListAsync(cancellationToken);
 
+        var serviceTypeIdsByDriver = await GetServiceTypeIdsByDriverAsync(
+            drivers.Select(d => d.Id).ToList(),
+            cancellationToken);
+
         var dtos = drivers.Select(d => new DriverDto
         {
             ToolId = d.ToolId,
@@ -102,7 +123,8 @@ public class DriversController : ControllerBase
             MaxWorkMinutesPerDay = d.MaxWorkMinutesPerDay,
             OwnerId = d.OwnerId,
             OwnerName = owners.ContainsKey(d.OwnerId) ? owners[d.OwnerId] : string.Empty,
-            IsActive = d.IsActive
+            IsActive = d.IsActive,
+            ServiceTypeIds = serviceTypeIdsByDriver.TryGetValue(d.Id, out var ids) ? ids : new List<int>()
         }).ToList();
 
         return Ok(dtos);
@@ -136,6 +158,11 @@ public class DriversController : ControllerBase
         }
 
         var ownerName = await GetOwnerNameAsync(driver.OwnerId, cancellationToken);
+        var serviceTypeIds = await _dbContext.DriverServiceTypes
+            .AsNoTracking()
+            .Where(dst => dst.DriverId == driver.Id)
+            .Select(dst => dst.ServiceTypeId)
+            .ToListAsync(cancellationToken);
 
         var dto = new DriverDto
         {
@@ -149,7 +176,8 @@ public class DriversController : ControllerBase
             MaxWorkMinutesPerDay = driver.MaxWorkMinutesPerDay,
             OwnerId = driver.OwnerId,
             OwnerName = ownerName,
-            IsActive = driver.IsActive
+            IsActive = driver.IsActive,
+            ServiceTypeIds = serviceTypeIds
         };
 
         return Ok(dto);
@@ -345,9 +373,71 @@ public class DriversController : ControllerBase
         driver.IsActive = request.IsActive;
         driver.UpdatedAtUtc = DateTime.UtcNow;
 
+        if (request.ServiceTypeIds != null)
+        {
+            var requestedIds = request.ServiceTypeIds
+                .Distinct()
+                .ToList();
+
+            if (requestedIds.Any(id => id <= 0))
+            {
+                return Problem(
+                    detail: "ServiceTypeIds must be positive integers",
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Validation Error");
+            }
+
+            var validServiceTypeIds = await _dbContext.ServiceTypes
+                .AsNoTracking()
+                .Where(st => requestedIds.Contains(st.Id))
+                .Select(st => st.Id)
+                .ToListAsync(cancellationToken);
+
+            var missing = requestedIds.Except(validServiceTypeIds).ToList();
+            if (missing.Count > 0)
+            {
+                return Problem(
+                    detail: $"ServiceTypeIds not found: {string.Join(", ", missing)}",
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Validation Error");
+            }
+
+            var existingLinks = await _dbContext.DriverServiceTypes
+                .Where(dst => dst.DriverId == driver.Id)
+                .ToListAsync(cancellationToken);
+
+            var existingIds = existingLinks.Select(x => x.ServiceTypeId).ToHashSet();
+            var toRemove = existingLinks.Where(x => !requestedIds.Contains(x.ServiceTypeId)).ToList();
+            if (toRemove.Count > 0)
+            {
+                _dbContext.DriverServiceTypes.RemoveRange(toRemove);
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var serviceTypeId in requestedIds)
+            {
+                if (existingIds.Contains(serviceTypeId))
+                {
+                    continue;
+                }
+
+                _dbContext.DriverServiceTypes.Add(new DriverServiceType
+                {
+                    DriverId = driver.Id,
+                    ServiceTypeId = serviceTypeId,
+                    CreatedAtUtc = now
+                });
+            }
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var ownerName = await GetOwnerNameAsync(driver.OwnerId, cancellationToken);
+        var serviceTypeIds = await _dbContext.DriverServiceTypes
+            .AsNoTracking()
+            .Where(dst => dst.DriverId == driver.Id)
+            .Select(dst => dst.ServiceTypeId)
+            .ToListAsync(cancellationToken);
 
         var dto = new DriverDto
         {
@@ -361,7 +451,8 @@ public class DriversController : ControllerBase
             MaxWorkMinutesPerDay = driver.MaxWorkMinutesPerDay,
             OwnerId = driver.OwnerId,
             OwnerName = ownerName,
-            IsActive = driver.IsActive
+            IsActive = driver.IsActive,
+            ServiceTypeIds = serviceTypeIds
         };
 
         return Ok(dto);

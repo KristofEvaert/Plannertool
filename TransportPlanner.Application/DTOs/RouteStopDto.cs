@@ -11,11 +11,19 @@ public class RouteStopDto
     public double Longitude { get; set; }
     public int ServiceMinutes { get; set; }
     public int? ActualServiceMinutes { get; set; }
+    public DateTime? ActualArrivalUtc { get; set; }
+    public DateTime? ActualDepartureUtc { get; set; }
     public double TravelKmFromPrev { get; set; }
     public int TravelMinutesFromPrev { get; set; }
     public string Status { get; set; } = string.Empty; // RouteStopStatus as string
     public DateTime? ArrivedAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
     public string? Note { get; set; }
+    public string? DriverNote { get; set; }
+    public string? IssueCode { get; set; }
+    public bool FollowUpRequired { get; set; }
+    public string ProofStatus { get; set; } = string.Empty;
+    public Guid? LastUpdatedByUserId { get; set; }
+    public DateTime? LastUpdatedUtc { get; set; }
     public string? DriverInstruction { get; set; }
 }

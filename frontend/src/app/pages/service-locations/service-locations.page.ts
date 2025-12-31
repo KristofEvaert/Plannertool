@@ -21,10 +21,16 @@ import type {
   UpdateServiceLocationRequest,
   ServiceLocationListParams,
   BulkInsertResultDto,
+  ServiceLocationOpeningHoursDto,
+  ServiceLocationExceptionDto,
+  ServiceLocationConstraintDto,
 } from '@models/service-location.model';
 import type { ServiceTypeDto } from '@models/service-type.model';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { toYmd } from '@utils/date.utils';
+
+type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & { label: string };
+type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
 
 @Component({
   selector: 'app-service-locations',
@@ -97,6 +103,15 @@ export class ServiceLocationsPage {
     driverInstruction: '',
   });
 
+  readonly weekDayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  useDefaultOpeningHours = signal(true);
+  openingHours = signal<OpeningHoursFormRow[]>([]);
+  exceptions = signal<ExceptionFormRow[]>([]);
+  constraints = signal<ServiceLocationConstraintDto>({
+    minVisitDurationMinutes: null,
+    maxVisitDurationMinutes: null,
+  });
+
   priorityDate = signal<Date | null>(null);
 
   statusFilterOptions = [
@@ -115,6 +130,20 @@ export class ServiceLocationsPage {
     { label: 'Planned', value: 'Planned' },
     { label: 'Not Visited', value: 'NotVisited' },
   ];
+
+  updateMinVisitDuration(value: number | null | undefined): void {
+    this.constraints.update((current) => ({
+      ...current,
+      minVisitDurationMinutes: value ?? null,
+    }));
+  }
+
+  updateMaxVisitDuration(value: number | null | undefined): void {
+    this.constraints.update((current) => ({
+      ...current,
+      maxVisitDurationMinutes: value ?? null,
+    }));
+  }
 
   serviceTypeFilterOptions = computed(() => [
     { label: 'All', value: null },
@@ -327,6 +356,10 @@ export class ServiceLocationsPage {
       ownerId: defaultOwnerId,
       driverInstruction: '',
     });
+    this.useDefaultOpeningHours.set(true);
+    this.openingHours.set(this.buildDefaultOpeningHours());
+    this.exceptions.set([]);
+    this.constraints.set({ minVisitDurationMinutes: null, maxVisitDurationMinutes: null });
     this.showDialog.set(true);
   }
 
@@ -346,7 +379,114 @@ export class ServiceLocationsPage {
       ownerId: item.ownerId,
       driverInstruction: item.driverInstruction || '',
     });
+    this.loadLocationExtras(item.toolId);
     this.showDialog.set(true);
+  }
+
+  private buildDefaultOpeningHours(): OpeningHoursFormRow[] {
+    return this.weekDayLabels.map((label, index) => ({
+      id: undefined,
+      dayOfWeek: index,
+      label,
+      openTime: '08:00',
+      closeTime: '17:00',
+      isClosed: false,
+    }));
+  }
+
+  private normalizeOpeningHours(items: ServiceLocationOpeningHoursDto[]): OpeningHoursFormRow[] {
+    const rows = this.buildDefaultOpeningHours();
+    for (const item of items) {
+      const target = rows.find((row) => row.dayOfWeek === item.dayOfWeek);
+      if (!target) continue;
+      target.openTime = item.openTime ?? target.openTime;
+      target.closeTime = item.closeTime ?? target.closeTime;
+      target.isClosed = item.isClosed;
+    }
+    return rows;
+  }
+
+  private loadLocationExtras(toolId: string): void {
+    forkJoin({
+      hours: this.api.getOpeningHours(toolId).pipe(catchError(() => of([]))),
+      exceptions: this.api.getExceptions(toolId).pipe(catchError(() => of([]))),
+      constraints: this.api.getConstraints(toolId).pipe(
+        catchError(() =>
+          of({
+            minVisitDurationMinutes: null,
+            maxVisitDurationMinutes: null,
+          })
+        )
+      ),
+    }).subscribe(({ hours, exceptions, constraints }) => {
+      const hasHours = hours.length > 0;
+      this.useDefaultOpeningHours.set(!hasHours);
+      this.openingHours.set(hasHours ? this.normalizeOpeningHours(hours) : this.buildDefaultOpeningHours());
+      this.exceptions.set(
+        exceptions.map((ex) => ({
+          id: ex.id,
+          date: toYmd(new Date(ex.date)),
+          openTime: ex.openTime ?? '08:00',
+          closeTime: ex.closeTime ?? '17:00',
+          isClosed: ex.isClosed,
+          note: ex.note ?? '',
+        }))
+      );
+      this.constraints.set({
+        minVisitDurationMinutes: constraints.minVisitDurationMinutes ?? null,
+        maxVisitDurationMinutes: constraints.maxVisitDurationMinutes ?? null,
+      });
+    });
+  }
+
+  private saveLocationExtras(toolId: string) {
+    const hoursPayload = this.useDefaultOpeningHours()
+      ? []
+      : this.openingHours().map(({ label, ...rest }) => ({
+          ...rest,
+          openTime: rest.isClosed ? null : rest.openTime || null,
+          closeTime: rest.isClosed ? null : rest.closeTime || null,
+        }));
+
+    const exceptionsPayload = this.exceptions()
+      .filter((ex) => !!ex.date)
+      .map((ex) => ({
+        id: ex.id,
+        date: ex.date,
+        openTime: ex.isClosed ? null : ex.openTime || null,
+        closeTime: ex.isClosed ? null : ex.closeTime || null,
+        isClosed: ex.isClosed,
+        note: ex.note?.trim() || undefined,
+      }));
+
+    const constraintPayload: ServiceLocationConstraintDto = {
+      minVisitDurationMinutes: this.constraints().minVisitDurationMinutes ?? null,
+      maxVisitDurationMinutes: this.constraints().maxVisitDurationMinutes ?? null,
+    };
+
+    return forkJoin({
+      hours: this.api.saveOpeningHours(toolId, hoursPayload),
+      exceptions: this.api.saveExceptions(toolId, exceptionsPayload),
+      constraints: this.api.saveConstraints(toolId, constraintPayload),
+    });
+  }
+
+  addExceptionRow(): void {
+    const rows = this.exceptions();
+    rows.push({
+      date: toYmd(new Date()),
+      openTime: '08:00',
+      closeTime: '17:00',
+      isClosed: false,
+      note: '',
+    });
+    this.exceptions.set([...rows]);
+  }
+
+  removeExceptionRow(index: number): void {
+    const rows = this.exceptions();
+    rows.splice(index, 1);
+    this.exceptions.set([...rows]);
   }
 
   openPriorityDialog(item: ServiceLocationDto): void {
@@ -408,20 +548,31 @@ export class ServiceLocationsPage {
           });
           return of(null);
         })
-      )
-      .subscribe((result) => {
-        this.loading.set(false);
-        if (result) {
-          this.showDialog.set(false);
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: isEdit ? 'Service location updated' : 'Service location created',
-          });
-          this.loadData();
-        }
-      });
-  }
+        )
+        .subscribe((result) => {
+          this.loading.set(false);
+          if (result) {
+            this.saveLocationExtras(result.toolId).pipe(
+              catchError((err) => {
+                this.messageService.add({
+                  severity: 'error',
+                  summary: 'Error',
+                  detail: err.detail || err.message || 'Failed to save opening hours or exceptions',
+                });
+                return of(null);
+              })
+            ).subscribe(() => {
+              this.showDialog.set(false);
+              this.messageService.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: isEdit ? 'Service location updated' : 'Service location created',
+              });
+              this.loadData();
+            });
+          }
+        });
+    }
 
   savePriorityDate(): void {
     const item = this.selectedItemForPriority();

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Applicatio
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Infrastructure", "TransportPlanner.Infrastructure\TransportPlanner.Infrastructure.csproj", "{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportPlanner.Tests", "TransportPlanner.Tests\TransportPlanner.Tests.csproj", "{F7B96388-10A1-4D53-9B0F-0F7C5E8F35C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32753D2C-5424-4C0F-8ACA-FE0DE97FD47B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7B96388-10A1-4D53-9B0F-0F7C5E8F35C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7B96388-10A1-4D53-9B0F-0F7C5E8F35C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7B96388-10A1-4D53-9B0F-0F7C5E8F35C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7B96388-10A1-4D53-9B0F-0F7C5E8F35C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

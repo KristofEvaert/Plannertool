@@ -10,6 +10,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { CalendarModule } from 'primeng/calendar';
 import { DropdownModule } from 'primeng/dropdown';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService, ConfirmationService } from 'primeng/api';
@@ -17,6 +19,8 @@ import { catchError, of } from 'rxjs';
 import { DriversApiService } from '@services/drivers-api.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { ServiceLocationOwnersApiService, ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import type { ServiceTypeDto } from '@models/service-type.model';
 import type {
   DriverDto,
   CreateDriverRequest,
@@ -40,6 +44,8 @@ import { toYmd, parseYmd } from '@utils/date.utils';
     InputNumberModule,
     CalendarModule,
     DropdownModule,
+    MultiSelectModule,
+    TooltipModule,
     ConfirmDialogModule,
     ToastModule,
   ],
@@ -51,11 +57,13 @@ export class DriversPage {
   private readonly driversApi = inject(DriversApiService);
   private readonly availabilityApi = inject(DriverAvailabilityApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
+  private readonly serviceTypesApi = inject(ServiceTypesApiService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
 
   drivers = signal<DriverDto[]>([]);
   owners = signal<ServiceLocationOwnerDto[]>([]);
+  serviceTypes = signal<ServiceTypeDto[]>([]);
   loading = signal(false);
   selectedDriver = signal<DriverDto | null>(null);
   selectedDate = signal<Date | null>(null);
@@ -80,6 +88,7 @@ export class DriversPage {
     maxWorkMinutesPerDay: 480,
     ownerId: 0, // Will be set when owners are loaded
     isActive: true,
+    serviceTypeIds: [],
   });
 
   // Availability dialog
@@ -137,6 +146,7 @@ export class DriversPage {
 
   constructor() {
     this.loadOwners();
+    this.loadServiceTypes();
     this.loadDrivers();
 
     // When selected driver changes, load availability for current month
@@ -186,6 +196,35 @@ export class DriversPage {
           this.driverForm.update(f => ({ ...f, ownerId: owners[0].id }));
         }
       });
+  }
+
+  loadServiceTypes(): void {
+    this.serviceTypesApi
+      .getAll(true)
+      .pipe(
+        catchError((err) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to load service types',
+          });
+          return of([]);
+        })
+      )
+      .subscribe((serviceTypes) => {
+        this.serviceTypes.set(serviceTypes);
+      });
+  }
+
+  getServiceTypeTooltip(driver: DriverDto): string {
+    const ids = driver.serviceTypeIds ?? [];
+    if (ids.length === 0) {
+      return 'No service types';
+    }
+
+    const map = new Map(this.serviceTypes().map((st) => [st.id, st.name]));
+    const names = ids.map((id) => map.get(id) ?? `#${id}`);
+    return names.join(', ');
   }
 
   loadDrivers(): void {
@@ -246,6 +285,7 @@ export class DriversPage {
       maxWorkMinutesPerDay: driver.maxWorkMinutesPerDay,
       ownerId: driver.ownerId,
       isActive: driver.isActive,
+      serviceTypeIds: driver.serviceTypeIds ? [...driver.serviceTypeIds] : [],
     });
     this.showDriverDialog.set(true);
   }
@@ -274,6 +314,7 @@ export class DriversPage {
       maxWorkMinutesPerDay: driver.maxWorkMinutesPerDay,
       ownerId: newOwnerId,
       isActive: driver.isActive,
+      serviceTypeIds: driver.serviceTypeIds ? [...driver.serviceTypeIds] : [],
     };
 
     this.loading.set(true);
@@ -343,6 +384,7 @@ export class DriversPage {
         maxWorkMinutesPerDay: form.maxWorkMinutesPerDay,
         ownerId: form.ownerId,
         isActive: form.isActive,
+        serviceTypeIds: form.serviceTypeIds ? [...form.serviceTypeIds] : [],
       };
       this.driversApi
         .updateDriver(selected.toolId, updateReq)

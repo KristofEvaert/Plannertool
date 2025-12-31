@@ -23,6 +23,7 @@ public class ServiceTypesController : ControllerBase
     /// Get all service types
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(List<ServiceTypeDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ServiceTypeDto>>> GetServiceTypes(
         [FromQuery] bool includeInactive = false,
@@ -54,6 +55,7 @@ public class ServiceTypesController : ControllerBase
     /// Get service type by ID
     /// </summary>
     [HttpGet("{id:int}")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ServiceTypeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ServiceTypeDto>> GetServiceType(

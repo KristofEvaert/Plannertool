@@ -1,0 +1,44 @@
+<p-toast></p-toast>
+<div class="pt-20 px-6 pb-6">
+  <div class="max-w-xl mx-auto">
+    <div class="card p-4 space-y-4">
+      <div class="font-semibold text-lg">System Cost Settings</div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Fuel cost per km</label>
+        <p-inputNumber
+          [ngModel]="form().fuelCostPerKm"
+          (ngModelChange)="onFormChange('fuelCostPerKm', $event)"
+          [min]="0"
+          [step]="0.01"
+          mode="decimal"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Personnel cost per hour</label>
+        <p-inputNumber
+          [ngModel]="form().personnelCostPerHour"
+          (ngModelChange)="onFormChange('personnelCostPerHour', $event)"
+          [min]="0"
+          [step]="0.01"
+          mode="decimal"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Currency code</label>
+        <input
+          pInputText
+          class="w-32"
+          [ngModel]="form().currencyCode"
+          (ngModelChange)="onFormChange('currencyCode', $event)"
+        />
+      </div>
+
+      <div class="flex justify-end">
+        <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+      </div>
+    </div>
+  </div>
+</div>

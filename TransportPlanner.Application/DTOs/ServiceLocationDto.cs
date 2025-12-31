@@ -2,6 +2,7 @@ namespace TransportPlanner.Application.DTOs;
 
 public class ServiceLocationDto
 {
+    public int Id { get; set; }
     public Guid ToolId { get; set; }
     public int ErpId { get; set; }
     public string Name { get; set; } = string.Empty;

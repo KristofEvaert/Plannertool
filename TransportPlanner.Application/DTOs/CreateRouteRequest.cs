@@ -8,6 +8,13 @@ public class CreateRouteRequest
     public Guid DriverToolId { get; set; } // Use ToolId instead of DriverId
     public int TotalMinutes { get; set; }
     public double TotalKm { get; set; }
+    public string? StartAddress { get; set; }
+    public double? StartLatitude { get; set; }
+    public double? StartLongitude { get; set; }
+    public string? EndAddress { get; set; }
+    public double? EndLatitude { get; set; }
+    public double? EndLongitude { get; set; }
+    public int? WeightTemplateId { get; set; }
     public List<CreateRouteStopRequest> Stops { get; set; } = new List<CreateRouteStopRequest>();
 }
 

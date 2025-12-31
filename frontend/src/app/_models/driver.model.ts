@@ -10,6 +10,7 @@ export interface DriverDto {
   ownerId: number;
   ownerName?: string; // Convenience field from backend
   isActive: boolean;
+  serviceTypeIds: number[];
 }
 
 export interface CreateDriverRequest {
@@ -22,6 +23,7 @@ export interface CreateDriverRequest {
   maxWorkMinutesPerDay: number;
   ownerId: number; // Required
   isActive: boolean;
+  serviceTypeIds?: number[];
 }
 
 export interface UpdateDriverRequest {
@@ -34,6 +36,7 @@ export interface UpdateDriverRequest {
   maxWorkMinutesPerDay: number;
   ownerId: number; // Required
   isActive: boolean;
+  serviceTypeIds?: number[];
 }
 
 export interface DriverAvailabilityDto {

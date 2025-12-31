@@ -14,9 +14,20 @@ public class Route
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public string? Notes { get; set; }
+    public string? StartAddress { get; set; }
+    public double? StartLatitude { get; set; }
+    public double? StartLongitude { get; set; }
+    public string? EndAddress { get; set; }
+    public double? EndLatitude { get; set; }
+    public double? EndLongitude { get; set; }
+    public int? WeightTemplateId { get; set; }
     
     // Navigation
     public Driver Driver { get; set; } = null!;
     public ICollection<RouteStop> Stops { get; set; } = new List<RouteStop>();
+    public WeightTemplate? WeightTemplate { get; set; }
+    public ICollection<RouteVersion> Versions { get; set; } = new List<RouteVersion>();
+    public ICollection<RouteChangeNotification> ChangeNotifications { get; set; } = new List<RouteChangeNotification>();
+    public ICollection<RouteMessage> Messages { get; set; } = new List<RouteMessage>();
 }
 

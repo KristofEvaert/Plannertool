@@ -23,6 +23,26 @@ public class UpdateRouteStopRequest
     public string? Note { get; set; }
 
     /// <summary>
+    /// Optional driver note (separate from planner notes).
+    /// </summary>
+    public string? DriverNote { get; set; }
+
+    /// <summary>
+    /// Optional issue code (e.g., access denied, customer not present).
+    /// </summary>
+    public string? IssueCode { get; set; }
+
+    /// <summary>
+    /// Marks whether follow-up is required.
+    /// </summary>
+    public bool? FollowUpRequired { get; set; }
+
+    /// <summary>
+    /// Optional proof status override.
+    /// </summary>
+    public string? ProofStatus { get; set; }
+
+    /// <summary>
     /// Optional status override (e.g., NotVisited).
     /// </summary>
     public string? Status { get; set; }

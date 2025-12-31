@@ -104,6 +104,27 @@ public class MapController : ControllerBase
             .Select(sl => (sl.PriorityDate?.Date ?? sl.DueDate.Date))
             .ToList();
 
+        var locationIds = filteredItems.Select(sl => sl.Id).ToList();
+        var plannedStops = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Where(rs => rs.ServiceLocationId.HasValue
+                && locationIds.Contains(rs.ServiceLocationId.Value)
+                && rs.Route.Date >= fromDate
+                && rs.Route.Date <= toDate)
+            .Select(rs => new
+            {
+                ServiceLocationId = rs.ServiceLocationId!.Value,
+                RouteDate = rs.Route.Date,
+                DriverName = rs.Route.Driver.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        var plannedMap = plannedStops
+            .GroupBy(x => x.ServiceLocationId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(x => x.RouteDate).First());
+
         var dto = new ServiceLocationsMapResponseDto
         {
             From = fromDate,
@@ -124,7 +145,9 @@ public class MapController : ControllerBase
                 OrderDate = (sl.PriorityDate?.Date ?? sl.DueDate.Date),
                 ServiceTypeId = sl.ServiceTypeId,
                 Status = sl.Status.ToString(),
-                ServiceMinutes = sl.ServiceMinutes
+                ServiceMinutes = sl.ServiceMinutes,
+                PlannedDate = plannedMap.TryGetValue(sl.Id, out var planned) ? planned.RouteDate.Date : null,
+                PlannedDriverName = plannedMap.TryGetValue(sl.Id, out planned) ? planned.DriverName : null
             }).ToList()
         };
 
@@ -157,5 +180,7 @@ public class ServiceLocationMapDto
     public int ServiceTypeId { get; set; }
     public string Status { get; set; } = string.Empty; // Open / Planned
     public int ServiceMinutes { get; set; }
+    public DateTime? PlannedDate { get; set; }
+    public string? PlannedDriverName { get; set; }
 }
 

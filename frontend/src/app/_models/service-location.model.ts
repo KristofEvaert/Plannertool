@@ -1,4 +1,5 @@
 export interface ServiceLocationDto {
+  id: number;
   toolId: string; // Guid as string
   erpId: number;
   name: string;
@@ -99,5 +100,27 @@ export interface BulkInsertResultDto {
   updated: number;
   skipped: number;
   errors: BulkErrorDto[];
+}
+
+export interface ServiceLocationOpeningHoursDto {
+  id?: number;
+  dayOfWeek: number;
+  openTime?: string | null;
+  closeTime?: string | null;
+  isClosed: boolean;
+}
+
+export interface ServiceLocationExceptionDto {
+  id?: number;
+  date: string;
+  openTime?: string | null;
+  closeTime?: string | null;
+  isClosed: boolean;
+  note?: string;
+}
+
+export interface ServiceLocationConstraintDto {
+  minVisitDurationMinutes?: number | null;
+  maxVisitDurationMinutes?: number | null;
 }
 

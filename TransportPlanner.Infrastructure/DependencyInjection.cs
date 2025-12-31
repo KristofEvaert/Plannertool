@@ -56,6 +56,7 @@ public static class DependencyInjection
         
         // Register bulk insert service for service locations
         services.AddScoped<ServiceLocationBulkInsertService>();
+        services.AddScoped<ITravelTimeModelService, TravelTimeModelService>();
 
         services.AddHttpClient<IGeocodingService, OpenStreetMapGeocodingService>(client =>
         {

@@ -16,6 +16,7 @@ using TransportPlanner.Infrastructure.Options;
 using TransportPlanner.Api.Middleware;
 using TransportPlanner.Api.Options;
 using TransportPlanner.Api.Services.AuditTrail;
+using TransportPlanner.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +63,7 @@ builder.Services.AddCors(options =>
 
 // Add ProblemDetails
 builder.Services.AddProblemDetails();
+builder.Services.AddSignalR();
 
 builder.Services.AddDbContext<TransportPlannerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -157,6 +159,7 @@ app.UseMiddleware<AuditTrailMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<RouteMessagesHub>("/hubs/route-messages");
 
 // Apply database migrations and seed on startup
 using (var scope = app.Services.CreateScope())

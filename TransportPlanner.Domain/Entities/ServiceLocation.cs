@@ -21,4 +21,10 @@ public class ServiceLocation
     public string? DriverInstruction { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    public ICollection<ServiceLocationOpeningHours> OpeningHours { get; set; } = new List<ServiceLocationOpeningHours>();
+    public ICollection<ServiceLocationException> Exceptions { get; set; } = new List<ServiceLocationException>();
+    public ServiceLocationConstraint? Constraint { get; set; }
+    public ICollection<WeightTemplateLocationLink> WeightTemplateLinks { get; set; } = new List<WeightTemplateLocationLink>();
+    public ICollection<LocationGroupMember> GroupMemberships { get; set; } = new List<LocationGroupMember>();
 }

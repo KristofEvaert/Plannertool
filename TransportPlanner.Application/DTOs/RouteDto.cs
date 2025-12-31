@@ -16,6 +16,13 @@ public class RouteDto
     public string DriverName { get; set; } = string.Empty;
     public double? DriverStartLatitude { get; set; }
     public double? DriverStartLongitude { get; set; }
+    public string? StartAddress { get; set; }
+    public double? StartLatitude { get; set; }
+    public double? StartLongitude { get; set; }
+    public string? EndAddress { get; set; }
+    public double? EndLatitude { get; set; }
+    public double? EndLongitude { get; set; }
+    public int? WeightTemplateId { get; set; }
     public int TotalMinutes { get; set; }
     public double TotalKm { get; set; }
     public string Status { get; set; } = string.Empty; // RouteStatus as string
