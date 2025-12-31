@@ -21,6 +21,7 @@ import type { ServiceTypeDto } from '@models/service-type.model';
 import {
   DriversBulkApiService,
 } from '@services/drivers-bulk-api.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
   DriverDto,
   DriverAvailabilityDto,
@@ -58,6 +59,7 @@ interface GridCell {
     InputTextModule,
     InputNumberModule,
     TooltipModule,
+    HelpManualComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './drivers-availability-grid.page.html',

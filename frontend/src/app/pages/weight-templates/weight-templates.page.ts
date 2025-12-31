@@ -18,6 +18,7 @@ import { ServiceLocationsApiService } from '@services/service-locations-api.serv
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { AuthService } from '@services/auth.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { WeightTemplateDto, SaveWeightTemplateRequest } from '@models/weight-template.model';
 import type { LocationGroupDto } from '@models/location-group.model';
 import type { ServiceLocationDto } from '@models/service-location.model';
@@ -42,6 +43,7 @@ type Option = { label: string; value: number };
     CheckboxModule,
     TagModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './weight-templates.page.html',

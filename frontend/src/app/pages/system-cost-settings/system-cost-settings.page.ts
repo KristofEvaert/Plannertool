@@ -8,6 +8,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { SystemCostSettingsApiService } from '@services/system-cost-settings-api.service';
 import type { SystemCostSettingsDto } from '@models/system-cost-settings.model';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 
 @Component({
   selector: 'app-system-cost-settings',
@@ -19,6 +20,7 @@ import type { SystemCostSettingsDto } from '@models/system-cost-settings.model';
     InputTextModule,
     ButtonModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './system-cost-settings.page.html',

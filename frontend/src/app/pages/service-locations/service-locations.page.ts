@@ -15,6 +15,7 @@ import { ServiceLocationsApiService } from '@services/service-locations-api.serv
 import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 import { AuthService } from '@services/auth.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
   ServiceLocationDto,
   CreateServiceLocationRequest,
@@ -46,6 +47,7 @@ type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
     InputNumberModule,
     ToastModule,
     InputTextarea,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './service-locations.page.html',

@@ -10,6 +10,7 @@ import { MessageService } from 'primeng/api';
 import { UsersApiService } from '@services/users-api.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { AuthService } from '@services/auth.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { UserDto } from '@models/user.model';
 
 const ALL_ROLES = ['SuperAdmin', 'Admin', 'Planner', 'Driver'] as const;
@@ -18,7 +19,16 @@ type Role = (typeof ALL_ROLES)[number];
 @Component({
   selector: 'app-users-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, ButtonModule, InputTextModule, DropdownModule, ToastModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TableModule,
+    ButtonModule,
+    InputTextModule,
+    DropdownModule,
+    ToastModule,
+    HelpManualComponent,
+  ],
   providers: [MessageService],
   templateUrl: './users.page.html',
 })

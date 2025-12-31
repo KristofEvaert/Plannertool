@@ -29,6 +29,7 @@ import {
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
 import type { RouteMessageDto } from '@models/route-message.model';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 
 type DriverOption = { label: string; value: string; ownerId: number };
 type OwnerOption = { label: string; value: number };
@@ -49,6 +50,7 @@ type DriverPosition =
     TagModule,
     TableModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './route-followup.page.html',

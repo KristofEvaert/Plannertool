@@ -20,6 +20,7 @@ import { DriversApiService } from '@services/drivers-api.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { ServiceLocationOwnersApiService, ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { ServiceTypeDto } from '@models/service-type.model';
 import type {
   DriverDto,
@@ -48,6 +49,7 @@ import { toYmd, parseYmd } from '@utils/date.utils';
     TooltipModule,
     ConfirmDialogModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './drivers.page.html',

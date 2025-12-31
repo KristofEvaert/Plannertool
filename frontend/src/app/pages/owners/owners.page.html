@@ -2,7 +2,10 @@
   <div class="max-w-5xl mx-auto">
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h1 class="text-2xl font-bold">Service Location Owners</h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold">Service Location Owners</h1>
+          <app-help-manual [sectionId]="'owners'"></app-help-manual>
+        </div>
         <div class="text-sm text-gray-600">Manage owners (SuperAdmin only)</div>
       </div>
       <div class="flex items-center gap-3">

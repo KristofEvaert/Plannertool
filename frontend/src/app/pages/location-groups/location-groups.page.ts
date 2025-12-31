@@ -14,6 +14,7 @@ import { LocationGroupsApiService } from '@services/location-groups-api.service'
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { AuthService } from '@services/auth.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { LocationGroupDto, SaveLocationGroupRequest } from '@models/location-group.model';
 import type { ServiceLocationDto } from '@models/service-location.model';
 import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
@@ -35,6 +36,7 @@ type LocationOption = { label: string; value: number };
     MultiSelectModule,
     SelectModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './location-groups.page.html',

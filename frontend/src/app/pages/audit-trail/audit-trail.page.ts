@@ -13,6 +13,7 @@ import { AuditTrailApiService } from '@services/audit-trail-api.service';
 import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 import type { AuditTrailEntryDto } from '@models/audit-trail.model';
 import { catchError, of } from 'rxjs';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 
 @Component({
   selector: 'app-audit-trail',
@@ -26,6 +27,7 @@ import { catchError, of } from 'rxjs';
     CalendarModule,
     InputNumberModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService, DatePipe],
   templateUrl: './audit-trail.page.html',

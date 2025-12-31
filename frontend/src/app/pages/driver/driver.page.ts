@@ -33,6 +33,7 @@ import {
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import { AuthService } from '@services/auth.service';
 import type { RouteChangeNotificationDto } from '@models/route-change-notification.model';
 
@@ -53,6 +54,7 @@ type OwnerOption = { label: string; value: number };
     TagModule,
     ToastModule,
     CheckboxModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './driver.page.html',

@@ -18,6 +18,7 @@ import { RoutesApiService, type CreateRouteRequest, type CreateRouteStopRequest 
 import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
 import { ExportsApiService } from '@services/exports-api.service';
 import { AuthService } from '@services/auth.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { ServiceTypeDto } from '@models/service-type.model';
 import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 import type { DriverDto, DriverAvailabilityDto } from '@models/driver.model';
@@ -104,6 +105,7 @@ interface ArrivalWindow {
     MultiSelectModule,
     DatePickerModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './map.page.html',

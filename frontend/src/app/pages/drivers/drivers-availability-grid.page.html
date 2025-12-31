@@ -2,7 +2,10 @@
   <!-- Header -->
   <div class="mb-6">
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-3xl font-bold text-gray-900">Driver Availability</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-3xl font-bold text-gray-900">Driver Availability</h1>
+        <app-help-manual [sectionId]="'drivers'"></app-help-manual>
+      </div>
       <div class="flex items-center gap-2">
         <p-button
           label="Download Availability Template"

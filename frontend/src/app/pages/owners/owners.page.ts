@@ -13,6 +13,7 @@ import {
   ServiceLocationOwnerDto,
   UpsertServiceLocationOwnerRequest,
 } from '@services/service-location-owners-api.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 
 @Component({
   selector: 'app-owners-page',
@@ -26,6 +27,7 @@ import {
     InputTextModule,
     CheckboxModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './owners.page.html',

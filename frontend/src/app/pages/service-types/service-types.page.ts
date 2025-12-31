@@ -8,6 +8,7 @@ import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
   ServiceTypeDto,
   CreateServiceTypeRequest,
@@ -24,6 +25,7 @@ import { catchError, of } from 'rxjs';
     InputTextModule,
     DialogModule,
     ToastModule,
+    HelpManualComponent,
   ],
   providers: [MessageService],
   templateUrl: './service-types.page.html',
