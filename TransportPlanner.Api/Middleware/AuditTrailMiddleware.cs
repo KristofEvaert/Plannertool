@@ -43,9 +43,11 @@ public class AuditTrailMiddleware
         string? responseBody = null;
         var responseBodyTruncated = false;
 
-        if (ShouldCaptureBody(context.Request))
+        var captureBody = ShouldCaptureBody(context.Request);
+        if (captureBody)
         {
             context.Request.EnableBuffering();
+            (body, bodyTruncated) = await ReadBodyAsync(context.Request, options.Value.MaxBodyBytes, context.RequestAborted);
         }
 
         var originalBody = context.Response.Body;
@@ -54,11 +56,6 @@ public class AuditTrailMiddleware
 
         await _next(context);
         stopwatch.Stop();
-
-        if (ShouldCaptureBody(context.Request))
-        {
-            (body, bodyTruncated) = await ReadBodyAsync(context.Request, options.Value.MaxBodyBytes, context.RequestAborted);
-        }
 
         (responseBody, responseBodyTruncated) = await ReadResponseBodyAsync(context.Response, responseBuffer, options.Value.MaxBodyBytes, context.RequestAborted);
         responseBuffer.Position = 0;

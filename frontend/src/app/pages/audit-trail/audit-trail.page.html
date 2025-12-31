@@ -1,56 +1,103 @@
-<div class="container mx-auto p-6">
-  <div class="mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <h1 class="text-3xl font-bold text-gray-900">Audit Trail</h1>
-        <app-help-manual [sectionId]="'audit-trail'"></app-help-manual>
-      </div>
-      <div class="flex items-center gap-2">
-        <p-button
-          label="Refresh"
-          icon="pi pi-refresh"
-          [outlined]="true"
-          (onClick)="loadData(false)"
-          [loading]="loading()"
-        />
-      </div>
+<div class="audit-trail-page">
+  <div class="audit-trail-header">
+    <div class="audit-trail-title">
+      <h1>Audit Trail</h1>
+      <app-help-manual [sectionId]="'audit-trail'"></app-help-manual>
+    </div>
+  </div>
+
+  <div class="audit-filter-bar">
+    <div class="audit-filter">
+      <label>Date range</label>
+      <p-calendar
+        [ngModel]="dateRange()"
+        (ngModelChange)="onDateRangeChange($event)"
+        [selectionMode]="'range'"
+        [showIcon]="true"
+        [appendTo]="'body'"
+        styleClass="w-64"
+        placeholder="Select range"
+      />
     </div>
 
-    <div class="flex flex-wrap items-center gap-4 mb-4">
-      <div class="flex items-center gap-2">
-        <label class="text-sm font-medium">From:</label>
-        <p-calendar
-          [ngModel]="fromUtc()"
-          (ngModelChange)="fromUtc.set($event)"
-          [showIcon]="true"
-          [appendTo]="'body'"
-          styleClass="w-40"
-        />
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm font-medium">To:</label>
-        <p-calendar
-          [ngModel]="toUtc()"
-          (ngModelChange)="toUtc.set($event)"
-          [showIcon]="true"
-          [appendTo]="'body'"
-          styleClass="w-40"
-        />
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm font-medium">Search:</label>
-        <input
-          pInputText
-          [ngModel]="search()"
-          (ngModelChange)="onSearchChange($event)"
-          placeholder="Path, user, body, trace"
-          class="w-64"
-        />
-      </div>
+    <div class="audit-filter">
+      <label>Search</label>
+      <input
+        pInputText
+        [ngModel]="search()"
+        (ngModelChange)="onSearchChange($event)"
+        placeholder="Path, user, body, trace"
+        class="w-64"
+      />
+    </div>
+
+    <div class="audit-filter">
+      <label>HTTP method</label>
+      <p-multiSelect
+        [options]="methodOptions"
+        [ngModel]="methods()"
+        (ngModelChange)="methods.set($event)"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All methods"
+        [display]="'chip'"
+        [showClear]="true"
+        [filter]="true"
+        [appendTo]="'body'"
+        styleClass="w-56"
+      />
+    </div>
+
+    <div class="audit-filter">
+      <label>Status</label>
+      <p-dropdown
+        [options]="statusOptions"
+        [ngModel]="statusFilter()"
+        (ngModelChange)="statusFilter.set($event)"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All statuses"
+        [appendTo]="'body'"
+        styleClass="w-44"
+      />
+    </div>
+
+    <div class="audit-filter">
+      <label>User</label>
+      <p-autoComplete
+        [ngModel]="selectedUser()"
+        (ngModelChange)="selectedUser.set($event)"
+        [suggestions]="userSuggestions()"
+        (completeMethod)="onUserSearch($event)"
+        [dropdown]="true"
+        placeholder="User email or name"
+        [appendTo]="'body'"
+        styleClass="w-56"
+      />
+    </div>
+
+    <div class="audit-filter">
+      <label>Role</label>
+      <p-multiSelect
+        [options]="roleOptions()"
+        [ngModel]="roleFilters()"
+        (ngModelChange)="roleFilters.set($event)"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All roles"
+        [display]="'chip'"
+        [showClear]="true"
+        [filter]="true"
+        [appendTo]="'body'"
+        styleClass="w-56"
+      />
+    </div>
+
+    <div class="audit-filter-actions">
       <p-button
-        label="Apply"
+        label="Apply filters"
         icon="pi pi-filter"
-        (onClick)="loadData()"
+        (onClick)="applyFilters()"
         [loading]="loading()"
       />
       <p-button
@@ -58,11 +105,39 @@
         severity="secondary"
         (onClick)="clearFilters()"
       />
+      <p-button
+        label="Refresh"
+        icon="pi pi-refresh"
+        [outlined]="true"
+        (onClick)="refresh()"
+        [loading]="loading()"
+      />
     </div>
   </div>
 
+  <div class="audit-quick-filters">
+    <p-chip
+      label="Errors only"
+      icon="pi pi-exclamation-triangle"
+      [class.active]="quickErrorsOnly()"
+      (click)="quickErrorsOnly.set(!quickErrorsOnly())"
+    />
+    <p-chip
+      label="Slow > 500ms"
+      icon="pi pi-clock"
+      [class.active]="quickSlowOnly()"
+      (click)="quickSlowOnly.set(!quickSlowOnly())"
+    />
+    <p-chip
+      label="Mutating calls"
+      icon="pi pi-pencil"
+      [class.active]="quickMutatingOnly()"
+      (click)="quickMutatingOnly.set(!quickMutatingOnly())"
+    />
+  </div>
+
   <p-table
-    [value]="items()"
+    [value]="displayedItems()"
     [loading]="loading()"
     [paginator]="true"
     [rows]="pageSize()"
@@ -72,127 +147,229 @@
     (onLazyLoad)="onPageChange($event)"
     [rowsPerPageOptions]="[25, 50, 100, 200]"
     [scrollable]="true"
-    [scrollHeight]="'calc(100vh - 320px)'"
-    styleClass="p-datatable-striped min-w-[1400px]"
+    [scrollHeight]="'calc(100vh - 360px)'"
+    [rowHover]="true"
+    [expandedRowKeys]="expandedRowKeys()"
+    (onRowExpand)="onRowExpand($event)"
+    (onRowCollapse)="onRowCollapse($event)"
+    [customSort]="true"
+    (sortFunction)="onSort($event)"
+    [sortField]="sortField()"
+    [sortOrder]="sortOrder()"
+    sortMode="single"
+    dataKey="rowId"
+    styleClass="p-datatable-striped p-datatable-sm audit-table"
   >
-      <ng-template pTemplate="header">
-        <tr>
-          <th>Timestamp</th>
-          <th>Action</th>
-          <th>Roles</th>
-          <th>Status</th>
-          <th>Duration</th>
-          <th>Owner</th>
-          <th>IP</th>
-          <th>Endpoint</th>
-          <th>Headers</th>
-          <th>Payload</th>
-          <th>Response</th>
-        </tr>
-        <tr>
-          <th></th>
-          <th>
-            <div class="flex flex-col gap-2">
-              <p-dropdown
-                [ngModel]="method()"
-                (ngModelChange)="method.set($event); loadData()"
-                [options]="methodOptions"
-                optionLabel="label"
-                optionValue="value"
-                [appendTo]="'body'"
-                styleClass="w-full"
-              />
-              <input
-                pInputText
-                [ngModel]="pathContains()"
-                (ngModelChange)="onPathChange($event)"
-                placeholder="path"
-                class="w-full"
-              />
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="timestampUtc">
+          Timestamp
+          <p-sortIcon field="timestampUtc"></p-sortIcon>
+        </th>
+        <th pSortableColumn="statusCode">
+          Method + Status
+          <p-sortIcon field="statusCode"></p-sortIcon>
+        </th>
+        <th>Endpoint</th>
+        <th>User</th>
+        <th class="text-right" pSortableColumn="durationMs">
+          Duration
+          <p-sortIcon field="durationMs"></p-sortIcon>
+        </th>
+        <th class="text-right"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-item let-expanded="expanded">
+      <tr>
+        <td class="audit-cell">
+          <div class="audit-timestamp">{{ formatTimestamp(item.timestampUtc) }}</div>
+          <div class="audit-subtext">{{ formatRelativeTime(item.timestampUtc) }}</div>
+        </td>
+        <td class="audit-cell">
+          <div class="audit-tags">
+            <p-tag [value]="item.method" [severity]="getMethodSeverity(item.method)" />
+            <p-tag [value]="item.statusCode.toString()" [severity]="getStatusSeverity(item.statusCode)" />
+          </div>
+        </td>
+        <td class="audit-cell">
+          <span
+            class="audit-endpoint"
+            pTooltip="{{ getEndpointTooltip(item) }}"
+            tooltipPosition="top"
+          >
+            {{ getEndpointLabel(item) }}
+          </span>
+        </td>
+        <td class="audit-cell">
+          <div class="audit-user">{{ item.userName || item.userEmail || '-' }}</div>
+          <p-tag class="audit-role" [value]="getPrimaryRole(item)" severity="info" />
+        </td>
+        <td class="audit-cell text-right">
+          <span [class.audit-duration-slow]="isSlow(item)">{{ item.durationMs }} ms</span>
+        </td>
+        <td class="audit-cell text-right">
+          <button
+            type="button"
+            pButton
+            pRowToggler
+            [pRowToggler]="item"
+            [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+            class="p-button-text p-button-sm"
+          ></button>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="expandedrow" let-item>
+      <tr>
+        <td colspan="6" class="audit-detail-cell">
+          <div class="audit-detail">
+            <div class="audit-detail-top">
+              <div class="audit-detail-header">
+                <div class="audit-detail-left">
+                  <p-tag
+                    class="audit-method-tag"
+                    [value]="item.method"
+                    [severity]="getMethodSeverity(item.method)"
+                  />
+                  <span
+                    class="audit-detail-path"
+                    pTooltip="{{ item.path || '-' }}"
+                    tooltipPosition="top"
+                  >
+                    {{ item.path || '-' }}
+                  </span>
+                  <div
+                    class="audit-detail-query"
+                    *ngIf="getQueryChips(item).length || getQueryExtraCount(item) > 0"
+                  >
+                    <p-tag
+                      class="audit-query-chip"
+                      severity="info"
+                      *ngFor="let chip of getQueryChips(item)"
+                      [value]="chip"
+                    />
+                    <span class="audit-query-more" *ngIf="getQueryExtraCount(item) > 0">
+                      +{{ getQueryExtraCount(item) }}
+                    </span>
+                  </div>
+                </div>
+                <div class="audit-detail-right">
+                  <p-tag
+                    class="audit-status-tag"
+                    [value]="item.statusCode.toString()"
+                    [severity]="getStatusSeverity(item.statusCode)"
+                  />
+                  <span class="audit-duration" [class.audit-duration-slow]="isSlow(item)">
+                    {{ item.durationMs }} ms
+                  </span>
+                  <span class="audit-detail-timestamp">{{ formatTimestamp(item.timestampUtc) }}</span>
+                </div>
+              </div>
+
+              <ng-template
+                #metaItem
+                let-label="label"
+                let-value="value"
+                let-tooltip="tooltip"
+                let-copy="copy"
+                let-clamp="clamp"
+              >
+                <div class="audit-meta-item">
+                  <div class="audit-meta-label">{{ label }}</div>
+                  <div class="audit-meta-value-wrapper">
+                    <div
+                      class="audit-meta-value"
+                      [class.clamp-2]="clamp"
+                      [pTooltip]="tooltip || value"
+                      tooltipPosition="top"
+                    >
+                      {{ value || '-' }}
+                    </div>
+                    <button
+                      *ngIf="copy && value"
+                      type="button"
+                      pButton
+                      icon="pi pi-copy"
+                      class="p-button-text p-button-sm audit-copy-button"
+                      (click)="copyText(value)"
+                      pTooltip="Copy"
+                      tooltipPosition="top"
+                    ></button>
+                  </div>
+                </div>
+              </ng-template>
+
+              <div class="audit-detail-grid">
+                <div class="audit-detail-col">
+                  <ng-container
+                    *ngTemplateOutlet="metaItem; context: { label: 'User + Role', value: getUserWithRole(item), tooltip: getUserWithRole(item) }"
+                  ></ng-container>
+                  <ng-container
+                    *ngTemplateOutlet="metaItem; context: { label: 'IP address', value: item.ipAddress || '-' }"
+                  ></ng-container>
+                  <ng-container
+                    *ngTemplateOutlet="metaItem; context: { label: 'Trace / Correlation', value: item.traceId || '-', tooltip: item.traceId || '-', copy: true }"
+                  ></ng-container>
+                </div>
+                <div class="audit-detail-col">
+                  <ng-container
+                    *ngTemplateOutlet="metaItem; context: { label: 'Endpoint (full)', value: getFullEndpoint(item), tooltip: getFullEndpoint(item), copy: true, clamp: true }"
+                  ></ng-container>
+                  <ng-container
+                    *ngTemplateOutlet="metaItem; context: { label: 'Controller + Action', value: item.endpoint || '-', tooltip: item.endpoint || '-', copy: true, clamp: true }"
+                  ></ng-container>
+                </div>
+              </div>
             </div>
-          </th>
-          <th>
-            <input
-              pInputText
-              [ngModel]="userEmailContains()"
-              (ngModelChange)="onUserEmailChange($event)"
-              placeholder="user"
-              class="w-full"
-            />
-          </th>
-          <th>
-            <p-inputNumber
-              [ngModel]="statusCode()"
-              (ngModelChange)="statusCode.set($event); loadData()"
-              [useGrouping]="false"
-              placeholder="status"
-              class="w-full"
-            />
-          </th>
-          <th></th>
-          <th>
-            <p-dropdown
-              [ngModel]="ownerId()"
-              (ngModelChange)="ownerId.set($event); loadData()"
-              [options]="ownerOptions()"
-              optionLabel="label"
-              optionValue="value"
-              [appendTo]="'body'"
-              styleClass="w-full"
-            />
-          </th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="body" let-item>
-        <tr>
-          <td class="whitespace-nowrap">{{ formatTimestamp(item.timestampUtc) }}</td>
-          <td class="max-w-sm truncate" [title]="(item.path || '') + (item.query || '')">
-            <div class="font-medium">{{ item.method }} {{ item.path }}{{ item.query || '' }}</div>
-            <div class="text-xs text-gray-600 truncate">{{ item.userEmail || item.userName || '-' }}</div>
-          </td>
-          <td class="text-xs text-gray-600">{{ item.roles?.join(', ') || '-' }}</td>
-          <td>{{ item.statusCode }}</td>
-          <td>{{ item.durationMs }} ms</td>
-          <td [title]="item.ownerId?.toString() || ''">{{ getOwnerName(item.ownerId) }}</td>
-          <td>{{ item.ipAddress || '-' }}</td>
-          <td class="max-w-xs truncate" [title]="item.endpoint || ''">{{ item.endpoint || '-' }}</td>
-          <td class="max-w-md truncate" [title]="item.requestHeaders || ''">
-            {{ item.requestHeaders || '-' }}
-          </td>
-          <td class="max-w-md truncate" [title]="item.body || ''">
-            @if (item.body) {
-              {{ item.body.length > 120 ? (item.body | slice:0:120) + '...' : item.body }}
-              @if (item.bodyTruncated) {
-                <span class="ml-1 text-xs text-orange-600">(truncated)</span>
+
+            <p-tabView>
+              <p-tabPanel header="Response">
+                <app-json-viewer
+                  [value]="item.responseBody"
+                  emptyMessage="No response body"
+                ></app-json-viewer>
+                @if (item.responseBodyTruncated) {
+                  <div class="audit-truncated">Response truncated.</div>
+                }
+              </p-tabPanel>
+              <p-tabPanel header="Request / Payload">
+                <app-json-viewer
+                  [value]="item.body"
+                  emptyMessage="No payload"
+                ></app-json-viewer>
+                @if (item.bodyTruncated) {
+                  <div class="audit-truncated">Request body truncated.</div>
+                }
+              </p-tabPanel>
+              <p-tabPanel header="Headers">
+                <app-json-viewer
+                  [value]="item.requestHeaders"
+                  emptyMessage="No headers"
+                ></app-json-viewer>
+              </p-tabPanel>
+              @if (hasTraceData(item)) {
+                <p-tabPanel header="Trace / Exception">
+                  <app-json-viewer
+                    [value]="getTraceDetails(item)"
+                    emptyMessage="No trace data"
+                  ></app-json-viewer>
+                </p-tabPanel>
               }
-            } @else {
-              -
-            }
-          </td>
-          <td class="max-w-md truncate" [title]="item.responseBody || ''">
-            @if (item.responseBody) {
-              {{ item.responseBody.length > 120 ? (item.responseBody | slice:0:120) + '...' : item.responseBody }}
-              @if (item.responseBodyTruncated) {
-                <span class="ml-1 text-xs text-orange-600">(truncated)</span>
-              }
-            } @else {
-              -
-            }
-          </td>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="11" class="text-center py-8 text-gray-500">
-            No audit entries found
-          </td>
-        </tr>
-      </ng-template>
+            </p-tabView>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6" class="audit-empty">
+          No audit entries found
+        </td>
+      </tr>
+    </ng-template>
   </p-table>
 
   <p-toast />

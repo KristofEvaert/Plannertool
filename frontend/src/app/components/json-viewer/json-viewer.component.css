@@ -1,0 +1,39 @@
+.json-viewer {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.json-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+
+.json-viewer-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.json-viewer-content {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #111827;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: hidden;
+}
+
+.json-viewer-empty {
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
