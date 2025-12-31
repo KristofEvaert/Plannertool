@@ -39,6 +39,29 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
   },
   {
+    id: 'audit-trail',
+    title: 'Audit trail',
+    summary: 'HTTP request/response logging stored in a file for SuperAdmin review.',
+    businessLogic: [
+      'AuditTrailMiddleware captures request metadata for all API calls except /api/auth/login and /api/audit-trail.',
+      'Request bodies are captured for non-GET/HEAD requests unless content type is multipart or octet-stream.',
+      'Response bodies are captured only for JSON responses.',
+      'Bodies are truncated to AuditTrail:MaxBodyBytes when needed.',
+    ],
+    database: [
+      'Storage is file-based (no database tables).',
+      'Log file path: AuditTrail:Path (default App_Data/audit-trail.txt).',
+    ],
+    api: [
+      'AuditTrailController: GET /api/audit-trail (SuperAdmin only).',
+      'Query supports fromUtc, toUtc, method, statusCode, userId, userEmailContains, ownerId, pathContains, search, page, pageSize.',
+    ],
+    notes: [
+      'Entries are written as JSON lines; newest entries are returned first.',
+      'Search matches path, query, headers, body, response, and trace fields.',
+    ],
+  },
+  {
     id: 'seeder',
     title: 'Seeder behavior',
     summary: 'Seeder runs after migrations to create roles and travel-time model data.',

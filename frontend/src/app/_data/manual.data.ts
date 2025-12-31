@@ -192,11 +192,15 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     route: '/audit-trail',
     summary: 'Review system activity for troubleshooting and compliance.',
     functions: [
-      'Filter entries by date range and search text.',
-      'Refresh and clear filters to reload activity.',
+      'Filter entries by date range, method, status, user, and role.',
+      'Use quick filters for errors, slow requests, and mutating calls.',
+      'Expand a row to see request, response, headers, and trace details.',
+      'Copy key values or JSON from the detail view.',
     ],
     options: [
-      'Search supports path, user, body, and trace fields.',
+      'Search scans path, query, user, headers, body, response, and trace fields.',
+      'Row expansion shows full endpoint, controller, IP, and trace metadata.',
+      'Duration highlights when a request exceeds 500 ms.',
     ],
   },
 ];
