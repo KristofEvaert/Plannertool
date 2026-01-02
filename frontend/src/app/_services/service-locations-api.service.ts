@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
@@ -107,13 +107,17 @@ export class ServiceLocationsApiService {
     });
   }
 
-  uploadExcel(file: File, serviceTypeId: number, ownerId: number): Observable<BulkInsertResultDto> {
+  uploadExcel(file: File, serviceTypeId: number, ownerId: number): Observable<HttpResponse<Blob>> {
     const formData = new FormData();
     formData.append('file', file);
     const params = new HttpParams()
       .set('serviceTypeId', serviceTypeId.toString())
       .set('ownerId', ownerId.toString());
-    return this.http.post<BulkInsertResultDto>(`${this.baseUrl}/bulk/excel`, formData, { params });
+    return this.http.post(`${this.baseUrl}/bulk/excel`, formData, {
+      params,
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 
   getOpeningHours(toolId: string): Observable<ServiceLocationOpeningHoursDto[]> {

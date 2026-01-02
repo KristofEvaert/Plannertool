@@ -10,7 +10,10 @@ import { CalendarModule } from 'primeng/calendar';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { InputTextarea } from 'primeng/inputtextarea';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
+import type { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
@@ -33,6 +36,12 @@ import { toYmd } from '@utils/date.utils';
 
 type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & { label: string; hasLunchBreak?: boolean };
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
+type ServiceLocationDetail = {
+  loading: boolean;
+  hours: ServiceLocationOpeningHoursDto[];
+  exceptions: ServiceLocationExceptionDto[];
+  constraints: ServiceLocationConstraintDto | null;
+};
 
 @Component({
   selector: 'app-service-locations',
@@ -48,6 +57,8 @@ type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
     InputNumberModule,
     ToastModule,
     InputTextarea,
+    TagModule,
+    TooltipModule,
     HelpManualComponent,
   ],
   providers: [MessageService],
@@ -65,6 +76,10 @@ export class ServiceLocationsPage {
   items = signal<ServiceLocationDto[]>([]);
   totalCount = signal(0);
   loading = signal(false);
+  canEdit = computed(() => {
+    const roles = this.auth.currentUser()?.roles ?? [];
+    return roles.some((role) => role === 'SuperAdmin' || role === 'Admin' || role === 'Planner');
+  });
   serviceTypes = signal<ServiceTypeDto[]>([]);
   formServiceTypes = signal<ServiceTypeDto[]>([]);
   owners = signal<ServiceLocationOwnerDto[]>([]);
@@ -73,6 +88,7 @@ export class ServiceLocationsPage {
   private isUpdatingDate = false;
   // Cache dates to prevent creating new objects on every change detection
   private dateCache = new Map<string, Date>();
+  private savedServiceMinutes = new Map<string, number>();
 
   // Filters
   status = signal<'Open' | 'Done' | 'Cancelled' | 'Planned' | 'NotVisited' | null>('Open');
@@ -116,6 +132,8 @@ export class ServiceLocationsPage {
     minVisitDurationMinutes: null,
     maxVisitDurationMinutes: null,
   });
+  expandedRowKeys = signal<Record<string, boolean>>({});
+  rowDetails = signal<Record<string, ServiceLocationDetail>>({});
   geoResolving = signal(false);
   geoResolveFailed = signal(false);
   geoValidationMessage = signal<string | null>(null);
@@ -332,6 +350,75 @@ export class ServiceLocationsPage {
     }));
   }
 
+  onRowExpand(event: { data: ServiceLocationDto }): void {
+    const item = event?.data;
+    if (!item) {
+      return;
+    }
+    const next = { ...this.expandedRowKeys() };
+    next[item.toolId] = true;
+    this.expandedRowKeys.set(next);
+    this.loadRowDetails(item);
+  }
+
+  onRowCollapse(event: { data: ServiceLocationDto }): void {
+    const item = event?.data;
+    if (!item) {
+      return;
+    }
+    const next = { ...this.expandedRowKeys() };
+    delete next[item.toolId];
+    this.expandedRowKeys.set(next);
+  }
+
+  getRowDetail(item: ServiceLocationDto): ServiceLocationDetail | null {
+    return this.rowDetails()[item.toolId] ?? null;
+  }
+
+  private loadRowDetails(item: ServiceLocationDto): void {
+    const key = item.toolId;
+    const existing = this.rowDetails()[key];
+    if (existing && !existing.loading) {
+      return;
+    }
+
+    this.rowDetails.set({
+      ...this.rowDetails(),
+      [key]: {
+        loading: true,
+        hours: existing?.hours ?? [],
+        exceptions: existing?.exceptions ?? [],
+        constraints: existing?.constraints ?? null,
+      },
+    });
+
+    forkJoin({
+      hours: this.api.getOpeningHours(key).pipe(catchError(() => of([]))),
+      exceptions: this.api.getExceptions(key).pipe(catchError(() => of([]))),
+      constraints: this.api.getConstraints(key).pipe(
+        catchError(() =>
+          of({
+            minVisitDurationMinutes: null,
+            maxVisitDurationMinutes: null,
+          })
+        )
+      ),
+    }).subscribe(({ hours, exceptions, constraints }) => {
+      this.rowDetails.set({
+        ...this.rowDetails(),
+        [key]: {
+          loading: false,
+          hours,
+          exceptions,
+          constraints: {
+            minVisitDurationMinutes: constraints.minVisitDurationMinutes ?? null,
+            maxVisitDurationMinutes: constraints.maxVisitDurationMinutes ?? null,
+          },
+        },
+      });
+    });
+  }
+
   loadData(resetPage = true): void {
     // Validate dates are set
     if (!this.fromDue() || !this.toDue()) {
@@ -389,6 +476,12 @@ export class ServiceLocationsPage {
         // Create new array reference to trigger change detection
         this.items.set([...result.items]);
         this.totalCount.set(result.totalCount);
+        this.savedServiceMinutes.clear();
+        for (const item of result.items) {
+          this.savedServiceMinutes.set(item.toolId, item.serviceMinutes);
+        }
+        this.expandedRowKeys.set({});
+        this.rowDetails.set({});
       });
   }
 
@@ -440,6 +533,9 @@ export class ServiceLocationsPage {
   }
 
   openEditDialog(item: ServiceLocationDto): void {
+    if (!this.canEdit()) {
+      return;
+    }
     this.isEditMode.set(true);
     this.selectedItem.set(item);
     const latitude = item.latitude === 0 ? null : item.latitude;
@@ -1026,6 +1122,9 @@ export class ServiceLocationsPage {
   }
 
   onStatusChange(item: ServiceLocationDto, newStatus: 'Open' | 'Done' | 'Cancelled' | 'Planned' | 'NotVisited'): void {
+    if (!this.canEdit()) {
+      return;
+    }
     if (item.status === newStatus) return;
 
     const originalStatus = item.status;
@@ -1086,11 +1185,18 @@ export class ServiceLocationsPage {
   }
 
   onServiceMinutesChange(item: ServiceLocationDto, newMinutes: number): void {
-    if (item.serviceMinutes === newMinutes || newMinutes < 1 || newMinutes > 240) {
+    if (!this.canEdit()) {
+      return;
+    }
+    const previousMinutes = this.savedServiceMinutes.get(item.toolId);
+    if (previousMinutes !== undefined && previousMinutes === newMinutes) {
+      return;
+    }
+    if (newMinutes < 1 || newMinutes > 240) {
       return;
     }
 
-    const originalMinutes = item.serviceMinutes;
+    const originalMinutes = previousMinutes ?? item.serviceMinutes;
     // Optimistic update
     item.serviceMinutes = newMinutes;
 
@@ -1122,6 +1228,7 @@ export class ServiceLocationsPage {
       )
       .subscribe((result) => {
         if (result) {
+          this.savedServiceMinutes.set(item.toolId, newMinutes);
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
@@ -1170,6 +1277,48 @@ export class ServiceLocationsPage {
     ).subscribe();
   }
 
+  getDayLabel(dayOfWeek: number): string {
+    return this.weekDayLabels[dayOfWeek] ?? `Day ${dayOfWeek}`;
+  }
+
+  formatOpeningHoursRow(row: ServiceLocationOpeningHoursDto): string {
+    if (row.isClosed) {
+      return 'Closed';
+    }
+    const first = row.openTime && row.closeTime ? `${row.openTime}-${row.closeTime}` : '—';
+    if (row.openTime2 && row.closeTime2) {
+      return `${first}, ${row.openTime2}-${row.closeTime2}`;
+    }
+    return first;
+  }
+
+  formatExceptionRow(ex: ServiceLocationExceptionDto): string {
+    if (ex.isClosed) {
+      return 'Closed';
+    }
+    if (ex.openTime && ex.closeTime) {
+      return `${ex.openTime}-${ex.closeTime}`;
+    }
+    return '—';
+  }
+
+  formatLatLon(value: number | null | undefined): string {
+    return typeof value === 'number' ? value.toFixed(6) : '—';
+  }
+
+  getMapsLink(item: ServiceLocationDto): string | null {
+    const hasLat = typeof item.latitude === 'number';
+    const hasLon = typeof item.longitude === 'number';
+    if (hasLat && hasLon) {
+      return `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
+    }
+    const address = item.address?.trim();
+    if (address) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    }
+    return null;
+  }
+
   getOrderDateAsDate(item: ServiceLocationDto): Date {
     const dateStr = item.priorityDate || item.dueDate;
     const cacheKey = `${item.toolId}_${dateStr}`;
@@ -1187,6 +1336,9 @@ export class ServiceLocationsPage {
   }
 
   onOrderDateChange(item: ServiceLocationDto, newDate: Date | null): void {
+    if (!this.canEdit()) {
+      return;
+    }
     // Prevent infinite loops
     if (this.isUpdatingDate) return;
     if (!newDate) return;
@@ -1380,34 +1532,114 @@ export class ServiceLocationsPage {
     this.api
       .uploadExcel(file, serviceTypeId, ownerId)
       .pipe(
-        catchError((err) => {
+        catchError((err: HttpErrorResponse) => {
           this.loading.set(false);
+          if (err.error instanceof Blob) {
+            err.error.text().then((text) => {
+              try {
+                const details = JSON.parse(text);
+                this.messageService.add({
+                  severity: 'error',
+                  summary: 'Error',
+                  detail: details?.detail || details?.message || 'Failed to upload Excel file',
+                });
+              } catch {
+                this.messageService.add({
+                  severity: 'error',
+                  summary: 'Error',
+                  detail: 'Failed to upload Excel file',
+                });
+              }
+            });
+            return of(null);
+          }
+
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: err.detail || err.message || 'Failed to upload Excel file',
+            detail: err.error?.detail || err.message || 'Failed to upload Excel file',
           });
           return of(null);
         })
       )
-      .subscribe((result) => {
+      .subscribe((response: HttpResponse<Blob> | null) => {
         this.loading.set(false);
-        if (result) {
-          this.bulkResult.set(result);
-          this.showBulkResultDialog.set(true);
-          
-          if (result.inserted > 0 || result.updated > 0) {
-            this.loadData();
-          }
-          
+        if (!response || !response.body) {
+          return;
+        }
+
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+          const filename = this.getDownloadFilename(
+            response.headers.get('content-disposition'),
+            `ServiceLocations_Errors_${new Date().toISOString().split('T')[0]}.xlsx`
+          );
+          this.downloadBlob(response.body, filename);
           this.messageService.add({
-            severity: result.errors.length > 0 ? 'warn' : 'success',
-            summary: 'Upload Complete',
-            detail: `Inserted: ${result.inserted}, Updated: ${result.updated}${result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''}`,
+            severity: 'warn',
+            summary: 'Upload completed with errors',
+            detail: 'An error file was downloaded. Fix the rows and re-upload.',
             life: 5000,
           });
+          return;
         }
+
+        response.body.text().then((text) => {
+          try {
+            const result = JSON.parse(text) as BulkInsertResultDto;
+            this.bulkResult.set(result);
+            this.showBulkResultDialog.set(true);
+
+            if (result.inserted > 0 || result.updated > 0) {
+              this.loadData();
+            }
+
+            this.messageService.add({
+              severity: result.errors.length > 0 ? 'warn' : 'success',
+              summary: 'Upload Complete',
+              detail: `Inserted: ${result.inserted}, Updated: ${result.updated}${
+                result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''
+              }`,
+              life: 5000,
+            });
+          } catch {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'Failed to parse upload response',
+            });
+          }
+        });
       });
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  private getDownloadFilename(contentDisposition: string | null, fallback: string): string {
+    if (!contentDisposition) {
+      return fallback;
+    }
+
+    const filenameMatch = /filename\*?=(?:UTF-8''|")?([^\";]+)/i.exec(contentDisposition);
+    if (!filenameMatch || !filenameMatch[1]) {
+      return fallback;
+    }
+
+    const raw = filenameMatch[1].trim().replace(/\"/g, '');
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
   }
 
   get showBulkResultDialogValue(): boolean {

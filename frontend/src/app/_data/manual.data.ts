@@ -89,12 +89,15 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Add an optional lunch break per day.',
       'Update due dates, priority dates, and instructions.',
       'Add visit checklist lines for driver instructions.',
+      'Manage opening hours and exceptions in bulk using the template sheets.',
     ],
     options: [
       'Select the owner first; service type options are filtered by the selected owner.',
       'Bulk uploads use the selected owner and service type.',
       'Provide an address or both latitude and longitude; missing geo data can be auto-filled.',
       'Opening hours control planning feasibility for auto generation.',
+      'Excel bulk templates include separate OpeningHours and Exceptions sheets keyed by ERP ID.',
+      'OpeningHours day entries use day names (Sunday-Saturday).',
     ],
   },
   {

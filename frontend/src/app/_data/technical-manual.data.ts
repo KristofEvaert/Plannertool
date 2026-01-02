@@ -213,11 +213,13 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     summary: 'Excel and JSON bulk flows update drivers and service locations.',
     businessLogic: [
       'Service locations bulk upload upserts by ERP ID.',
+      'Service locations bulk supports opening hours and exceptions when provided.',
       'Driver availability bulk upload clears values when cells are empty.',
       'Driver service types bulk upload overwrites existing links.',
     ],
     database: [
       'ServiceLocations, DriverAvailabilities, DriverServiceTypes updated by bulk services.',
+      'ServiceLocationOpeningHours and ServiceLocationExceptions are replaced when bulk values are supplied.',
       'Bulk failures return error lists or Excel error files.',
     ],
     api: [
@@ -227,6 +229,9 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     notes: [
       'Templates include available service types and driver emails.',
       'Service type IDs are validated against the owner during bulk imports.',
+      'Service location templates include OpeningHours and Exceptions sheets keyed by ERP ID.',
+      'JSON bulk items can include openingHours/exceptions arrays to replace existing values.',
+      'OpeningHours Excel sheet accepts day names; backend also tolerates numeric day values.',
     ],
   },
   {

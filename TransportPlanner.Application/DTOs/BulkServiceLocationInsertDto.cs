@@ -11,4 +11,9 @@ public class BulkServiceLocationInsertDto
     public DateOnly? PriorityDate { get; set; }
     public int? ServiceMinutes { get; set; }
     public string? DriverInstruction { get; set; }
+    public List<string>? ExtraInstructions { get; set; }
+    public int? MinVisitDurationMinutes { get; set; }
+    public int? MaxVisitDurationMinutes { get; set; }
+    public List<ServiceLocationOpeningHoursDto>? OpeningHours { get; set; }
+    public List<ServiceLocationExceptionDto>? Exceptions { get; set; }
 }

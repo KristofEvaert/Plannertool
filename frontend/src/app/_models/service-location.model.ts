@@ -85,6 +85,11 @@ export interface BulkServiceLocationInsertDto {
   priorityDate?: string; // yyyy-MM-dd, optional
   serviceMinutes?: number;
   driverInstruction?: string;
+  extraInstructions?: string[];
+  minVisitDurationMinutes?: number;
+  maxVisitDurationMinutes?: number;
+  openingHours?: ServiceLocationOpeningHoursDto[];
+  exceptions?: ServiceLocationExceptionDto[];
 }
 
 export interface BulkInsertServiceLocationsRequest {

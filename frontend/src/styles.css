@@ -31,3 +31,17 @@ img.leaflet-marker-shadow {
   box-shadow: none !important;
   outline: none !important;
 }
+
+/* Service Locations table sizing */
+.tp-minutes {
+  width: 90px !important;
+}
+
+.tp-minutes .p-inputnumber-input {
+  width: 90px !important;
+}
+
+.tp-status {
+  width: 100% !important;
+  min-width: 190px !important;
+}

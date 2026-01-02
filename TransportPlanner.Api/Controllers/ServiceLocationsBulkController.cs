@@ -18,6 +18,7 @@ public class ServiceLocationsBulkController : ControllerBase
 {
     private readonly ServiceLocationBulkInsertService _bulkInsertService;
     private readonly TransportPlannerDbContext _dbContext;
+    private static readonly string[] DayNames = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 
     private bool IsSuperAdmin => User.IsInRole(AppRoles.SuperAdmin);
     private int? CurrentOwnerId => int.TryParse(User.FindFirstValue("ownerId"), out var id) ? id : null;
@@ -142,10 +143,16 @@ public class ServiceLocationsBulkController : ControllerBase
             });
         }
 
-        var items = await _dbContext.ServiceLocations
+        var locations = await _dbContext.ServiceLocations
             .AsNoTracking()
             .Where(sl => sl.OwnerId == ownerId && sl.ServiceTypeId == serviceTypeId && sl.IsActive)
             .OrderBy(sl => sl.ErpId)
+            .Include(sl => sl.Constraint)
+            .Include(sl => sl.OpeningHours)
+            .Include(sl => sl.Exceptions)
+            .ToListAsync(cancellationToken);
+
+        var items = locations
             .Select(sl => new BulkServiceLocationInsertDto
             {
                 ErpId = sl.ErpId,
@@ -156,9 +163,37 @@ public class ServiceLocationsBulkController : ControllerBase
                 DueDate = DateOnly.FromDateTime(sl.DueDate),
                 PriorityDate = sl.PriorityDate.HasValue ? DateOnly.FromDateTime(sl.PriorityDate.Value) : null,
                 ServiceMinutes = sl.ServiceMinutes,
-                DriverInstruction = sl.DriverInstruction
+                DriverInstruction = sl.DriverInstruction,
+                ExtraInstructions = sl.ExtraInstructions,
+                MinVisitDurationMinutes = sl.Constraint != null ? sl.Constraint.MinVisitDurationMinutes : null,
+                MaxVisitDurationMinutes = sl.Constraint != null ? sl.Constraint.MaxVisitDurationMinutes : null,
+                OpeningHours = sl.OpeningHours
+                    .OrderBy(x => x.DayOfWeek)
+                    .Select(x => new ServiceLocationOpeningHoursDto
+                    {
+                        Id = x.Id,
+                        DayOfWeek = x.DayOfWeek,
+                        OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
+                        CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                        OpenTime2 = x.OpenTime2.HasValue ? x.OpenTime2.Value.ToString("hh\\:mm") : null,
+                        CloseTime2 = x.CloseTime2.HasValue ? x.CloseTime2.Value.ToString("hh\\:mm") : null,
+                        IsClosed = x.IsClosed
+                    })
+                    .ToList(),
+                Exceptions = sl.Exceptions
+                    .OrderBy(x => x.Date)
+                    .Select(x => new ServiceLocationExceptionDto
+                    {
+                        Id = x.Id,
+                        Date = x.Date.Date,
+                        OpenTime = x.OpenTime.HasValue ? x.OpenTime.Value.ToString("hh\\:mm") : null,
+                        CloseTime = x.CloseTime.HasValue ? x.CloseTime.Value.ToString("hh\\:mm") : null,
+                        IsClosed = x.IsClosed,
+                        Note = x.Note
+                    })
+                    .ToList()
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var response = new ServiceLocationBulkExportResponse
         {
@@ -332,6 +367,20 @@ public class ServiceLocationsBulkController : ControllerBase
             listsSheet.Cell(i + 2, 3).Value = allOwners[i].Id;
             listsSheet.Cell(i + 2, 4).Value = allOwners[i].Name;
         }
+
+        // Populate day list in _Lists sheet (Column E)
+        listsSheet.Cell(1, 5).Value = "DayName";
+        listsSheet.Cell(1, 6).Value = "DayOfWeek";
+        for (int i = 0; i < DayNames.Length; i++)
+        {
+            listsSheet.Cell(i + 2, 5).Value = DayNames[i];
+            listsSheet.Cell(i + 2, 6).Value = i;
+        }
+
+        // Populate IsClosed list in _Lists sheet (Column G)
+        listsSheet.Cell(1, 7).Value = "IsClosed";
+        listsSheet.Cell(2, 7).Value = "TRUE";
+        listsSheet.Cell(3, 7).Value = "FALSE";
         
         // Sheet: ServiceLocations
         var sheet = workbook.Worksheets.Add("ServiceLocations");
@@ -382,6 +431,12 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(4, 7).Value = "PriorityDate";
         sheet.Cell(4, 8).Value = "ServiceMinutes";
         sheet.Cell(4, 9).Value = "DriverInstruction";
+        sheet.Cell(4, 10).Value = "ExtraInstructions";
+        sheet.Cell(4, 11).Value = "MinVisitDurationMinutes";
+        sheet.Cell(4, 12).Value = "MaxVisitDurationMinutes";
+        sheet.Cell(4, 10).Value = "ExtraInstructions";
+        sheet.Cell(4, 11).Value = "MinVisitDurationMinutes";
+        sheet.Cell(4, 12).Value = "MaxVisitDurationMinutes";
         
         // Instruction row (row 5)
         sheet.Cell(5, 1).Value = "Required";
@@ -393,6 +448,12 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(5, 7).Value = "Optional (yyyy-MM-dd)";
         sheet.Cell(5, 8).Value = "Optional (1-240, default 20)";
         sheet.Cell(5, 9).Value = "Optional (shown to driver)";
+        sheet.Cell(5, 10).Value = "Optional (pipe or newline separated)";
+        sheet.Cell(5, 11).Value = "Optional (>= 0)";
+        sheet.Cell(5, 12).Value = "Optional (>= 0)";
+        sheet.Cell(5, 10).Value = "Optional (pipe or newline separated)";
+        sheet.Cell(5, 11).Value = "Optional (>= 0)";
+        sheet.Cell(5, 12).Value = "Optional (>= 0)";
         
         // Format date columns (DueDate and PriorityDate) as text to preserve yyyy-MM-dd format
         // Set the entire column range to text format
@@ -405,6 +466,9 @@ public class ServiceLocationsBulkController : ControllerBase
             .AsNoTracking()
             .Where(sl => sl.OwnerId == ownerId && sl.ServiceTypeId == serviceTypeId && sl.IsActive)
             .OrderBy(sl => sl.ErpId)
+            .Include(sl => sl.Constraint)
+            .Include(sl => sl.OpeningHours)
+            .Include(sl => sl.Exceptions)
             .ToListAsync(cancellationToken);
 
         // Populate existing data rows (starting at row 6)
@@ -423,6 +487,11 @@ public class ServiceLocationsBulkController : ControllerBase
             sheet.Cell(row, 7).Value = location.PriorityDate.HasValue ? location.PriorityDate.Value.ToString("yyyy-MM-dd") : string.Empty;
             sheet.Cell(row, 8).Value = location.ServiceMinutes;
             sheet.Cell(row, 9).Value = location.DriverInstruction ?? string.Empty;
+            sheet.Cell(row, 10).Value = location.ExtraInstructions.Count > 0
+                ? string.Join(" | ", location.ExtraInstructions)
+                : string.Empty;
+            sheet.Cell(row, 11).Value = location.Constraint?.MinVisitDurationMinutes?.ToString() ?? string.Empty;
+            sheet.Cell(row, 12).Value = location.Constraint?.MaxVisitDurationMinutes?.ToString() ?? string.Empty;
         }
         
         // Style service type info rows
@@ -431,17 +500,107 @@ public class ServiceLocationsBulkController : ControllerBase
         infoRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
         
         // Style header
-        var headerRange = sheet.Range(3, 1, 3, 9);
+        var headerRange = sheet.Range(3, 1, 3, 12);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
         
         // Style instruction row
-        var instructionRange = sheet.Range(4, 1, 4, 9);
+        var instructionRange = sheet.Range(4, 1, 4, 12);
         instructionRange.Style.Font.Italic = true;
         instructionRange.Style.Font.FontColor = XLColor.DarkGray;
         
         // Auto-fit columns
         sheet.Columns().AdjustToContents();
+
+        // Sheet: OpeningHours
+        var openingHoursSheet = workbook.Worksheets.Add("OpeningHours");
+        openingHoursSheet.Cell(1, 1).Value = "ErpId";
+        openingHoursSheet.Cell(1, 2).Value = "Day";
+        openingHoursSheet.Cell(1, 3).Value = "OpenTime";
+        openingHoursSheet.Cell(1, 4).Value = "CloseTime";
+        openingHoursSheet.Cell(1, 5).Value = "OpenTime2";
+        openingHoursSheet.Cell(1, 6).Value = "CloseTime2";
+        openingHoursSheet.Cell(1, 7).Value = "IsClosed";
+
+        openingHoursSheet.Cell(2, 1).Value = "Required";
+        openingHoursSheet.Cell(2, 2).Value = "Required (Sunday-Saturday)";
+        openingHoursSheet.Cell(2, 3).Value = "Required unless closed (HH:mm)";
+        openingHoursSheet.Cell(2, 4).Value = "Required unless closed (HH:mm)";
+        openingHoursSheet.Cell(2, 5).Value = "Optional lunch (HH:mm)";
+        openingHoursSheet.Cell(2, 6).Value = "Optional lunch (HH:mm)";
+        openingHoursSheet.Cell(2, 7).Value = "Optional (TRUE/FALSE)";
+
+        openingHoursSheet.Column(3).Style.NumberFormat.Format = "@";
+        openingHoursSheet.Column(4).Style.NumberFormat.Format = "@";
+        openingHoursSheet.Column(5).Style.NumberFormat.Format = "@";
+        openingHoursSheet.Column(6).Style.NumberFormat.Format = "@";
+
+        var openingHoursDayValidation = openingHoursSheet.Range(3, 2, 1000, 2).CreateDataValidation();
+        openingHoursDayValidation.List("=_Lists!$E$2:$E$8", true);
+        openingHoursDayValidation.IgnoreBlanks = false;
+
+        var openingHoursClosedValidation = openingHoursSheet.Range(3, 7, 1000, 7).CreateDataValidation();
+        openingHoursClosedValidation.List("=_Lists!$G$2:$G$3", true);
+        openingHoursClosedValidation.IgnoreBlanks = true;
+
+        var hoursRow = 3;
+        foreach (var location in existingLocations)
+        {
+            foreach (var hour in location.OpeningHours.OrderBy(x => x.DayOfWeek))
+            {
+                openingHoursSheet.Cell(hoursRow, 1).Value = location.ErpId;
+                openingHoursSheet.Cell(hoursRow, 2).Value = DayNames[Math.Clamp(hour.DayOfWeek, 0, 6)];
+                openingHoursSheet.Cell(hoursRow, 3).Value = hour.OpenTime.HasValue ? hour.OpenTime.Value.ToString("hh\\:mm") : string.Empty;
+                openingHoursSheet.Cell(hoursRow, 4).Value = hour.CloseTime.HasValue ? hour.CloseTime.Value.ToString("hh\\:mm") : string.Empty;
+                openingHoursSheet.Cell(hoursRow, 5).Value = hour.OpenTime2.HasValue ? hour.OpenTime2.Value.ToString("hh\\:mm") : string.Empty;
+                openingHoursSheet.Cell(hoursRow, 6).Value = hour.CloseTime2.HasValue ? hour.CloseTime2.Value.ToString("hh\\:mm") : string.Empty;
+                openingHoursSheet.Cell(hoursRow, 7).Value = hour.IsClosed ? "TRUE" : "FALSE";
+                hoursRow++;
+            }
+        }
+
+        openingHoursSheet.Columns().AdjustToContents();
+
+        // Sheet: Exceptions
+        var exceptionsSheet = workbook.Worksheets.Add("Exceptions");
+        exceptionsSheet.Cell(1, 1).Value = "ErpId";
+        exceptionsSheet.Cell(1, 2).Value = "Date";
+        exceptionsSheet.Cell(1, 3).Value = "OpenTime";
+        exceptionsSheet.Cell(1, 4).Value = "CloseTime";
+        exceptionsSheet.Cell(1, 5).Value = "IsClosed";
+        exceptionsSheet.Cell(1, 6).Value = "Note";
+
+        exceptionsSheet.Cell(2, 1).Value = "Required";
+        exceptionsSheet.Cell(2, 2).Value = "Required (yyyy-MM-dd)";
+        exceptionsSheet.Cell(2, 3).Value = "Required unless closed (HH:mm)";
+        exceptionsSheet.Cell(2, 4).Value = "Required unless closed (HH:mm)";
+        exceptionsSheet.Cell(2, 5).Value = "Optional (TRUE/FALSE)";
+        exceptionsSheet.Cell(2, 6).Value = "Optional";
+
+        exceptionsSheet.Column(2).Style.NumberFormat.Format = "@";
+        exceptionsSheet.Column(3).Style.NumberFormat.Format = "@";
+        exceptionsSheet.Column(4).Style.NumberFormat.Format = "@";
+
+        var exceptionsClosedValidation = exceptionsSheet.Range(3, 5, 1000, 5).CreateDataValidation();
+        exceptionsClosedValidation.List("=_Lists!$G$2:$G$3", true);
+        exceptionsClosedValidation.IgnoreBlanks = true;
+
+        var exceptionRow = 3;
+        foreach (var location in existingLocations)
+        {
+            foreach (var exception in location.Exceptions.OrderBy(x => x.Date))
+            {
+                exceptionsSheet.Cell(exceptionRow, 1).Value = location.ErpId;
+                exceptionsSheet.Cell(exceptionRow, 2).Value = exception.Date.ToString("yyyy-MM-dd");
+                exceptionsSheet.Cell(exceptionRow, 3).Value = exception.OpenTime.HasValue ? exception.OpenTime.Value.ToString("hh\\:mm") : string.Empty;
+                exceptionsSheet.Cell(exceptionRow, 4).Value = exception.CloseTime.HasValue ? exception.CloseTime.Value.ToString("hh\\:mm") : string.Empty;
+                exceptionsSheet.Cell(exceptionRow, 5).Value = exception.IsClosed ? "TRUE" : "FALSE";
+                exceptionsSheet.Cell(exceptionRow, 6).Value = exception.Note ?? string.Empty;
+                exceptionRow++;
+            }
+        }
+
+        exceptionsSheet.Columns().AdjustToContents();
         
         // Generate file
         using var stream = new MemoryStream();
@@ -484,6 +643,11 @@ public class ServiceLocationsBulkController : ControllerBase
             var rowValuesByRow = new Dictionary<int, string[]>();
             var itemRowNumbers = new List<int>();
             var errorRows = new HashSet<int>();
+            var hasSheetErrors = false;
+            var openingHoursByErpId = new Dictionary<int, List<ServiceLocationOpeningHoursDto>>();
+            var openingHoursRowRefsByErpId = new Dictionary<int, List<int>>();
+            var exceptionsByErpId = new Dictionary<int, List<ServiceLocationExceptionDto>>();
+            var exceptionRowRefsByErpId = new Dictionary<int, List<int>>();
 
             using var stream = new MemoryStream();
             await file.CopyToAsync(stream, cancellationToken);
@@ -604,6 +768,279 @@ public class ServiceLocationsBulkController : ControllerBase
 
             request.OwnerId = finalOwnerId; // Set the owner for the bulk request
 
+            // Parse OpeningHours sheet (optional)
+            if (workbook.TryGetWorksheet("OpeningHours", out var openingHoursSheet))
+            {
+                var lastHoursRow = openingHoursSheet.LastRowUsed()?.RowNumber() ?? 0;
+                var hourKeySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int row = 3; row <= lastHoursRow; row++)
+                {
+                    var rowRef = $"OpeningHours row {row}";
+                    var erpIdCell = openingHoursSheet.Cell(row, 1);
+                    if (erpIdCell.IsEmpty())
+                    {
+                        continue;
+                    }
+
+                    var erpIdStr = erpIdCell.GetString().Trim();
+                    if (!int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid or missing ErpId"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    var dayCell = openingHoursSheet.Cell(row, 2);
+                    if (!TryParseDayOfWeekCell(dayCell, out var dayOfWeek))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid Day (expected Sunday-Saturday)"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!TryParseBoolCell(openingHoursSheet.Cell(row, 7), out var isClosedValue))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid IsClosed value"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    var isClosed = isClosedValue ?? false;
+
+                    if (!TryParseTimeCell(openingHoursSheet.Cell(row, 3), out var openTime)
+                        || !TryParseTimeCell(openingHoursSheet.Cell(row, 4), out var closeTime)
+                        || !TryParseTimeCell(openingHoursSheet.Cell(row, 5), out var openTime2)
+                        || !TryParseTimeCell(openingHoursSheet.Cell(row, 6), out var closeTime2))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid time format (expected HH:mm)"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!isClosed && (!openTime.HasValue || !closeTime.HasValue))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "OpenTime and CloseTime are required when not closed"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (openTime.HasValue && closeTime.HasValue && openTime.Value >= closeTime.Value)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "OpenTime must be before CloseTime"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!isClosed && (openTime2.HasValue ^ closeTime2.HasValue))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "OpenTime2 and CloseTime2 are required together when using a lunch break"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!isClosed && openTime2.HasValue && closeTime2.HasValue && openTime2.Value >= closeTime2.Value)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "OpenTime2 must be before CloseTime2"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!isClosed && openTime.HasValue && closeTime.HasValue && openTime2.HasValue && closeTime2.HasValue
+                        && closeTime.Value > openTime2.Value)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "CloseTime must be before OpenTime2 when using a lunch break"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    var key = $"{erpId}:{dayOfWeek}";
+                    if (!hourKeySet.Add(key))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Duplicate opening hours for the same day"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    var dto = new ServiceLocationOpeningHoursDto
+                    {
+                        DayOfWeek = dayOfWeek,
+                        OpenTime = isClosed || !openTime.HasValue ? null : openTime.Value.ToString("hh\\:mm"),
+                        CloseTime = isClosed || !closeTime.HasValue ? null : closeTime.Value.ToString("hh\\:mm"),
+                        OpenTime2 = isClosed || !openTime2.HasValue ? null : openTime2.Value.ToString("hh\\:mm"),
+                        CloseTime2 = isClosed || !closeTime2.HasValue ? null : closeTime2.Value.ToString("hh\\:mm"),
+                        IsClosed = isClosed
+                    };
+
+                    if (!openingHoursByErpId.TryGetValue(erpId, out var list))
+                    {
+                        list = new List<ServiceLocationOpeningHoursDto>();
+                        openingHoursByErpId[erpId] = list;
+                    }
+
+                    list.Add(dto);
+
+                    if (!openingHoursRowRefsByErpId.TryGetValue(erpId, out var rowRefs))
+                    {
+                        rowRefs = new List<int>();
+                        openingHoursRowRefsByErpId[erpId] = rowRefs;
+                    }
+
+                    rowRefs.Add(row);
+                }
+            }
+
+            // Parse Exceptions sheet (optional)
+            if (workbook.TryGetWorksheet("Exceptions", out var exceptionsSheet))
+            {
+                var lastExceptionRow = exceptionsSheet.LastRowUsed()?.RowNumber() ?? 0;
+                for (int row = 3; row <= lastExceptionRow; row++)
+                {
+                    var rowRef = $"Exceptions row {row}";
+                    var erpIdCell = exceptionsSheet.Cell(row, 1);
+                    if (erpIdCell.IsEmpty())
+                    {
+                        continue;
+                    }
+
+                    var erpIdStr = erpIdCell.GetString().Trim();
+                    if (!int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid or missing ErpId"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!TryParseDateCell(exceptionsSheet.Cell(row, 2), out var exceptionDate))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid or missing Date (expected yyyy-MM-dd)"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!TryParseBoolCell(exceptionsSheet.Cell(row, 5), out var isClosedValue))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid IsClosed value"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    var isClosed = isClosedValue ?? false;
+
+                    if (!TryParseTimeCell(exceptionsSheet.Cell(row, 3), out var openTime)
+                        || !TryParseTimeCell(exceptionsSheet.Cell(row, 4), out var closeTime))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid time format (expected HH:mm)"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (!isClosed && (!openTime.HasValue || !closeTime.HasValue))
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "OpenTime and CloseTime are required when not closed"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    if (openTime.HasValue && closeTime.HasValue && openTime.Value >= closeTime.Value)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "OpenTime must be before CloseTime"
+                        });
+                        hasSheetErrors = true;
+                        continue;
+                    }
+
+                    var dto = new ServiceLocationExceptionDto
+                    {
+                        Date = exceptionDate.ToDateTime(TimeOnly.MinValue),
+                        OpenTime = isClosed || !openTime.HasValue ? null : openTime.Value.ToString("hh\\:mm"),
+                        CloseTime = isClosed || !closeTime.HasValue ? null : closeTime.Value.ToString("hh\\:mm"),
+                        IsClosed = isClosed,
+                        Note = string.IsNullOrWhiteSpace(exceptionsSheet.Cell(row, 6).GetString())
+                            ? null
+                            : exceptionsSheet.Cell(row, 6).GetString().Trim()
+                    };
+
+                    if (!exceptionsByErpId.TryGetValue(erpId, out var list))
+                    {
+                        list = new List<ServiceLocationExceptionDto>();
+                        exceptionsByErpId[erpId] = list;
+                    }
+
+                    list.Add(dto);
+
+                    if (!exceptionRowRefsByErpId.TryGetValue(erpId, out var rowRefs))
+                    {
+                        rowRefs = new List<int>();
+                        exceptionRowRefsByErpId[erpId] = rowRefs;
+                    }
+
+                    rowRefs.Add(row);
+                }
+            }
+
             // Parse rows starting at row 6 (after service type info, owner info, headers, and instructions)
             var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
             
@@ -620,7 +1057,10 @@ public class ServiceLocationsBulkController : ControllerBase
                     worksheet.Cell(row, 6).GetFormattedString(),
                     worksheet.Cell(row, 7).GetFormattedString(),
                     worksheet.Cell(row, 8).GetFormattedString(),
-                    worksheet.Cell(row, 9).GetFormattedString()
+                    worksheet.Cell(row, 9).GetFormattedString(),
+                    worksheet.Cell(row, 10).GetFormattedString(),
+                    worksheet.Cell(row, 11).GetFormattedString(),
+                    worksheet.Cell(row, 12).GetFormattedString()
                 };
                 
                 try
@@ -885,6 +1325,61 @@ public class ServiceLocationsBulkController : ControllerBase
                     }
                 }
 
+                List<string>? extraInstructions = null;
+                var extraInstructionsCell = worksheet.Cell(row, 10);
+                if (!extraInstructionsCell.IsEmpty())
+                {
+                    extraInstructions = ParseInstructionCell(extraInstructionsCell);
+                }
+
+                int? minVisitDurationMinutes = null;
+                var minVisitDurationCell = worksheet.Cell(row, 11);
+                if (!minVisitDurationCell.IsEmpty())
+                {
+                    var minVisitDurationStr = minVisitDurationCell.GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(minVisitDurationStr))
+                    {
+                        if (int.TryParse(minVisitDurationStr, out var parsedMinVisitDuration))
+                        {
+                            minVisitDurationMinutes = parsedMinVisitDuration;
+                        }
+                        else
+                        {
+                            errors.Add(new BulkErrorDto
+                            {
+                                RowRef = rowRef,
+                                Message = "Invalid MinVisitDurationMinutes"
+                            });
+                            errorRows.Add(row);
+                            continue;
+                        }
+                    }
+                }
+
+                int? maxVisitDurationMinutes = null;
+                var maxVisitDurationCell = worksheet.Cell(row, 12);
+                if (!maxVisitDurationCell.IsEmpty())
+                {
+                    var maxVisitDurationStr = maxVisitDurationCell.GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(maxVisitDurationStr))
+                    {
+                        if (int.TryParse(maxVisitDurationStr, out var parsedMaxVisitDuration))
+                        {
+                            maxVisitDurationMinutes = parsedMaxVisitDuration;
+                        }
+                        else
+                        {
+                            errors.Add(new BulkErrorDto
+                            {
+                                RowRef = rowRef,
+                                Message = "Invalid MaxVisitDurationMinutes"
+                            });
+                            errorRows.Add(row);
+                            continue;
+                        }
+                    }
+                }
+
                 var item = new BulkServiceLocationInsertDto
                 {
                     ErpId = erpId,
@@ -895,7 +1390,10 @@ public class ServiceLocationsBulkController : ControllerBase
                     DueDate = dueDate,
                     PriorityDate = priorityDate,
                     ServiceMinutes = serviceMinutes,
-                    DriverInstruction = driverInstruction
+                    DriverInstruction = driverInstruction,
+                    ExtraInstructions = extraInstructions,
+                    MinVisitDurationMinutes = minVisitDurationMinutes,
+                    MaxVisitDurationMinutes = maxVisitDurationMinutes
                 };
 
                     request.Items.Add(item);
@@ -909,6 +1407,50 @@ public class ServiceLocationsBulkController : ControllerBase
                         Message = $"Error parsing row: {ex.Message}"
                     });
                     errorRows.Add(row);
+                }
+            }
+
+            var itemsByErpId = request.Items.ToDictionary(item => item.ErpId);
+
+            foreach (var kvp in openingHoursByErpId)
+            {
+                if (itemsByErpId.TryGetValue(kvp.Key, out var item))
+                {
+                    item.OpeningHours = kvp.Value;
+                    continue;
+                }
+
+                if (openingHoursRowRefsByErpId.TryGetValue(kvp.Key, out var rowRefs))
+                {
+                    foreach (var row in rowRefs)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = $"OpeningHours row {row}",
+                            Message = $"ErpId {kvp.Key} not found in ServiceLocations sheet"
+                        });
+                    }
+                }
+            }
+
+            foreach (var kvp in exceptionsByErpId)
+            {
+                if (itemsByErpId.TryGetValue(kvp.Key, out var item))
+                {
+                    item.Exceptions = kvp.Value;
+                    continue;
+                }
+
+                if (exceptionRowRefsByErpId.TryGetValue(kvp.Key, out var rowRefs))
+                {
+                    foreach (var row in rowRefs)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = $"Exceptions row {row}",
+                            Message = $"ErpId {kvp.Key} not found in ServiceLocations sheet"
+                        });
+                    }
                 }
             }
 
@@ -938,7 +1480,7 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
             }
 
-            if (errorRows.Count > 0)
+            if (errorRows.Count > 0 || hasSheetErrors)
             {
                 var rows = errorRows
                     .OrderBy(r => r)
@@ -995,6 +1537,200 @@ public class ServiceLocationsBulkController : ControllerBase
                 Status = StatusCodes.Status500InternalServerError
             });
         }
+    }
+
+    private static List<string>? ParseInstructionCell(IXLCell cell)
+    {
+        if (cell.IsEmpty())
+        {
+            return null;
+        }
+
+        var raw = cell.GetString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var trimmed = raw.Trim();
+        if (trimmed.Equals("[]", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("clear", StringComparison.OrdinalIgnoreCase))
+        {
+            return new List<string>();
+        }
+
+        var parts = trimmed
+            .Replace("\r\n", "\n")
+            .Split(new[] { '|', '\n', ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+        return parts
+            .Select(part => part.Trim())
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .ToList();
+    }
+
+    private static bool TryParseBoolCell(IXLCell cell, out bool? value)
+    {
+        value = null;
+        if (cell.IsEmpty())
+        {
+            return true;
+        }
+
+        var raw = cell.GetString().Trim();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return true;
+        }
+
+        if (bool.TryParse(raw, out var parsedBool))
+        {
+            value = parsedBool;
+            return true;
+        }
+
+        if (int.TryParse(raw, out var parsedInt))
+        {
+            value = parsedInt != 0;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseTimeCell(IXLCell cell, out TimeSpan? value)
+    {
+        value = null;
+        if (cell.IsEmpty())
+        {
+            return true;
+        }
+
+        if (cell.DataType == XLDataType.DateTime)
+        {
+            try
+            {
+                value = cell.GetDateTime().TimeOfDay;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        if (cell.DataType == XLDataType.TimeSpan)
+        {
+            try
+            {
+                value = cell.GetTimeSpan();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        var raw = cell.GetString().Trim();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return true;
+        }
+
+        if (TimeSpan.TryParseExact(raw, "hh\\:mm", null, out var parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        if (TimeSpan.TryParse(raw, out parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseDateCell(IXLCell cell, out DateOnly date)
+    {
+        date = default;
+        if (cell.IsEmpty())
+        {
+            return false;
+        }
+
+        if (cell.DataType == XLDataType.DateTime)
+        {
+            try
+            {
+                date = DateOnly.FromDateTime(cell.GetDateTime());
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        var raw = cell.GetString().Trim();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        if (DateOnly.TryParseExact(raw, "yyyy-MM-dd", out date))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParse(raw, out date))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseDayOfWeekCell(IXLCell cell, out int dayOfWeek)
+    {
+        dayOfWeek = -1;
+        if (cell.IsEmpty())
+        {
+            return false;
+        }
+
+        var raw = cell.GetString().Trim();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        if (int.TryParse(raw, out var parsedDay) && parsedDay >= 0 && parsedDay <= 6)
+        {
+            dayOfWeek = parsedDay;
+            return true;
+        }
+
+        var normalized = raw.ToLowerInvariant();
+        for (int i = 0; i < DayNames.Length; i++)
+        {
+            var dayLower = DayNames[i].ToLowerInvariant();
+            if (normalized == dayLower)
+            {
+                dayOfWeek = i;
+                return true;
+            }
+
+            if (dayLower.StartsWith(normalized))
+            {
+                dayOfWeek = i;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static XLWorkbook BuildServiceLocationErrorWorkbook(
@@ -1082,7 +1818,7 @@ public class ServiceLocationsBulkController : ControllerBase
         {
             var row = startRow + i;
             var values = rows[i];
-            for (int col = 1; col <= 9; col++)
+            for (int col = 1; col <= 12; col++)
             {
                 sheet.Cell(row, col).Value = values.Length >= col ? values[col - 1] : string.Empty;
             }
@@ -1092,11 +1828,11 @@ public class ServiceLocationsBulkController : ControllerBase
         infoRange.Style.Font.Bold = true;
         infoRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
 
-        var headerRange = sheet.Range(3, 1, 3, 9);
+        var headerRange = sheet.Range(3, 1, 3, 12);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
-
-        var instructionRange = sheet.Range(4, 1, 4, 9);
+        
+        var instructionRange = sheet.Range(4, 1, 4, 12);
         instructionRange.Style.Font.Italic = true;
         instructionRange.Style.Font.FontColor = XLColor.DarkGray;
 

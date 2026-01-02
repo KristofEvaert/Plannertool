@@ -169,37 +169,57 @@
     [lazy]="true"
     (onLazyLoad)="onPageChange($event)"
     [rowsPerPageOptions]="[10, 25, 50, 100]"
-    styleClass="p-datatable-striped min-w-[1100px]"
+    [rowHover]="true"
+    [expandedRowKeys]="expandedRowKeys()"
+    (onRowExpand)="onRowExpand($event)"
+    (onRowCollapse)="onRowCollapse($event)"
+    dataKey="toolId"
+    styleClass="p-datatable-striped p-datatable-sm min-w-[1100px]"
   >
     <ng-template pTemplate="header">
       <tr>
         <th>Name</th>
-        <th>ERP ID</th>
         <th>Service Type</th>
         <th>Owner</th>
-        <th>Order Date</th>
         <th>Address</th>
-        <th>Location</th>
-        <th>Service Min</th>
-        <th>Status</th>
-        <th>Driver Instruction</th>
-        <th>Remark</th>
+        <th>Order Date</th>
+        <th style="width: 110px; min-width: 110px; max-width: 110px;">Service Minutes</th>
+        <th style="width: 190px; min-width: 190px; max-width: 190px;">Status</th>
+        <th class="text-right">Actions</th>
       </tr>
     </ng-template>
-    <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+    <ng-template pTemplate="body" let-item let-rowIndex="rowIndex" let-expanded="expanded">
       <tr>
         <td>
-          @if (item.driverInstruction) {
-            <span class="flex items-center gap-1" [title]="item.driverInstruction">
-              {{ item.name }} <span class="text-red-500">*</span>
-            </span>
-          } @else {
-            {{ item.name }}
-          }
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="font-medium text-gray-900">{{ item.name }}</div>
+              <div class="text-xs text-gray-500">ERP {{ item.erpId }}</div>
+            </div>
+            @if (item.driverInstruction) {
+              <i
+                class="pi pi-comment text-blue-600"
+                pTooltip="{{ item.driverInstruction }}"
+                tooltipPosition="top"
+              ></i>
+            }
+          </div>
         </td>
-        <td>{{ item.erpId }}</td>
-        <td>{{ item.serviceTypeName || '—' }}</td>
-        <td>{{ item.ownerName || '—' }}</td>
+        <td>
+          <p-tag [value]="item.serviceTypeName || '-'" severity="info"></p-tag>
+        </td>
+        <td>
+          <p-tag [value]="item.ownerName || '-'" severity="secondary"></p-tag>
+        </td>
+        <td>
+          <span
+            class="block max-w-[260px] truncate"
+            pTooltip="{{ item.address || '-' }}"
+            tooltipPosition="top"
+          >
+            {{ item.address || '-' }}
+          </span>
+        </td>
         <td>
           <div class="flex items-center gap-2">
             <p-calendar
@@ -211,28 +231,27 @@
               [baseZIndex]="10000"
               styleClass="w-32"
               [inputId]="'orderDate_' + rowIndex"
+              [disabled]="!canEdit()"
             />
             @if (item.priorityDate) {
               <span class="text-xs text-blue-600 font-semibold">(P)</span>
             }
           </div>
         </td>
-        <td>{{ item.address || '—' }}</td>
-        <td class="text-xs text-gray-500">
-          {{ item.latitude.toFixed(6) }}, {{ item.longitude.toFixed(6) }}
-        </td>
-        <td>
+        <td style="width: 110px; min-width: 110px; max-width: 110px;">
           <p-inputNumber
             [(ngModel)]="item.serviceMinutes"
             [min]="1"
             [max]="240"
             [showButtons]="true"
             [useGrouping]="false"
-            (onBlur)="onServiceMinutesChange(item, item.serviceMinutes)"
-            styleClass="w-20"
+            (ngModelChange)="onServiceMinutesChange(item, $event)"
+            styleClass="tp-minutes"
+            inputStyleClass="tp-minutes-input"
+            [disabled]="!canEdit()"
           />
         </td>
-        <td>
+        <td style="width: 190px; min-width: 190px; max-width: 190px;">
           <p-dropdown
             [ngModel]="item.status"
             (ngModelChange)="onStatusChange(item, $event)"
@@ -241,27 +260,154 @@
             optionValue="value"
             [appendTo]="'body'"
             [baseZIndex]="10000"
-            styleClass="w-32"
+            styleClass="tp-status"
+            [disabled]="!canEdit()"
           />
         </td>
-        <td class="min-w-[220px]">
-          <textarea
-            pInputTextarea
-            [ngModel]="item.driverInstruction"
-            (ngModelChange)="item.driverInstruction = $event"
-            (blur)="onDriverInstructionChange(item, item.driverInstruction)"
-            (focusout)="onDriverInstructionChange(item, item.driverInstruction)"
-            rows="2"
-            class="w-full"
-            placeholder="Driver instruction"
-          ></textarea>
+        <td class="text-right">
+          <div class="flex items-center justify-end gap-2">
+            <p-button
+              icon="pi pi-pencil"
+              size="small"
+              severity="secondary"
+              [outlined]="true"
+              [disabled]="!canEdit()"
+              (onClick)="openEditDialog(item)"
+              pTooltip="Update"
+              tooltipPosition="top"
+            />
+            <button
+              type="button"
+              pButton
+              pRowToggler
+              [pRowToggler]="item"
+              [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+              class="p-button-text p-button-sm"
+            ></button>
+          </div>
         </td>
-        <td class="max-w-xs truncate" [title]="item.remark">{{ item.remark || '—' }}</td>
       </tr>
     </ng-template>
+    <ng-template pTemplate="expandedrow" let-item>
+      <tr>
+        <td colspan="8" class="bg-gray-50">
+          <div class="p-4 space-y-4">
+            @if (getRowDetail(item); as detail) {
+              @if (detail.loading) {
+                <div class="text-sm text-gray-500">Loading details...</div>
+              } @else {
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div class="rounded border border-gray-200 bg-white p-3">
+                    <div class="text-sm font-semibold mb-2">Scheduling</div>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                      <div class="text-gray-500">Due Date</div>
+                      <div>{{ item.dueDate | date:'yyyy-MM-dd' }}</div>
+                      <div class="text-gray-500">Priority Date</div>
+                      <div>{{ item.priorityDate ? (item.priorityDate | date:'yyyy-MM-dd') : '-' }}</div>
+                      <div class="text-gray-500">Min Visit Duration</div>
+                      <div>{{ detail.constraints?.minVisitDurationMinutes ?? '-' }}</div>
+                      <div class="text-gray-500">Max Visit Duration</div>
+                      <div>{{ detail.constraints?.maxVisitDurationMinutes ?? '-' }}</div>
+                      <div class="text-gray-500">Driver Instruction</div>
+                      <div class="truncate" pTooltip="{{ item.driverInstruction || '-' }}">
+                        {{ item.driverInstruction || '-' }}
+                      </div>
+                      <div class="text-gray-500">Remark</div>
+                      <div class="truncate" pTooltip="{{ item.remark || '-' }}">{{ item.remark || '-' }}</div>
+                    </div>
+                  </div>
+                  <div class="rounded border border-gray-200 bg-white p-3">
+                    <div class="text-sm font-semibold mb-2">Geo</div>
+                    <div class="space-y-2 text-sm">
+                      <div>
+                        <div class="text-gray-500">Address</div>
+                        <div class="truncate" pTooltip="{{ item.address || '-' }}">{{ item.address || '-' }}</div>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div>
+                          <div class="text-gray-500">Latitude</div>
+                          <div>{{ formatLatLon(item.latitude) }}</div>
+                        </div>
+                        <div>
+                          <div class="text-gray-500">Longitude</div>
+                          <div>{{ formatLatLon(item.longitude) }}</div>
+                        </div>
+                      </div>
+                      @if (getMapsLink(item); as mapsLink) {
+                        <a
+                          class="text-blue-600 underline text-sm inline-flex items-center gap-1"
+                          [href]="mapsLink"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <i class="pi pi-map-marker"></i>
+                          Open in Maps
+                        </a>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div class="rounded border border-gray-200 bg-white p-3">
+                    <div class="text-sm font-semibold mb-2">Opening Hours</div>
+                    @if (detail.hours.length === 0) {
+                      <div class="text-sm text-gray-500">Always open (no weekly schedule).</div>
+                    } @else {
+                      <div class="space-y-1 text-sm">
+                        @for (row of detail.hours; track row.dayOfWeek) {
+                          <div class="flex items-center justify-between gap-2">
+                            <span class="w-24 font-medium">{{ getDayLabel(row.dayOfWeek) }}</span>
+                            <span class="text-gray-700">{{ formatOpeningHoursRow(row) }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="rounded border border-gray-200 bg-white p-3">
+                    <div class="text-sm font-semibold mb-2">Exceptions</div>
+                    @if (detail.exceptions.length === 0) {
+                      <div class="text-sm text-gray-500">No exceptions.</div>
+                    } @else {
+                      <div class="space-y-2 text-sm">
+                        @for (ex of detail.exceptions; track ex.id ?? ex.date) {
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="font-medium">{{ ex.date | date:'yyyy-MM-dd' }}</div>
+                            <div class="text-gray-700">{{ formatExceptionRow(ex) }}</div>
+                            @if (ex.note) {
+                              <div class="text-gray-500 truncate max-w-[200px]" pTooltip="{{ ex.note }}">{{ ex.note }}</div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <div class="rounded border border-gray-200 bg-white p-3">
+                  <div class="text-sm font-semibold mb-2">Visit Checklist / Instructions</div>
+                  @if ((item.extraInstructions?.length ?? 0) === 0) {
+                    <div class="text-sm text-gray-500">No instructions.</div>
+                  } @else {
+                    <ul class="list-disc pl-5 text-sm space-y-1">
+                      @for (line of item.extraInstructions ?? []; track line) {
+                        <li>{{ line }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+            } @else {
+              <div class="text-sm text-gray-500">Loading details...</div>
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="11" class="text-center py-8 text-gray-500">
+        <td colspan="8" class="text-center py-8 text-gray-500">
           No service locations found
         </td>
       </tr>

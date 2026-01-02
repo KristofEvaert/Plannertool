@@ -29,6 +29,8 @@ public class ServiceLocationBulkInsertService
         var result = new BulkInsertResultDto();
         var now = DateTime.UtcNow;
         var openStatusLocationIds = new List<int>();
+        var geocodeCache = new Dictionary<string, GeocodeResult?>(StringComparer.OrdinalIgnoreCase);
+        var reverseGeocodeCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         // Validate ServiceTypeId exists and is active
         var serviceType = await _dbContext.ServiceTypes
@@ -76,6 +78,13 @@ public class ServiceLocationBulkInsertService
             .ToDictionaryAsync(sl => sl.ErpId, cancellationToken);
 
         _logger.LogInformation("Found {Count} existing service locations out of {Total} requested", existingServiceLocations.Count, erpIdsInRequest.Count);
+
+        var existingLocationIds = existingServiceLocations.Values.Select(sl => sl.Id).ToList();
+        var constraintsByLocationId = existingLocationIds.Count == 0
+            ? new Dictionary<int, ServiceLocationConstraint>()
+            : await _dbContext.ServiceLocationConstraints
+                .Where(c => existingLocationIds.Contains(c.ServiceLocationId))
+                .ToDictionaryAsync(c => c.ServiceLocationId, cancellationToken);
 
         // Process each item
         for (int i = 0; i < request.Items.Count; i++)
@@ -146,13 +155,31 @@ public class ServiceLocationBulkInsertService
 
             if (!hasLatitude && hasAddress)
             {
-                var geocode = await _geocodingService.GeocodeAddressAsync(item.Address!, cancellationToken);
+                var normalizedAddress = NormalizeAddress(item.Address);
+                if (string.IsNullOrWhiteSpace(normalizedAddress))
+                {
+                    result.Errors.Add(new BulkErrorDto
+                    {
+                        RowRef = rowRef,
+                        Message = "Address or Latitude/Longitude is required"
+                    });
+                    result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                    result.Skipped++;
+                    continue;
+                }
+
+                item.Address = normalizedAddress;
+                if (!geocodeCache.TryGetValue(normalizedAddress, out var geocode))
+                {
+                    geocode = await _geocodingService.GeocodeAddressAsync(normalizedAddress, cancellationToken);
+                    geocodeCache[normalizedAddress] = geocode;
+                }
                 if (geocode == null)
                 {
                     result.Errors.Add(new BulkErrorDto
                     {
                         RowRef = rowRef,
-                        Message = "Unable to resolve Latitude/Longitude from Address"
+                        Message = $"Unable to resolve Latitude/Longitude from Address: {item.Address}"
                     });
                     result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
                     result.Skipped++;
@@ -165,7 +192,12 @@ public class ServiceLocationBulkInsertService
             }
             else if (!hasAddress && hasLatitude)
             {
-                var reverseAddress = await _geocodingService.ReverseGeocodeAsync(item.Latitude!.Value, item.Longitude!.Value, cancellationToken);
+                var reverseKey = $"{item.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{item.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+                if (!reverseGeocodeCache.TryGetValue(reverseKey, out var reverseAddress))
+                {
+                    reverseAddress = await _geocodingService.ReverseGeocodeAsync(item.Latitude!.Value, item.Longitude!.Value, cancellationToken);
+                    reverseGeocodeCache[reverseKey] = reverseAddress;
+                }
                 if (string.IsNullOrWhiteSpace(reverseAddress))
                 {
                     result.Errors.Add(new BulkErrorDto
@@ -232,6 +264,76 @@ public class ServiceLocationBulkInsertService
                 continue;
             }
 
+            if (item.MinVisitDurationMinutes.HasValue && item.MinVisitDurationMinutes.Value < 0)
+            {
+                result.Errors.Add(new BulkErrorDto
+                {
+                    RowRef = rowRef,
+                    Message = "MinVisitDurationMinutes must be >= 0"
+                });
+                result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                result.Skipped++;
+                continue;
+            }
+
+            if (item.MaxVisitDurationMinutes.HasValue && item.MaxVisitDurationMinutes.Value < 0)
+            {
+                result.Errors.Add(new BulkErrorDto
+                {
+                    RowRef = rowRef,
+                    Message = "MaxVisitDurationMinutes must be >= 0"
+                });
+                result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                result.Skipped++;
+                continue;
+            }
+
+            if (item.MinVisitDurationMinutes.HasValue
+                && item.MaxVisitDurationMinutes.HasValue
+                && item.MinVisitDurationMinutes.Value > item.MaxVisitDurationMinutes.Value)
+            {
+                result.Errors.Add(new BulkErrorDto
+                {
+                    RowRef = rowRef,
+                    Message = "MinVisitDurationMinutes must be <= MaxVisitDurationMinutes"
+                });
+                result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                result.Skipped++;
+                continue;
+            }
+
+            List<ServiceLocationOpeningHours>? normalizedHours = null;
+            if (item.OpeningHours != null)
+            {
+                if (!TryNormalizeOpeningHours(item.OpeningHours, out normalizedHours, out var errorMessage))
+                {
+                    result.Errors.Add(new BulkErrorDto
+                    {
+                        RowRef = rowRef,
+                        Message = errorMessage
+                    });
+                    result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                    result.Skipped++;
+                    continue;
+                }
+            }
+
+            List<ServiceLocationException>? normalizedExceptions = null;
+            if (item.Exceptions != null)
+            {
+                if (!TryNormalizeExceptions(item.Exceptions, out normalizedExceptions, out var errorMessage))
+                {
+                    result.Errors.Add(new BulkErrorDto
+                    {
+                        RowRef = rowRef,
+                        Message = errorMessage
+                    });
+                    result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                    result.Skipped++;
+                    continue;
+                }
+            }
+
             // Check if ERP ID already exists - update instead of skip
             if (existingServiceLocations.TryGetValue(item.ErpId, out var existingServiceLocation))
             {
@@ -265,12 +367,73 @@ public class ServiceLocationBulkInsertService
                 {
                     existingServiceLocation.DriverInstruction = item.DriverInstruction.Trim();
                 }
+                if (item.ExtraInstructions != null)
+                {
+                    existingServiceLocation.ExtraInstructions = NormalizeInstructions(item.ExtraInstructions);
+                }
                 if (existingServiceLocation.Status == ServiceLocationStatus.Done && (dueDateChanged || priorityDateChanged))
                 {
                     existingServiceLocation.Status = ServiceLocationStatus.Open;
                     openStatusLocationIds.Add(existingServiceLocation.Id);
                 }
                 existingServiceLocation.UpdatedAtUtc = now;
+
+                if (item.MinVisitDurationMinutes.HasValue || item.MaxVisitDurationMinutes.HasValue)
+                {
+                    if (!constraintsByLocationId.TryGetValue(existingServiceLocation.Id, out var constraint))
+                    {
+                        constraint = new ServiceLocationConstraint
+                        {
+                            ServiceLocationId = existingServiceLocation.Id
+                        };
+                        _dbContext.ServiceLocationConstraints.Add(constraint);
+                        constraintsByLocationId[existingServiceLocation.Id] = constraint;
+                    }
+
+                    if (item.MinVisitDurationMinutes.HasValue)
+                    {
+                        constraint.MinVisitDurationMinutes = item.MinVisitDurationMinutes.Value;
+                    }
+
+                    if (item.MaxVisitDurationMinutes.HasValue)
+                    {
+                        constraint.MaxVisitDurationMinutes = item.MaxVisitDurationMinutes.Value;
+                    }
+                }
+
+                if (normalizedHours != null)
+                {
+                    foreach (var hour in normalizedHours)
+                    {
+                        hour.ServiceLocationId = existingServiceLocation.Id;
+                    }
+
+                    await _dbContext.ServiceLocationOpeningHours
+                        .Where(x => x.ServiceLocationId == existingServiceLocation.Id)
+                        .ExecuteDeleteAsync(cancellationToken);
+
+                    if (normalizedHours.Count > 0)
+                    {
+                        _dbContext.ServiceLocationOpeningHours.AddRange(normalizedHours);
+                    }
+                }
+
+                if (normalizedExceptions != null)
+                {
+                    foreach (var exception in normalizedExceptions)
+                    {
+                        exception.ServiceLocationId = existingServiceLocation.Id;
+                    }
+
+                    await _dbContext.ServiceLocationExceptions
+                        .Where(x => x.ServiceLocationId == existingServiceLocation.Id)
+                        .ExecuteDeleteAsync(cancellationToken);
+
+                    if (normalizedExceptions.Count > 0)
+                    {
+                        _dbContext.ServiceLocationExceptions.AddRange(normalizedExceptions);
+                    }
+                }
                 
                 _dbContext.ServiceLocations.Update(existingServiceLocation);
                 result.Updated++;
@@ -292,6 +455,7 @@ public class ServiceLocationBulkInsertService
                 ServiceTypeId = request.ServiceTypeId, // Set ServiceTypeId from request
                 OwnerId = request.OwnerId, // Set OwnerId from request
                 DriverInstruction = string.IsNullOrWhiteSpace(item.DriverInstruction) ? null : item.DriverInstruction.Trim(),
+                ExtraInstructions = NormalizeInstructions(item.ExtraInstructions),
                 Status = ServiceLocationStatus.Open,
                 IsActive = true,
                 CreatedAtUtc = now,
@@ -299,6 +463,43 @@ public class ServiceLocationBulkInsertService
             };
 
             _dbContext.ServiceLocations.Add(serviceLocation);
+
+            if (item.MinVisitDurationMinutes.HasValue || item.MaxVisitDurationMinutes.HasValue)
+            {
+                var constraint = new ServiceLocationConstraint
+                {
+                    ServiceLocation = serviceLocation,
+                    MinVisitDurationMinutes = item.MinVisitDurationMinutes,
+                    MaxVisitDurationMinutes = item.MaxVisitDurationMinutes
+                };
+                _dbContext.ServiceLocationConstraints.Add(constraint);
+            }
+
+            if (normalizedHours != null)
+            {
+                foreach (var hour in normalizedHours)
+                {
+                    hour.ServiceLocation = serviceLocation;
+                }
+
+                if (normalizedHours.Count > 0)
+                {
+                    _dbContext.ServiceLocationOpeningHours.AddRange(normalizedHours);
+                }
+            }
+
+            if (normalizedExceptions != null)
+            {
+                foreach (var exception in normalizedExceptions)
+                {
+                    exception.ServiceLocation = serviceLocation;
+                }
+
+                if (normalizedExceptions.Count > 0)
+                {
+                    _dbContext.ServiceLocationExceptions.AddRange(normalizedExceptions);
+                }
+            }
             result.Inserted++;
         }
 
@@ -315,6 +516,156 @@ public class ServiceLocationBulkInsertService
         }
 
         return result;
+    }
+
+    private static string? NormalizeAddress(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return null;
+        }
+
+        return address
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Trim();
+    }
+
+    private static TimeSpan? ParseTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return TimeSpan.TryParseExact(value, "hh\\:mm", null, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private static bool TryNormalizeOpeningHours(
+        IEnumerable<ServiceLocationOpeningHoursDto> items,
+        out List<ServiceLocationOpeningHours> normalized,
+        out string errorMessage)
+    {
+        normalized = new List<ServiceLocationOpeningHours>();
+        errorMessage = string.Empty;
+
+        var seenDays = new HashSet<int>();
+        foreach (var item in items)
+        {
+            if (item.DayOfWeek < 0 || item.DayOfWeek > 6)
+            {
+                errorMessage = "DayOfWeek must be between 0 and 6.";
+                return false;
+            }
+
+            if (!seenDays.Add(item.DayOfWeek))
+            {
+                errorMessage = "Duplicate opening hours for the same day.";
+                return false;
+            }
+
+            var openTime = ParseTime(item.OpenTime);
+            var closeTime = ParseTime(item.CloseTime);
+            var openTime2 = ParseTime(item.OpenTime2);
+            var closeTime2 = ParseTime(item.CloseTime2);
+
+            if (!item.IsClosed && (!openTime.HasValue || !closeTime.HasValue))
+            {
+                errorMessage = "OpenTime and CloseTime are required when not closed.";
+                return false;
+            }
+
+            if (openTime.HasValue && closeTime.HasValue && openTime.Value >= closeTime.Value)
+            {
+                errorMessage = "OpenTime must be before CloseTime.";
+                return false;
+            }
+
+            if (!item.IsClosed && (openTime2.HasValue ^ closeTime2.HasValue))
+            {
+                errorMessage = "OpenTime2 and CloseTime2 are required together when using a lunch break.";
+                return false;
+            }
+
+            if (!item.IsClosed && openTime2.HasValue && closeTime2.HasValue && openTime2.Value >= closeTime2.Value)
+            {
+                errorMessage = "OpenTime2 must be before CloseTime2.";
+                return false;
+            }
+
+            if (!item.IsClosed && openTime.HasValue && closeTime.HasValue && openTime2.HasValue && closeTime2.HasValue
+                && closeTime.Value > openTime2.Value)
+            {
+                errorMessage = "CloseTime must be before OpenTime2 when using a lunch break.";
+                return false;
+            }
+
+            normalized.Add(new ServiceLocationOpeningHours
+            {
+                DayOfWeek = item.DayOfWeek,
+                OpenTime = item.IsClosed ? null : openTime,
+                CloseTime = item.IsClosed ? null : closeTime,
+                OpenTime2 = item.IsClosed ? null : openTime2,
+                CloseTime2 = item.IsClosed ? null : closeTime2,
+                IsClosed = item.IsClosed
+            });
+        }
+
+        return true;
+    }
+
+    private static bool TryNormalizeExceptions(
+        IEnumerable<ServiceLocationExceptionDto> items,
+        out List<ServiceLocationException> normalized,
+        out string errorMessage)
+    {
+        normalized = new List<ServiceLocationException>();
+        errorMessage = string.Empty;
+
+        foreach (var item in items)
+        {
+            var openTime = ParseTime(item.OpenTime);
+            var closeTime = ParseTime(item.CloseTime);
+
+            if (!item.IsClosed && (!openTime.HasValue || !closeTime.HasValue))
+            {
+                errorMessage = "OpenTime and CloseTime are required when not closed.";
+                return false;
+            }
+
+            if (openTime.HasValue && closeTime.HasValue && openTime.Value >= closeTime.Value)
+            {
+                errorMessage = "OpenTime must be before CloseTime.";
+                return false;
+            }
+
+            normalized.Add(new ServiceLocationException
+            {
+                Date = item.Date.Date,
+                OpenTime = item.IsClosed ? null : openTime,
+                CloseTime = item.IsClosed ? null : closeTime,
+                IsClosed = item.IsClosed,
+                Note = string.IsNullOrWhiteSpace(item.Note) ? null : item.Note.Trim()
+            });
+        }
+
+        return true;
+    }
+
+    private static List<string> NormalizeInstructions(IEnumerable<string>? instructions)
+    {
+        if (instructions == null)
+        {
+            return new List<string>();
+        }
+
+        return instructions
+            .Select(line => line?.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Cast<string>()
+            .ToList();
     }
 
     private async Task RemoveFromFutureRoutesAsync(List<int> serviceLocationIds, CancellationToken cancellationToken)
