@@ -937,6 +937,7 @@
   margin-bottom: 6px;
 }
 
+
 .weight-actions {
   display: flex;
   gap: 8px;
@@ -964,6 +965,18 @@
   margin-top: 6px;
 }
 
+.weight-subhint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.weight-muted {
+  margin-left: 4px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
 .weight-checkbox {
   display: flex;
   align-items: center;
@@ -971,6 +984,16 @@
   font-size: 12px;
   color: #334155;
   margin-top: 6px;
+}
+
+.weight-warning {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  padding: 6px 8px;
+  border-radius: 6px;
 }
 
 .legend-gradient-bar {

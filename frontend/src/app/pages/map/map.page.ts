@@ -130,6 +130,7 @@ interface MapPagePreferences {
   fromDate?: string;
   toDate?: string;
   weightTemplateId?: number | null;
+  normalizeWeights?: boolean;
 }
 
 type WeightTemplateOption = { label: string; value: number };
@@ -274,6 +275,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
               overtime: this.weightOvertime(),
             },
             this.enforceServiceTypeMatch(),
+            this.normalizeWeights(),
             this.selectedWeightTemplateId() ?? undefined
           )
           .toPromise();
@@ -317,7 +319,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
           date: this.weightDate(),
           cost: this.weightCost(),
           overtime: this.weightOvertime(),
-        }, this.enforceServiceTypeMatch(), this.selectedWeightTemplateId() ?? undefined)
+        }, this.enforceServiceTypeMatch(), this.normalizeWeights(), this.selectedWeightTemplateId() ?? undefined)
         .toPromise();
       const updated = result?.routes?.length ?? 0;
       const skipped = result?.skippedDrivers?.length ?? 0;
@@ -393,7 +395,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
               date: this.weightDate(),
               cost: this.weightCost(),
               overtime: this.weightOvertime(),
-            }, this.enforceServiceTypeMatch(), this.selectedWeightTemplateId() ?? undefined)
+            }, this.enforceServiceTypeMatch(), this.normalizeWeights(), this.selectedWeightTemplateId() ?? undefined)
             .toPromise();
           totalUpdated += result?.routes?.length ?? 0;
           totalSkipped += result?.skippedDrivers?.length ?? 0;
@@ -492,6 +494,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   weightDate = signal(1);
   weightCost = signal(1);
   weightOvertime = signal(1);
+  normalizeWeights = signal(true);
   weightTemplates = signal<WeightTemplateDto[]>([]);
   selectedWeightTemplateId = signal<number | null>(null);
   enforceServiceTypeMatch = signal(true);
@@ -530,6 +533,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
   activeWeightDate = computed(() => this.weightDate());
   activeWeightCost = computed(() => this.weightCost());
   activeWeightOvertime = computed(() => this.weightOvertime());
+  showCostDoubleCountWarning = computed(
+    () => this.weightCost() > 0 && this.weightDistance() > 0
+  );
   showTemplateNameDialog = signal(false);
   newTemplateName = signal('');
   templateSaveLoading = signal(false);
@@ -725,6 +731,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (template) {
       this.applyTemplateWeights(template);
     }
+    this.saveMapPreferences();
+  }
+
+  onNormalizeWeightsChange(value: boolean): void {
+    this.normalizeWeights.set(value);
     this.saveMapPreferences();
   }
 
@@ -3343,23 +3354,26 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.toDate.set(toDate);
     }
 
-    if (prefs.weightTemplateId != null && Number.isFinite(prefs.weightTemplateId)) {
-      this.selectedWeightTemplateId.set(prefs.weightTemplateId);
-    }
-  }
+      if (prefs.weightTemplateId != null && Number.isFinite(prefs.weightTemplateId)) {
+        this.selectedWeightTemplateId.set(prefs.weightTemplateId);
+      }
 
-  private saveMapPreferences(): void {
-    if (typeof localStorage === 'undefined') {
-      return;
+      this.normalizeWeights.set(true);
+    }
+
+    private saveMapPreferences(): void {
+      if (typeof localStorage === 'undefined') {
+        return;
     }
 
     const prefs: MapPagePreferences = {
       ownerId: this.selectedOwnerId() ?? undefined,
-      serviceTypeIds: this.selectedServiceTypeIds(),
-      fromDate: this.fromDate()?.toISOString(),
-      toDate: this.toDate()?.toISOString(),
-      weightTemplateId: this.selectedWeightTemplateId(),
-    };
+        serviceTypeIds: this.selectedServiceTypeIds(),
+        fromDate: this.fromDate()?.toISOString(),
+        toDate: this.toDate()?.toISOString(),
+        weightTemplateId: this.selectedWeightTemplateId(),
+      normalizeWeights: true,
+      };
 
     try {
       localStorage.setItem(this.getMapPreferencesKey(), JSON.stringify(prefs));

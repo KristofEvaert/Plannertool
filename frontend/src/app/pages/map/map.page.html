@@ -221,67 +221,70 @@
               [disabled]="!canUpdateSelectedTemplate()"
             ></p-button>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Driver Time</label>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              step="1"
-              [(ngModel)]="weightTime"
-            />
-            <span class="weight-value">{{ activeWeightTime() }}</span>
-          </div>
-          <div class="weight-row">
-            <label class="weight-label">Distance</label>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              step="1"
-              [(ngModel)]="weightDistance"
-            />
-            <span class="weight-value">{{ activeWeightDistance() }}</span>
-          </div>
+            <div class="weight-row" *ngIf="weightCost() === 0">
+              <label class="weight-label">Driver Time</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="weightTime"
+              />
+              <span class="weight-value">{{ activeWeightTime() }}%</span>
+            </div>
+            <div class="weight-row" *ngIf="weightCost() === 0">
+              <label class="weight-label">Distance</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="weightDistance"
+              />
+              <span class="weight-value">{{ activeWeightDistance() }}%</span>
+            </div>
           <div class="weight-row">
             <label class="weight-label">Due Date</label>
             <input
               type="range"
-              min="1"
+              min="0"
               max="100"
               step="1"
               [(ngModel)]="weightDate"
             />
-            <span class="weight-value">{{ activeWeightDate() }}</span>
+            <span class="weight-value">{{ activeWeightDate() }}%</span>
           </div>
           <div class="weight-row">
             <label class="weight-label">Cost</label>
             <input
               type="range"
-              min="1"
+              min="0"
               max="100"
               step="1"
               [(ngModel)]="weightCost"
             />
-            <span class="weight-value">{{ activeWeightCost() }}</span>
+            <span class="weight-value">{{ activeWeightCost() }}%</span>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Overtime</label>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              step="1"
-              [(ngModel)]="weightOvertime"
-            />
-            <span class="weight-value">{{ activeWeightOvertime() }}</span>
+            <div class="weight-row">
+              <label class="weight-label">Overtime</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="weightOvertime"
+              />
+              <span class="weight-value">{{ activeWeightOvertime() }}%</span>
+            </div>
+            <label class="weight-checkbox">
+              <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
+              <span>Enforce service type match</span>
+            </label>
+            <div class="weight-hint">1% is almost ignored. 100% is decisive.</div>
+            <div class="weight-subhint">
+              Cost replaces Distance + Driver Time when Cost &gt; 0. Overtime only affects late finishes.
+            </div>
           </div>
-          <label class="weight-checkbox">
-            <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
-            <span>Enforce service type match</span>
-          </label>
-          <div class="weight-hint">Higher means more important.</div>
-        </div>
 
         <div class="drivers-list" *ngIf="!loadingDrivers()">
           <div 

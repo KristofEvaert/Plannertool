@@ -17,6 +17,7 @@ using TransportPlanner.Api.Middleware;
 using TransportPlanner.Api.Options;
 using TransportPlanner.Api.Services.AuditTrail;
 using TransportPlanner.Api.Hubs;
+using TransportPlanner.Infrastructure.Services.Vrp;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,12 @@ builder.Services.AddHttpClient<IRoutingService, OsrmRoutingService>(client =>
 {
     client.BaseAddress = new Uri("https://router.project-osrm.org/");
     client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddHttpClient<IMatrixProvider, OsrmMatrixProvider>(client =>
+{
+    client.BaseAddress = new Uri("https://router.project-osrm.org/");
+    client.Timeout = TimeSpan.FromSeconds(15);
 });
 
 // Add CORS

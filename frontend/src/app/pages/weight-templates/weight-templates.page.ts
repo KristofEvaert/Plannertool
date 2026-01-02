@@ -94,6 +94,10 @@ export class WeightTemplatesPage {
     { label: 'Global templates', value: -1 },
     ...this.ownerOptions(),
   ]);
+  showCostDoubleCountWarning = computed(() => {
+    const form = this.form();
+    return form.weightCost > 0 && form.weightDistance > 0;
+  });
 
   get showDialogValue(): boolean {
     return this.showDialog();

@@ -190,6 +190,7 @@ export class RoutesApiService {
     serviceLocationToolIds: string[],
     weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
     requireServiceTypeMatch?: boolean,
+    normalizeWeights?: boolean,
     weightTemplateId?: number
   ): Observable<RouteDto> {
     const body = {
@@ -204,6 +205,7 @@ export class RoutesApiService {
       weightOvertime: weights?.overtime,
       weightTemplateId,
       requireServiceTypeMatch,
+      normalizeWeights,
     };
     return this.http.post<RouteDto>(`${this.baseUrl}/auto-generate`, body);
   }
@@ -214,6 +216,7 @@ export class RoutesApiService {
     serviceLocationToolIds: string[],
     weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
     requireServiceTypeMatch?: boolean,
+    normalizeWeights?: boolean,
     weightTemplateId?: number
   ): Observable<AutoGenerateAllResponse> {
     const body = {
@@ -227,6 +230,7 @@ export class RoutesApiService {
       weightOvertime: weights?.overtime,
       weightTemplateId,
       requireServiceTypeMatch,
+      normalizeWeights,
     };
     return this.http.post<AutoGenerateAllResponse>(`${this.baseUrl}/auto-generate/all`, body);
   }

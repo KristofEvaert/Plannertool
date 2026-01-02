@@ -61,8 +61,12 @@
             <td>{{ ownerName(template.ownerId) }}</td>
             <td>{{ serviceTypeName(template.serviceTypeId) }}</td>
             <td class="text-xs text-gray-600">
-              D {{ template.weightDistance }} / T {{ template.weightTravelTime }} / Date
-              {{ template.weightDate }} / Cost {{ template.weightCost }} / OT {{ template.weightOvertime }}
+              @if (template.weightCost > 0) {
+                Date {{ template.weightDate }}% / Cost {{ template.weightCost }}% / OT {{ template.weightOvertime }}%
+              } @else {
+                D {{ template.weightDistance }}% / T {{ template.weightTravelTime }}% / Date
+                {{ template.weightDate }}% / Cost {{ template.weightCost }}% / OT {{ template.weightOvertime }}%
+              }
             </td>
             <td>
               <p-tag [value]="template.isActive ? 'Active' : 'Inactive'" />
@@ -156,84 +160,91 @@
       </div>
     }
 
-    <div>
-      <label class="block text-sm font-semibold mb-1">Weight - distance</label>
+    <div *ngIf="form().weightCost === 0">
+      <label class="block text-sm font-semibold mb-1">Distance %</label>
       <div class="flex items-center gap-3">
         <input
           type="range"
-          min="1"
+          min="0"
           max="100"
           step="1"
           class="w-full"
           [ngModel]="form().weightDistance"
           (ngModelChange)="onFormChange('weightDistance', $event)"
         />
-        <span class="text-sm font-semibold w-10 text-right">{{ form().weightDistance }}</span>
+        <span class="text-sm font-semibold w-12 text-right">{{ form().weightDistance }}%</span>
       </div>
     </div>
 
-    <div>
-      <label class="block text-sm font-semibold mb-1">Weight - travel time</label>
+    <div *ngIf="form().weightCost === 0">
+      <label class="block text-sm font-semibold mb-1">Travel time %</label>
       <div class="flex items-center gap-3">
         <input
           type="range"
-          min="1"
+          min="0"
           max="100"
           step="1"
           class="w-full"
           [ngModel]="form().weightTravelTime"
           (ngModelChange)="onFormChange('weightTravelTime', $event)"
         />
-        <span class="text-sm font-semibold w-10 text-right">{{ form().weightTravelTime }}</span>
+        <span class="text-sm font-semibold w-12 text-right">{{ form().weightTravelTime }}%</span>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-semibold mb-1">Weight - due date</label>
+      <label class="block text-sm font-semibold mb-1">Due urgency %</label>
       <div class="flex items-center gap-3">
         <input
           type="range"
-          min="1"
+          min="0"
           max="100"
           step="1"
           class="w-full"
           [ngModel]="form().weightDate"
           (ngModelChange)="onFormChange('weightDate', $event)"
         />
-        <span class="text-sm font-semibold w-10 text-right">{{ form().weightDate }}</span>
+        <span class="text-sm font-semibold w-12 text-right">{{ form().weightDate }}%</span>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-semibold mb-1">Weight - cost</label>
+      <label class="block text-sm font-semibold mb-1">Cost %</label>
       <div class="flex items-center gap-3">
         <input
           type="range"
-          min="1"
+          min="0"
           max="100"
           step="1"
           class="w-full"
           [ngModel]="form().weightCost"
           (ngModelChange)="onFormChange('weightCost', $event)"
         />
-        <span class="text-sm font-semibold w-10 text-right">{{ form().weightCost }}</span>
+        <span class="text-sm font-semibold w-12 text-right">{{ form().weightCost }}%</span>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-semibold mb-1">Weight - overtime</label>
+      <label class="block text-sm font-semibold mb-1">Overtime %</label>
       <div class="flex items-center gap-3">
         <input
           type="range"
-          min="1"
+          min="0"
           max="100"
           step="1"
           class="w-full"
           [ngModel]="form().weightOvertime"
           (ngModelChange)="onFormChange('weightOvertime', $event)"
         />
-        <span class="text-sm font-semibold w-10 text-right">{{ form().weightOvertime }}</span>
+        <span class="text-sm font-semibold w-12 text-right">{{ form().weightOvertime }}%</span>
       </div>
+    </div>
+
+    <div class="md:col-span-2 text-xs text-gray-500">
+      1% is almost ignored. 100% is decisive.
+    </div>
+    <div class="md:col-span-2 text-xs text-gray-400">
+      Cost replaces Distance + Travel time when Cost &gt; 0. Overtime only affects late finishes.
     </div>
 
     <div class="flex items-center gap-2 mt-6">

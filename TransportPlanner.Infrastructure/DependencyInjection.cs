@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TransportPlanner.Infrastructure.Data;
 using System;
+using TransportPlanner.Infrastructure.Services.Vrp;
 
 namespace TransportPlanner.Infrastructure;
 
@@ -25,6 +26,7 @@ public static class DependencyInjection
     /// <returns>The service collection for chaining</returns>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddMemoryCache();
         // Identity + roles
         services
             .AddIdentityCore<ApplicationUser>(options =>
@@ -57,6 +59,9 @@ public static class DependencyInjection
         // Register bulk insert service for service locations
         services.AddScoped<ServiceLocationBulkInsertService>();
         services.AddScoped<ITravelTimeModelService, TravelTimeModelService>();
+        services.AddScoped<IVrpInputBuilder, VrpInputBuilder>();
+        services.AddScoped<IVrpResultMapper, VrpResultMapper>();
+        services.AddScoped<IVrpRouteSolverService, VrpRouteSolverService>();
 
         services.AddHttpClient<IGeocodingService, OpenStreetMapGeocodingService>(client =>
         {
