@@ -559,6 +559,32 @@ public class AutoRoutesController : ControllerBase
             lastLng = loc.Longitude ?? 0;
         }
 
+        // Add final leg back to the route end (driver default or override).
+        var endPoint = ResolveRouteEnd(existingRoute, driver);
+        if (selected.Any())
+        {
+            DrivingRouteResult? endTravel = null;
+            try
+            {
+                endTravel = await _routing.GetDrivingRouteAsync(new List<RoutePoint>
+                {
+                    new RoutePoint(lastLat, lastLng),
+                    new RoutePoint(endPoint.Lat, endPoint.Lng)
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "OSRM return leg failed for DriverId={DriverId}", driver.Id);
+            }
+
+            var endMinutes = endTravel != null
+                ? endTravel.TotalDurationMinutes
+                : EstimateMinutes(lastLat, lastLng, endPoint.Lat, endPoint.Lng);
+            var endKm = endTravel?.TotalDistanceKm ?? HaversineKm(lastLat, lastLng, endPoint.Lat, endPoint.Lng);
+            totalKm += endKm;
+            totalTravelMinutes += endMinutes;
+        }
+
         var routeEntity = existingRoute ?? new RouteEntity
         {
             Date = date,
@@ -889,6 +915,16 @@ public class AutoRoutesController : ControllerBase
     private static (double Lat, double Lng) ResolveRouteStart(RouteEntity? route, Driver driver)
     {
         if (route?.StartLatitude is double lat && route.StartLongitude is double lng)
+        {
+            return (lat, lng);
+        }
+
+        return (driver.StartLatitude ?? 0, driver.StartLongitude ?? 0);
+    }
+
+    private static (double Lat, double Lng) ResolveRouteEnd(RouteEntity? route, Driver driver)
+    {
+        if (route?.EndLatitude is double lat && route.EndLongitude is double lng)
         {
             return (lat, lng);
         }

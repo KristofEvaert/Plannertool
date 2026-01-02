@@ -32,10 +32,24 @@ import type {
 } from '@models/service-location.model';
 import type { ServiceTypeDto } from '@models/service-type.model';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
-import { toYmd } from '@utils/date.utils';
+import { toYmd, parseYmd } from '@utils/date.utils';
 
 type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & { label: string; hasLunchBreak?: boolean };
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
+type ServiceLocationFormState = {
+  erpId: number;
+  name: string;
+  address?: string;
+  latitude: number | null;
+  longitude: number | null;
+  dueDate: Date | null;
+  priorityDate: Date | null;
+  serviceMinutes: number;
+  serviceTypeId: number;
+  ownerId: number;
+  driverInstruction?: string;
+  extraInstructions?: string[];
+};
 type ServiceLocationDetail = {
   loading: boolean;
   hours: ServiceLocationOpeningHoursDto[];
@@ -109,14 +123,14 @@ export class ServiceLocationsPage {
   selectedItemForPriority = signal<ServiceLocationDto | null>(null);
   bulkResult = signal<BulkInsertResultDto | null>(null);
 
-  form = signal<CreateServiceLocationRequest>({
+  form = signal<ServiceLocationFormState>({
     erpId: 0,
     name: '',
     address: '',
     latitude: null,
     longitude: null,
-    dueDate: toYmd(new Date()),
-    priorityDate: undefined,
+    dueDate: new Date(),
+    priorityDate: null,
     serviceMinutes: 20,
     serviceTypeId: 0, // Will be set when service types are loaded
     ownerId: 0, // Will be set when owners are loaded
@@ -513,8 +527,8 @@ export class ServiceLocationsPage {
       address: '',
       latitude: null,
       longitude: null,
-      dueDate: toYmd(new Date()),
-      priorityDate: undefined,
+      dueDate: new Date(),
+      priorityDate: null,
       serviceMinutes: 20,
       serviceTypeId: 0,
       ownerId: defaultOwnerId,
@@ -546,8 +560,8 @@ export class ServiceLocationsPage {
       address: item.address || '',
       latitude,
       longitude,
-      dueDate: item.dueDate,
-      priorityDate: item.priorityDate,
+      dueDate: item.dueDate ? (parseYmd(item.dueDate) ?? new Date(item.dueDate)) : new Date(),
+      priorityDate: item.priorityDate ? (parseYmd(item.priorityDate) ?? new Date(item.priorityDate)) : null,
       serviceMinutes: item.serviceMinutes,
       serviceTypeId: item.serviceTypeId,
       ownerId: item.ownerId,
@@ -843,7 +857,7 @@ export class ServiceLocationsPage {
       });
   }
 
-  private getGeoValidationError(form: CreateServiceLocationRequest): string | null {
+  private getGeoValidationError(form: ServiceLocationFormState): string | null {
     const address = form.address?.trim() ?? '';
     const hasAddress = address.length > 0;
     const hasLatitude = form.latitude !== null && form.latitude !== undefined;
@@ -945,6 +959,15 @@ export class ServiceLocationsPage {
       return;
     }
 
+    if (!form.dueDate) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Validation Error',
+        detail: 'Due Date is required',
+      });
+      return;
+    }
+
     if (this.geoResolving()) {
       this.geoValidationMessage.set('Resolving address or coordinates. Please wait.');
       return;
@@ -981,8 +1004,8 @@ export class ServiceLocationsPage {
       address: form.address?.trim() || undefined,
       latitude: form.latitude,
       longitude: form.longitude,
-      dueDate: toYmd(new Date(form.dueDate)),
-      priorityDate: form.priorityDate ? toYmd(new Date(form.priorityDate)) : undefined,
+      dueDate: toYmd(form.dueDate),
+      priorityDate: form.priorityDate ? toYmd(form.priorityDate) : undefined,
       serviceMinutes: form.serviceMinutes,
       serviceTypeId: form.serviceTypeId,
       ownerId: form.ownerId,
@@ -1355,37 +1378,92 @@ export class ServiceLocationsPage {
     const oldCacheKey = `${item.toolId}_${currentOrderDate}`;
     this.dateCache.delete(oldCacheKey);
 
-    const dueDate = new Date(item.dueDate);
-    const newDateObj = new Date(newDateStr);
+    const dueDate = parseYmd(item.dueDate) ?? new Date(item.dueDate);
+    const newDateObj = parseYmd(newDateStr) ?? new Date(newDateStr);
 
-    // If new date is before due date, set it as priority date
-    // If new date is same or after due date, clear priority date
-    let priorityDateStr: string | undefined;
-    
+    // If new date is before due date, set it as priority date.
     if (newDateObj < dueDate) {
-      // New date is before due date -> set as priority date
-      priorityDateStr = newDateStr;
-    } else {
-      // New date is same or after due date -> clear priority date
-      priorityDateStr = undefined;
+      const priorityDateStr = newDateStr;
+      if (priorityDateStr === item.priorityDate) {
+        return;
+      }
+
+      this.isUpdatingDate = true;
+      const originalPriorityDate = item.priorityDate;
+      item.priorityDate = priorityDateStr;
+
+      this.api
+        .setPriorityDate(item.toolId, priorityDateStr ?? null)
+        .pipe(
+          catchError((err) => {
+            item.priorityDate = originalPriorityDate; // Revert on error
+            this.isUpdatingDate = false;
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: err.detail || err.message || 'Failed to update date',
+            });
+            return of(null);
+          })
+        )
+        .subscribe((result: ServiceLocationDto | null) => {
+          this.isUpdatingDate = false;
+          if (result) {
+            const updatedDateStr = result.priorityDate || result.dueDate;
+            const newCacheKey = `${item.toolId}_${updatedDateStr}`;
+            this.dateCache.delete(newCacheKey);
+
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Success',
+              detail: 'Priority date updated',
+              life: 2000,
+            });
+            const index = this.items().findIndex(i => i.toolId === item.toolId);
+            if (index >= 0) {
+              const updatedItems = [...this.items()];
+              updatedItems[index] = result;
+              this.items.set(updatedItems);
+            }
+          }
+        });
+      return;
     }
 
-    // Prevent update if priority date hasn't actually changed
-    if (priorityDateStr === item.priorityDate) {
+    // New date is same or after due date: clear priority date and update due date.
+    const shouldUpdateDueDate = newDateStr !== item.dueDate;
+    const shouldClearPriority = item.priorityDate !== undefined;
+    if (!shouldUpdateDueDate && !shouldClearPriority) {
       return;
     }
 
     this.isUpdatingDate = true;
-
-    // Optimistic update
     const originalPriorityDate = item.priorityDate;
-    item.priorityDate = priorityDateStr;
+    const originalDueDate = item.dueDate;
+    item.priorityDate = undefined;
+    item.dueDate = newDateStr;
+
+    const updateRequest: UpdateServiceLocationRequest = {
+      erpId: item.erpId,
+      name: item.name,
+      address: item.address,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      dueDate: newDateStr,
+      priorityDate: undefined,
+      serviceMinutes: item.serviceMinutes,
+      serviceTypeId: item.serviceTypeId,
+      ownerId: item.ownerId,
+      driverInstruction: item.driverInstruction,
+      extraInstructions: item.extraInstructions,
+    };
 
     this.api
-      .setPriorityDate(item.toolId, priorityDateStr ?? null)
+      .update(item.toolId, updateRequest)
       .pipe(
         catchError((err) => {
-          item.priorityDate = originalPriorityDate; // Revert on error
+          item.priorityDate = originalPriorityDate;
+          item.dueDate = originalDueDate;
           this.isUpdatingDate = false;
           this.messageService.add({
             severity: 'error',
@@ -1398,18 +1476,21 @@ export class ServiceLocationsPage {
       .subscribe((result: ServiceLocationDto | null) => {
         this.isUpdatingDate = false;
         if (result) {
-          // Clear cache for updated item
-          const newDateStr = result.priorityDate || result.dueDate;
-          const newCacheKey = `${item.toolId}_${newDateStr}`;
+          const updatedDateStr = result.priorityDate || result.dueDate;
+          const newCacheKey = `${item.toolId}_${updatedDateStr}`;
           this.dateCache.delete(newCacheKey);
-          
+
+          const detail = shouldClearPriority
+            ? 'Priority date cleared and due date updated'
+            : 'Due date updated';
+
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
-            detail: priorityDateStr ? 'Priority date updated' : 'Priority date cleared',
+            detail,
             life: 2000,
           });
-          // Update the item in place instead of reloading all data
+
           const index = this.items().findIndex(i => i.toolId === item.toolId);
           if (index >= 0) {
             const updatedItems = [...this.items()];
