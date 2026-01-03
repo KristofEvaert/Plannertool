@@ -168,11 +168,9 @@ public class RoutesController : ControllerBase
             StartAddress = r.StartAddress,
             StartLatitude = r.StartLatitude,
             StartLongitude = r.StartLongitude,
-            StartIsHotel = r.StartIsHotel,
             EndAddress = r.EndAddress,
             EndLatitude = r.EndLatitude,
             EndLongitude = r.EndLongitude,
-            EndIsHotel = r.EndIsHotel,
             WeightTemplateId = r.WeightTemplateId,
             TotalMinutes = r.TotalMinutes,
             TotalKm = r.TotalKm,
@@ -729,11 +727,9 @@ public class RoutesController : ControllerBase
                 StartAddress = route.StartAddress,
                 StartLatitude = route.StartLatitude,
                 StartLongitude = route.StartLongitude,
-                StartIsHotel = route.StartIsHotel,
                 EndAddress = route.EndAddress,
                 EndLatitude = route.EndLatitude,
                 EndLongitude = route.EndLongitude,
-                EndIsHotel = route.EndIsHotel,
                 WeightTemplateId = route.WeightTemplateId,
                 TotalMinutes = route.TotalMinutes,
                 TotalKm = route.TotalKm,
@@ -784,11 +780,9 @@ public class RoutesController : ControllerBase
                 StartAddress = r.StartAddress,
                 StartLatitude = r.StartLatitude,
                 StartLongitude = r.StartLongitude,
-                StartIsHotel = r.StartIsHotel,
                 EndAddress = r.EndAddress,
                 EndLatitude = r.EndLatitude,
                 EndLongitude = r.EndLongitude,
-                EndIsHotel = r.EndIsHotel,
                 WeightTemplateId = r.WeightTemplateId,
                 TotalMinutes = r.TotalMinutes,
                 TotalKm = r.TotalKm,
@@ -1125,11 +1119,9 @@ public class RoutesController : ControllerBase
             StartAddress = route.StartAddress,
             StartLatitude = route.StartLatitude,
             StartLongitude = route.StartLongitude,
-            StartIsHotel = route.StartIsHotel,
             EndAddress = route.EndAddress,
             EndLatitude = route.EndLatitude,
             EndLongitude = route.EndLongitude,
-            EndIsHotel = route.EndIsHotel,
             WeightTemplateId = route.WeightTemplateId,
             TotalMinutes = route.TotalMinutes,
             TotalKm = route.TotalKm,
@@ -1268,12 +1260,10 @@ public class RoutesController : ControllerBase
         route.StartAddress = startResult.Address;
         route.StartLatitude = startResult.Latitude;
         route.StartLongitude = startResult.Longitude;
-        route.StartIsHotel = request.StartIsHotel ?? false;
 
         route.EndAddress = endResult.Address;
         route.EndLatitude = endResult.Latitude;
         route.EndLongitude = endResult.Longitude;
-        route.EndIsHotel = request.EndIsHotel ?? false;
 
         return null;
     }

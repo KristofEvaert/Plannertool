@@ -14,8 +14,6 @@ public class CreateRouteRequest
     public string? EndAddress { get; set; }
     public double? EndLatitude { get; set; }
     public double? EndLongitude { get; set; }
-    public bool? StartIsHotel { get; set; }
-    public bool? EndIsHotel { get; set; }
     public int? WeightTemplateId { get; set; }
     public List<CreateRouteStopRequest> Stops { get; set; } = new List<CreateRouteStopRequest>();
 }
