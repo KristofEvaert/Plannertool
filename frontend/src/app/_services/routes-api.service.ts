@@ -49,9 +49,11 @@ export interface RouteDto {
   startAddress?: string;
   startLatitude?: number;
   startLongitude?: number;
+  startIsHotel?: boolean;
   endAddress?: string;
   endLatitude?: number;
   endLongitude?: number;
+  endIsHotel?: boolean;
   weightTemplateId?: number;
   totalMinutes: number;
   totalKm: number;
@@ -83,6 +85,8 @@ export interface CreateRouteRequest {
   endAddress?: string;
   endLatitude?: number;
   endLongitude?: number;
+  startIsHotel?: boolean;
+  endIsHotel?: boolean;
   weightTemplateId?: number;
   stops: CreateRouteStopRequest[];
 }

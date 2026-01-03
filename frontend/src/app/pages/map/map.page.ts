@@ -80,6 +80,7 @@ interface RouteOverride {
   address?: string;
   latitude?: number;
   longitude?: number;
+  isHotel?: boolean;
 }
 
 interface RouteInfo {
@@ -2154,7 +2155,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
       if (startLat == null || startLng == null) {
         return false;
       }
-      route.startOverride = { address: resolved.address, latitude: startLat, longitude: startLng };
+      route.startOverride = {
+        address: resolved.address,
+        latitude: startLat,
+        longitude: startLng,
+        isHotel: route.startOverride?.isHotel,
+      };
       updated = true;
     } else if (!driverCoordsValid) {
       const address = route.driver.startAddress?.trim();
@@ -2175,7 +2181,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
       if (startLat == null || startLng == null) {
         return false;
       }
-      route.startOverride = { address: resolved.address, latitude: startLat, longitude: startLng };
+      route.startOverride = {
+        address: resolved.address,
+        latitude: startLat,
+        longitude: startLng,
+        isHotel: route.startOverride?.isHotel,
+      };
       route.driver = {
         ...route.driver,
         startAddress: resolved.address,
@@ -2200,7 +2211,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
       if (endLat == null || endLng == null) {
         return false;
       }
-      route.endOverride = { address: resolved.address, latitude: endLat, longitude: endLng };
+      route.endOverride = {
+        address: resolved.address,
+        latitude: endLat,
+        longitude: endLng,
+        isHotel: route.endOverride?.isHotel,
+      };
       updated = true;
     }
 
@@ -2216,16 +2232,58 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   applyStartOverride(): void {
-    this.applyOverride('start');
+    const route = this.getCurrentRoute();
+    if (!route) {
+      return;
+    }
+
+    const input = this.buildOverrideFromInputs('start');
+    if (!input) {
+      return;
+    }
+    if (input.clear) {
+      this.clearStartOverride();
+      return;
+    }
+
+    this.applyOverrideToRoute(route, 'start', input.override, false);
   }
 
-  applyEndOverride(): void {
-    this.applyOverride('end');
+  async applyEndOverride(): Promise<void> {
+    const route = this.getCurrentRoute();
+    if (!route) {
+      return;
+    }
+
+    const input = this.buildOverrideFromInputs('end');
+    if (!input) {
+      return;
+    }
+    if (input.clear) {
+      this.clearEndOverride();
+      return;
+    }
+
+    const nextDate = this.getNextDayDate(this.selectedDate());
+    const hasAvailability = await this.hasAvailabilityForDate(route.driver, nextDate);
+    if (!hasAvailability) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'No next-day availability',
+        detail: `${route.driver.name} has no availability on ${toYmd(nextDate)}.`,
+      });
+      return;
+    }
+
+    this.applyOverrideToRoute(route, 'end', input.override, true);
+    await this.applyHotelStartForNextDay(route.driver, nextDate, input.override);
   }
 
   clearStartOverride(): void {
     const route = this.getCurrentRoute();
-    if (!route) return;
+    if (!route) {
+      return;
+    }
     route.startOverride = undefined;
     this.updateRouteStartEndWaypoints(route);
     this.syncOverrideInputsFromRoute(route);
@@ -2249,10 +2307,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.scheduleSaveRouteToBackend(route);
   }
 
-  private applyOverride(kind: 'start' | 'end'): void {
-    const route = this.getCurrentRoute();
-    if (!route) return;
-
+  private buildOverrideFromInputs(
+    kind: 'start' | 'end'
+  ): { override: RouteOverride; clear: boolean } | null {
     const isStart = kind === 'start';
     const address = (isStart ? this.startOverrideAddress : this.endOverrideAddress).trim();
     const latitude = isStart ? this.startOverrideLatitude : this.endOverrideLatitude;
@@ -2267,16 +2324,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
         summary: 'Invalid coordinates',
         detail: 'Please provide both latitude and longitude.',
       });
-      return;
+      return null;
     }
 
     if (lat == null && lng == null && !address) {
-      if (isStart) {
-        this.clearStartOverride();
-      } else {
-        this.clearEndOverride();
-      }
-      return;
+      return { override: { address: undefined }, clear: true };
     }
 
     if (lat != null && lng != null) {
@@ -2286,7 +2338,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
           summary: 'Invalid coordinates',
           detail: 'Latitude must be between -90 and 90, longitude between -180 and 180.',
         });
-        return;
+        return null;
       }
     }
 
@@ -2296,10 +2348,24 @@ export class MapPage implements AfterViewInit, OnDestroy {
       longitude: lng ?? undefined,
     };
 
+    return { override, clear: false };
+  }
+
+  private applyOverrideToRoute(
+    route: RouteInfo,
+    kind: 'start' | 'end',
+    override: RouteOverride,
+    isHotel: boolean
+  ): void {
+    const isStart = kind === 'start';
+    const lat = override.latitude;
+    const lng = override.longitude;
+
+    const overrideWithHotel: RouteOverride = { ...override, isHotel };
     if (isStart) {
-      route.startOverride = override;
+      route.startOverride = overrideWithHotel;
     } else {
-      route.endOverride = override;
+      route.endOverride = overrideWithHotel;
     }
 
     this.updateRouteStartEndWaypoints(route);
@@ -2311,6 +2377,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.refreshLocationMarkers();
     this.scheduleSaveRouteToBackend(route);
 
+    const address = override.address?.trim();
     if (address && (lat == null || lng == null)) {
       this.messageService.add({
         severity: 'info',
@@ -2318,6 +2385,105 @@ export class MapPage implements AfterViewInit, OnDestroy {
         detail: 'Resolving coordinates for the address.',
       });
     }
+  }
+
+  private getNextDayDate(date: Date): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    next.setHours(0, 0, 0, 0);
+    return next;
+  }
+
+  private async hasAvailabilityForDate(driver: DriverDto, date: Date): Promise<boolean> {
+    const ymd = toYmd(date);
+    try {
+      const availabilities = await firstValueFrom(
+        this.driverAvailabilityApi.getAvailability(driver.toolId, ymd, ymd)
+      );
+      return (availabilities ?? []).some((availability) => availability.availableMinutes > 0);
+    } catch (error) {
+      console.error('Failed to check driver availability:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Availability check failed',
+        detail: 'Unable to verify next-day availability. Try again.',
+      });
+      return false;
+    }
+  }
+
+  private async applyHotelStartForNextDay(
+    driver: DriverDto,
+    nextDate: Date,
+    override: RouteOverride
+  ): Promise<void> {
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) {
+      return;
+    }
+
+    try {
+      const existing = await firstValueFrom(
+        this.routesApi.getDriverDayRoute(nextDate, driver.toolId, ownerId, false)
+      );
+
+      const request = this.buildNextDayRouteRequest(driver, nextDate, override, existing);
+      await firstValueFrom(this.routesApi.upsertRoute(request));
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Hotel assigned',
+        detail: `Start address for ${toYmd(nextDate)} updated to hotel.`,
+      });
+    } catch (error: any) {
+      console.error('Failed to apply next-day hotel start:', error);
+      const detail = error?.error?.detail || error?.error?.title || error?.message || 'Failed to save next-day start.';
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Next-day update failed',
+        detail,
+      });
+    }
+  }
+
+  private buildNextDayRouteRequest(
+    driver: DriverDto,
+    date: Date,
+    override: RouteOverride,
+    existing: RouteDto | null
+  ): CreateRouteRequest {
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) {
+      throw new Error('Owner is required to save next-day route.');
+    }
+    const stops =
+      existing?.stops?.map((stop) => ({
+        sequence: stop.sequence,
+        serviceLocationToolId: stop.serviceLocationToolId,
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        serviceMinutes: stop.serviceMinutes,
+        travelKmFromPrev: stop.travelKmFromPrev,
+        travelMinutesFromPrev: stop.travelMinutesFromPrev,
+      })) ?? [];
+
+    return {
+      date: toYmd(date),
+      ownerId,
+      driverToolId: driver.toolId,
+      totalMinutes: existing?.totalMinutes ?? 0,
+      totalKm: existing?.totalKm ?? 0,
+      startAddress: override.address,
+      startLatitude: override.latitude,
+      startLongitude: override.longitude,
+      startIsHotel: true,
+      endAddress: existing?.endAddress,
+      endLatitude: existing?.endLatitude,
+      endLongitude: existing?.endLongitude,
+      endIsHotel: existing?.endIsHotel ?? false,
+      weightTemplateId: existing?.weightTemplateId ?? undefined,
+      stops,
+    };
   }
 
   private loadOrCreateDriverRoute(driver: DriverDto): void {
@@ -2343,6 +2509,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
         totalDistanceKm: 0,
         totalTimeMinutes: 0,
       };
+      this.updateRouteStartEndWaypoints(route);
 
       // Store route for this driver - IMPORTANT: preserve existing routes
       const newRoutes = new Map(this.driverRoutes());
@@ -2412,6 +2579,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       totalDistanceKm: 0,
       totalTimeMinutes: 0,
     };
+    this.updateRouteStartEndWaypoints(route);
 
     // Store route for this driver
     const newRoutes = new Map(this.driverRoutes());
@@ -3652,6 +3820,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
                 address: routeDto.startAddress || undefined,
                 latitude: routeDto.startLatitude,
                 longitude: routeDto.startLongitude,
+                isHotel: routeDto.startIsHotel,
               }
             : undefined;
         const endOverride =
@@ -3660,6 +3829,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
                 address: routeDto.endAddress || undefined,
                 latitude: routeDto.endLatitude,
                 longitude: routeDto.endLongitude,
+                isHotel: routeDto.endIsHotel,
               }
             : undefined;
 
@@ -3805,6 +3975,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
                 address: routeDto.startAddress || undefined,
                 latitude: routeDto.startLatitude,
                 longitude: routeDto.startLongitude,
+                isHotel: routeDto.startIsHotel,
               }
             : undefined;
         const endOverride =
@@ -3813,6 +3984,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
                 address: routeDto.endAddress || undefined,
                 latitude: routeDto.endLatitude,
                 longitude: routeDto.endLongitude,
+                isHotel: routeDto.endIsHotel,
               }
             : undefined;
 
@@ -4134,6 +4306,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
     return `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
   }
 
+  isHotelOverride(route: RouteInfo | null, kind: 'start' | 'end'): boolean {
+    if (!route) {
+      return false;
+    }
+    const override = kind === 'start' ? route.startOverride : route.endOverride;
+    return !!override?.isHotel;
+  }
+
   getStopSchedule(route: RouteInfo | null): StopSchedule[] {
     if (!route) {
       return [];
@@ -4416,6 +4596,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
       endAddress: route.endOverride?.address,
       endLatitude: route.endOverride?.latitude,
       endLongitude: route.endOverride?.longitude,
+      startIsHotel: route.startOverride?.isHotel ?? false,
+      endIsHotel: route.endOverride?.isHotel ?? false,
       weightTemplateId: this.selectedWeightTemplateId() ?? undefined,
       stops: stops
     };
@@ -4435,22 +4617,24 @@ export class MapPage implements AfterViewInit, OnDestroy {
     route.totalTimeMinutes = Number(saved.totalMinutes) || 0;
     route.isAwaitingBackendTotals = false;
     route.distanceSource = 'backend';
-    route.startOverride =
-      saved.startLatitude != null && saved.startLongitude != null
-        ? {
-            address: saved.startAddress || undefined,
-            latitude: saved.startLatitude,
-            longitude: saved.startLongitude,
-          }
-        : undefined;
-    route.endOverride =
-      saved.endLatitude != null && saved.endLongitude != null
-        ? {
-            address: saved.endAddress || undefined,
-            latitude: saved.endLatitude,
-            longitude: saved.endLongitude,
-          }
-        : undefined;
+      route.startOverride =
+        saved.startLatitude != null && saved.startLongitude != null
+          ? {
+              address: saved.startAddress || undefined,
+              latitude: saved.startLatitude,
+              longitude: saved.startLongitude,
+              isHotel: saved.startIsHotel,
+            }
+          : undefined;
+      route.endOverride =
+        saved.endLatitude != null && saved.endLongitude != null
+          ? {
+              address: saved.endAddress || undefined,
+              latitude: saved.endLatitude,
+              longitude: saved.endLongitude,
+              isHotel: saved.endIsHotel,
+            }
+          : undefined;
 
     this.updateRouteStartEndWaypoints(route);
 
@@ -4658,22 +4842,24 @@ export class MapPage implements AfterViewInit, OnDestroy {
       endAddress = route.driver.startAddress;
     }
 
-    return {
-      date: toYmd(date),
-      ownerId: ownerId,
-      driverToolId: route.driver.toolId,
-      totalMinutes: totalMinutes,
-      totalKm: totalKm,
-      startAddress,
-      startLatitude,
-      startLongitude,
-      endAddress,
-      endLatitude,
-      endLongitude,
-      weightTemplateId: this.selectedWeightTemplateId() ?? undefined,
-      stops: stops,
-    };
-  }
+      return {
+        date: toYmd(date),
+        ownerId: ownerId,
+        driverToolId: route.driver.toolId,
+        totalMinutes: totalMinutes,
+        totalKm: totalKm,
+        startAddress,
+        startLatitude,
+        startLongitude,
+        endAddress,
+        endLatitude,
+        endLongitude,
+        startIsHotel: route.startOverride?.isHotel ?? false,
+        endIsHotel: route.endOverride?.isHotel ?? false,
+        weightTemplateId: this.selectedWeightTemplateId() ?? undefined,
+        stops: stops,
+      };
+    }
 
   clearRoute(): void {
     const selected = this.selectedDriver();

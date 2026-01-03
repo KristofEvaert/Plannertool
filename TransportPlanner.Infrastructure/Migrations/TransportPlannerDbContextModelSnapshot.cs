@@ -524,6 +524,9 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<double?>("EndLongitude")
                         .HasColumnType("float");
 
+                    b.Property<bool>("EndIsHotel")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
@@ -541,6 +544,9 @@ namespace TransportPlanner.Infrastructure.Migrations
 
                     b.Property<double?>("StartLongitude")
                         .HasColumnType("float");
+
+                    b.Property<bool>("StartIsHotel")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("datetime2");

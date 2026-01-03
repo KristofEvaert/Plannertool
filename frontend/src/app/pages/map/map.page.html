@@ -413,12 +413,18 @@
                 >
                   <span class="route-location-label">Start</span>
                   <span class="route-location-name">{{ startWp.name }}</span>
-                  <span
-                    class="route-location-address"
-                    [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'start')"
-                  >
-                    {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'start') }}
-                  </span>
+                    <span
+                      class="route-location-address"
+                      [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'start')"
+                    >
+                      {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'start') }}
+                      <span
+                        class="route-location-hotel"
+                        *ngIf="isHotelOverride(getCurrentRouteForDisplay(), 'start')"
+                      >
+                        hotel!
+                      </span>
+                    </span>
                   <div class="route-override-editor" *ngIf="showStartOverrideEditor">
                     <input
                       type="text"
@@ -523,12 +529,18 @@
                 >
                   <span class="route-location-label">End</span>
                   <span class="route-location-name">{{ endWp.name }}</span>
-                  <span
-                    class="route-location-address"
-                    [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'end')"
-                  >
-                    {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'end') }}
-                  </span>
+                    <span
+                      class="route-location-address"
+                      [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'end')"
+                    >
+                      {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'end') }}
+                      <span
+                        class="route-location-hotel"
+                        *ngIf="isHotelOverride(getCurrentRouteForDisplay(), 'end')"
+                      >
+                        hotel!
+                      </span>
+                    </span>
                   <div class="route-override-editor" *ngIf="showEndOverrideEditor">
                     <input
                       type="text"

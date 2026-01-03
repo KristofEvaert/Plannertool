@@ -289,14 +289,20 @@
 }
 
 .route-location-address {
-  color: #6b7280;
-  font-size: 0.7rem;
-  line-height: 1.2;
-  white-space: normal;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-}
+    color: #6b7280;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .route-location-hotel {
+    margin-left: 0.35rem;
+    color: #dc2626;
+    font-weight: 700;
+  }
 
 .route-location-main {
   display: flex;
