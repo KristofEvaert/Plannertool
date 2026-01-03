@@ -10,6 +10,10 @@ export interface WeightTemplateDto {
   weightOvertime: number;
   weightCost: number;
   weightDate: number;
+  dueCostCapPercent: number;
+  detourCostCapPercent: number;
+  detourRefKmPercent: number;
+  lateRefMinutesPercent: number;
   serviceLocationIds: number[];
 }
 
@@ -24,5 +28,9 @@ export interface SaveWeightTemplateRequest {
   weightOvertime: number;
   weightCost: number;
   weightDate: number;
+  dueCostCapPercent: number;
+  detourCostCapPercent: number;
+  detourRefKmPercent: number;
+  lateRefMinutesPercent: number;
   serviceLocationIds: number[];
 }

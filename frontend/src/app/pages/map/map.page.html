@@ -221,8 +221,11 @@
               [disabled]="!canUpdateSelectedTemplate()"
             ></p-button>
           </div>
-            <div class="weight-row" *ngIf="weightCost() === 0">
-              <label class="weight-label">Driver Time</label>
+            <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
+              <label class="weight-label">
+                Driver Time
+                <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
+              </label>
               <input
                 type="range"
                 min="0"
@@ -232,8 +235,11 @@
               />
               <span class="weight-value">{{ activeWeightTime() }}%</span>
             </div>
-            <div class="weight-row" *ngIf="weightCost() === 0">
-              <label class="weight-label">Distance</label>
+            <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
+              <label class="weight-label">
+                Distance
+                <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
+              </label>
               <input
                 type="range"
                 min="0"
@@ -276,14 +282,64 @@
               />
               <span class="weight-value">{{ activeWeightOvertime() }}%</span>
             </div>
+            <div class="solver-caps-title">Solver caps</div>
+            <div class="weight-row">
+              <label class="weight-label">Due cap</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="dueCostCapPercent"
+              />
+              <span class="weight-value">{{ dueCostCapPercent() }}%</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Detour cap</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="detourCostCapPercent"
+              />
+              <span class="weight-value">{{ detourCostCapPercent() }}%</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Detour ref</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="detourRefKmPercent"
+              />
+              <span class="weight-value">{{ detourRefKmPercent() }}%</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Late ref</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="lateRefMinutesPercent"
+              />
+              <span class="weight-value">{{ lateRefMinutesPercent() }}%</span>
+            </div>
             <label class="weight-checkbox">
               <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
               <span>Enforce service type match</span>
-            </label>
-            <div class="weight-hint">1% is almost ignored. 100% is decisive.</div>
-            <div class="weight-subhint">
-              Cost replaces Distance + Driver Time when Cost &gt; 0. Overtime only affects late finishes.
-            </div>
+            </label>           
+            <button
+              type="button"
+              class="weight-toggle"
+              *ngIf="hasInactiveWeights()"
+              (click)="showInactiveWeights.set(!showInactiveWeights())"
+            >
+              {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
+            </button>
+           
           </div>
 
         <div class="drivers-list" *ngIf="!loadingDrivers()">
@@ -581,3 +637,33 @@
   </ng-template>
 </p-dialog>
 
+<p-dialog
+  [(visible)]="showBulkAddDialogValue"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '520px' }"
+  header="Some locations were not added"
+>
+  <div class="bulk-add-dialog">
+    <div class="bulk-add-subtitle">
+      These locations were skipped during the bulk add.
+    </div>
+    <div class="bulk-add-list" *ngIf="bulkAddRejections().length > 0">
+      <div class="bulk-add-item" *ngFor="let item of bulkAddRejections()">
+        <div class="bulk-add-name">{{ item.name }}</div>
+        <div class="bulk-add-reason">{{ item.reason }}</div>
+        <div class="bulk-add-address" *ngIf="item.address">{{ item.address }}</div>
+      </div>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end">
+      <p-button
+        label="Close"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="showBulkAddDialog.set(false)"
+      />
+    </div>
+  </ng-template>
+</p-dialog>

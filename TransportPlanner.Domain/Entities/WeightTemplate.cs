@@ -17,6 +17,10 @@ public class WeightTemplate
     public decimal WeightOvertime { get; set; } = 1;
     public decimal WeightCost { get; set; } = 1;
     public decimal WeightDate { get; set; } = 1;
+    public decimal DueCostCapPercent { get; set; } = 50;
+    public decimal DetourCostCapPercent { get; set; } = 50;
+    public decimal DetourRefKmPercent { get; set; } = 50;
+    public decimal LateRefMinutesPercent { get; set; } = 50;
 
     public ICollection<WeightTemplateLocationLink> LocationLinks { get; set; } = new List<WeightTemplateLocationLink>();
 }

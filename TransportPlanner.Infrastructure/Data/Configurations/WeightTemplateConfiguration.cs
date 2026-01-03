@@ -26,6 +26,14 @@ public class WeightTemplateConfiguration : IEntityTypeConfiguration<WeightTempla
             .HasColumnType("decimal(18,4)");
         builder.Property(x => x.WeightDate)
             .HasColumnType("decimal(18,4)");
+        builder.Property(x => x.DueCostCapPercent)
+            .HasColumnType("decimal(18,4)");
+        builder.Property(x => x.DetourCostCapPercent)
+            .HasColumnType("decimal(18,4)");
+        builder.Property(x => x.DetourRefKmPercent)
+            .HasColumnType("decimal(18,4)");
+        builder.Property(x => x.LateRefMinutesPercent)
+            .HasColumnType("decimal(18,4)");
 
         builder.HasIndex(x => new { x.ScopeType, x.OwnerId, x.ServiceTypeId });
     }

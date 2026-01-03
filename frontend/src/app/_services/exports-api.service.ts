@@ -13,14 +13,16 @@ export class ExportsApiService {
     from: Date,
     to: Date,
     ownerId: number,
-    serviceTypeId?: number
+    serviceTypeIds?: number[]
   ): Observable<Blob> {
     let params = new HttpParams()
       .set('from', toYmd(from))
       .set('to', toYmd(to))
       .set('ownerId', ownerId.toString());
-    if (serviceTypeId) {
-      params = params.set('serviceTypeId', serviceTypeId.toString());
+    if (serviceTypeIds && serviceTypeIds.length > 0) {
+      serviceTypeIds.forEach((id) => {
+        params = params.append('serviceTypeIds', id.toString());
+      });
     }
     return this.http.get(`${this.baseUrl}/routes`, { params, responseType: 'blob' });
   }

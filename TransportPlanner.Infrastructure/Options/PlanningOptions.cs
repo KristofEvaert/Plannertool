@@ -49,5 +49,25 @@ public class OrToolsOptions
     /// Maximum number of candidate poles to consider per day (for performance)
     /// </summary>
     public int MaxDailyCandidates { get; set; } = 300;
+
+    /// <summary>
+    /// Due-date cost cap expressed as km-equivalent for normalization.
+    /// </summary>
+    public double DueCostCapKm { get; set; } = 35;
+
+    /// <summary>
+    /// Detour cost cap expressed as km-equivalent for normalization.
+    /// </summary>
+    public double DetourCostCapKm { get; set; } = 30;
+
+    /// <summary>
+    /// Detour reference kilometers for normalization.
+    /// </summary>
+    public double DetourRefKm { get; set; } = 30;
+
+    /// <summary>
+    /// Lateness reference minutes for due-date penalty normalization.
+    /// </summary>
+    public int LateRefMinutes { get; set; } = 240;
 }
 

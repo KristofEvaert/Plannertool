@@ -189,6 +189,12 @@ export class RoutesApiService {
     ownerId: number,
     serviceLocationToolIds: string[],
     weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
+    solverCaps?: {
+      dueCostCapPercent: number;
+      detourCostCapPercent: number;
+      detourRefKmPercent: number;
+      lateRefMinutesPercent: number;
+    },
     requireServiceTypeMatch?: boolean,
     normalizeWeights?: boolean,
     weightTemplateId?: number
@@ -203,6 +209,10 @@ export class RoutesApiService {
       weightDate: weights?.date,
       weightCost: weights?.cost,
       weightOvertime: weights?.overtime,
+      dueCostCapPercent: solverCaps?.dueCostCapPercent,
+      detourCostCapPercent: solverCaps?.detourCostCapPercent,
+      detourRefKmPercent: solverCaps?.detourRefKmPercent,
+      lateRefMinutesPercent: solverCaps?.lateRefMinutesPercent,
       weightTemplateId,
       requireServiceTypeMatch,
       normalizeWeights,
@@ -215,6 +225,12 @@ export class RoutesApiService {
     ownerId: number,
     serviceLocationToolIds: string[],
     weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
+    solverCaps?: {
+      dueCostCapPercent: number;
+      detourCostCapPercent: number;
+      detourRefKmPercent: number;
+      lateRefMinutesPercent: number;
+    },
     requireServiceTypeMatch?: boolean,
     normalizeWeights?: boolean,
     weightTemplateId?: number
@@ -228,6 +244,10 @@ export class RoutesApiService {
       weightDate: weights?.date,
       weightCost: weights?.cost,
       weightOvertime: weights?.overtime,
+      dueCostCapPercent: solverCaps?.dueCostCapPercent,
+      detourCostCapPercent: solverCaps?.detourCostCapPercent,
+      detourRefKmPercent: solverCaps?.detourRefKmPercent,
+      lateRefMinutesPercent: solverCaps?.lateRefMinutesPercent,
       weightTemplateId,
       requireServiceTypeMatch,
       normalizeWeights,

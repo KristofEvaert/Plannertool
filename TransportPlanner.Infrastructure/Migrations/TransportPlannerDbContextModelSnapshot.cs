@@ -1167,6 +1167,18 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<decimal>("WeightDate")
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<decimal>("DueCostCapPercent")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("DetourCostCapPercent")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("DetourRefKmPercent")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("LateRefMinutesPercent")
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<decimal>("WeightDistance")
                         .HasColumnType("decimal(18,4)");
 

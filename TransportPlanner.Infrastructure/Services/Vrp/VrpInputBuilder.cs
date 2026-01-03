@@ -163,7 +163,8 @@ public class VrpInputBuilder : IVrpInputBuilder
                 continue;
             }
 
-            var duePenalty = 1.0 - ComputeDueUrgencyNormalized(date, location);
+            var dueDate = (location.PriorityDate ?? location.DueDate).Date;
+            var dueUrgency = ComputeDueUrgencyNormalized(date, location);
 
             jobs.Add(new VrpJob(
                 location.Id,
@@ -173,7 +174,8 @@ public class VrpInputBuilder : IVrpInputBuilder
                 location.Latitude ?? 0,
                 location.Longitude ?? 0,
                 serviceMinutes,
-                duePenalty,
+                dueDate,
+                dueUrgency,
                 windows));
         }
 
@@ -368,19 +370,19 @@ public class VrpInputBuilder : IVrpInputBuilder
         }
         else if (daysRemaining <= 7)
         {
-            urgency = 1.0 - (daysRemaining / 7.0) * 0.2;
+            urgency = 1.0 - (daysRemaining / 7.0) * 0.3;
         }
         else if (daysRemaining <= 14)
         {
-            urgency = 0.8 - ((daysRemaining - 7.0) / 7.0) * 0.3;
+            urgency = 0.7 - ((daysRemaining - 7.0) / 7.0) * 0.3;
         }
         else if (daysRemaining <= 28)
         {
-            urgency = 0.5 - ((daysRemaining - 14.0) / 14.0) * 0.3;
+            urgency = 0.4 - ((daysRemaining - 14.0) / 14.0) * 0.3;
         }
         else
         {
-            urgency = 0.2 - Math.Min((daysRemaining - 28.0) / 28.0, 1.0) * 0.2;
+            urgency = 0.0;
         }
 
         return Clamp01(urgency);

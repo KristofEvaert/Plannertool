@@ -73,6 +73,10 @@ export class WeightTemplatesPage {
     weightOvertime: 10,
     weightCost: 10,
     weightDate: 10,
+    dueCostCapPercent: 50,
+    detourCostCapPercent: 50,
+    detourRefKmPercent: 50,
+    lateRefMinutesPercent: 50,
     serviceLocationIds: [],
   });
 
@@ -97,6 +101,14 @@ export class WeightTemplatesPage {
   showCostDoubleCountWarning = computed(() => {
     const form = this.form();
     return form.weightCost > 0 && form.weightDistance > 0;
+  });
+  showInactiveWeights = signal(false);
+  activeWeightSummary = computed(() => this.buildWeightSummary().active);
+  inactiveWeightSummary = computed(() => this.buildWeightSummary().inactive);
+  suppressedWeightSummary = computed(() => this.buildWeightSummary().suppressed);
+  hasInactiveWeights = computed(() => {
+    const summary = this.buildWeightSummary();
+    return summary.inactive.length > 0 || summary.suppressed.length > 0;
   });
 
   get showDialogValue(): boolean {
@@ -257,6 +269,7 @@ export class WeightTemplatesPage {
   openCreate(): void {
     this.isEdit.set(false);
     this.currentId = null;
+    this.showInactiveWeights.set(false);
     const selectedOwnerId = this.selectedOwnerId();
     this.form.set({
       name: '',
@@ -269,6 +282,10 @@ export class WeightTemplatesPage {
       weightOvertime: 10,
       weightCost: 10,
       weightDate: 10,
+      dueCostCapPercent: 50,
+      detourCostCapPercent: 50,
+      detourRefKmPercent: 50,
+      lateRefMinutesPercent: 50,
       serviceLocationIds: [],
     });
     this.showDialog.set(true);
@@ -277,6 +294,7 @@ export class WeightTemplatesPage {
   openEdit(template: WeightTemplateDto): void {
     this.isEdit.set(true);
     this.currentId = template.id;
+    this.showInactiveWeights.set(false);
     const selectedOwnerId = this.selectedOwnerId();
     this.form.set({
       name: template.name,
@@ -289,6 +307,10 @@ export class WeightTemplatesPage {
       weightOvertime: template.weightOvertime,
       weightCost: template.weightCost,
       weightDate: template.weightDate,
+      dueCostCapPercent: template.dueCostCapPercent ?? 50,
+      detourCostCapPercent: template.detourCostCapPercent ?? 50,
+      detourRefKmPercent: template.detourRefKmPercent ?? 50,
+      lateRefMinutesPercent: template.lateRefMinutesPercent ?? 50,
       serviceLocationIds: template.serviceLocationIds ?? [],
     });
     this.showDialog.set(true);
@@ -388,6 +410,39 @@ export class WeightTemplatesPage {
         });
       },
     });
+  }
+
+  private buildWeightSummary(): {
+    active: string[];
+    inactive: string[];
+    suppressed: string[];
+  } {
+    const form = this.form();
+    const costActive = form.weightCost > 0;
+    const entries = [
+      { label: 'Driver Time', value: form.weightTravelTime, suppressed: costActive },
+      { label: 'Distance', value: form.weightDistance, suppressed: costActive },
+      { label: 'Due Date', value: form.weightDate, suppressed: false },
+      { label: 'Cost', value: form.weightCost, suppressed: false },
+      { label: 'Overtime', value: form.weightOvertime, suppressed: false },
+    ];
+
+    const active: string[] = [];
+    const inactive: string[] = [];
+    const suppressed: string[] = [];
+
+    for (const entry of entries) {
+      const label = `${entry.label} ${entry.value}%`;
+      if (entry.suppressed) {
+        suppressed.push(label);
+      } else if (entry.value > 0) {
+        active.push(label);
+      } else {
+        inactive.push(label);
+      }
+    }
+
+    return { active, inactive, suppressed };
   }
 
   delete(template: WeightTemplateDto): void {

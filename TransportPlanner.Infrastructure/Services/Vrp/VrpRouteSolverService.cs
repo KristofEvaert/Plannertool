@@ -64,6 +64,16 @@ public class VrpRouteSolverService : IVrpRouteSolverService
 
         var normalizationRefs = BuildNormalizationReferences(input, matrix, request.CostSettings);
         var weights = BuildNormalizedWeights(request.Weights, request.NormalizeWeights);
+        var jobPrimaryNodeIndices = BuildJobPrimaryNodeIndices(input);
+        var penaltyOptions = ResolvePenaltyOptions(request);
+        var penaltyData = BuildPenaltyData(
+            input,
+            matrix,
+            jobPrimaryNodeIndices,
+            request.RequireServiceTypeMatch,
+            normalizationRefs,
+            weights,
+            penaltyOptions);
 
         var driverCount = input.Drivers.Count;
         var startIndices = Enumerable.Range(0, driverCount).ToArray();
@@ -80,38 +90,49 @@ public class VrpRouteSolverService : IVrpRouteSolverService
             return travelMinutes + serviceMinutes;
         });
 
-        var costCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
+        for (var vehicleId = 0; vehicleId < driverCount; vehicleId++)
         {
-            var fromNode = manager.IndexToNode(fromIndex);
-            var toNode = manager.IndexToNode(toIndex);
-            var distanceKm = matrix.DistanceKm[fromNode, toNode];
-            var travelMinutes = matrix.TravelMinutes[fromNode, toNode];
-            var serviceMinutes = input.Nodes[fromNode].ServiceMinutes;
-            var timeCostMinutes = travelMinutes + serviceMinutes;
-            var duePenalty = 0.0;
-
-            if (input.Nodes[toNode].Type == VrpNodeType.Job && input.Nodes[toNode].JobId.HasValue)
+            var driverIndex = vehicleId;
+            var costCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
             {
-                duePenalty = input.JobsById[input.Nodes[toNode].JobId!.Value].DuePenalty;
-            }
+                var fromNode = manager.IndexToNode(fromIndex);
+                var toNode = manager.IndexToNode(toIndex);
+                var distanceKm = matrix.DistanceKm[fromNode, toNode];
+                var travelMinutes = matrix.TravelMinutes[fromNode, toNode];
+                var serviceMinutes = input.Nodes[fromNode].ServiceMinutes;
+                var timeCostMinutes = travelMinutes + serviceMinutes;
+                var extraDuePenalty = 0.0;
+                var extraDetourPenalty = 0.0;
 
-            var normDistance = Clamp01(distanceKm / normalizationRefs.DistanceKm);
-            var normTime = Clamp01(timeCostMinutes / normalizationRefs.TimeMinutes);
-            var normCost = Clamp01(CostCalculator.CalculateTravelCost(
-                distanceKm,
-                travelMinutes,
-                request.CostSettings.FuelCostPerKm,
-                request.CostSettings.PersonnelCostPerHour) / normalizationRefs.CostEuro);
+                if (input.Nodes[toNode].Type == VrpNodeType.Job && input.Nodes[toNode].JobId.HasValue)
+                {
+                    var jobId = input.Nodes[toNode].JobId!.Value;
+                    if (penaltyData.TryGetValue(jobId, out var penalties))
+                    {
+                        extraDuePenalty = weights.Date * penalties.DuePenaltyByDriver[driverIndex];
+                        extraDetourPenalty = penalties.DetourPenaltyByDriver[driverIndex];
+                    }
+                }
 
-            var score = (weights.Distance * normDistance)
-                        + (weights.Time * normTime)
-                        + (weights.Date * duePenalty)
-                        + (weights.Cost * normCost);
+                var normDistance = Clamp01(distanceKm / normalizationRefs.DistanceKm);
+                var normTime = Clamp01(timeCostMinutes / normalizationRefs.TimeMinutes);
+                var normCost = Clamp01(CostCalculator.CalculateTravelCost(
+                    distanceKm,
+                    travelMinutes,
+                    request.CostSettings.FuelCostPerKm,
+                    request.CostSettings.PersonnelCostPerHour) / normalizationRefs.CostEuro);
 
-            return Math.Max(0, (long)Math.Round(score * CostScale));
-        });
+                var score = (weights.Distance * normDistance)
+                            + (weights.Time * normTime)
+                            + (weights.Cost * normCost)
+                            + extraDuePenalty
+                            + extraDetourPenalty;
 
-        routing.SetArcCostEvaluatorOfAllVehicles(costCallbackIndex);
+                return Math.Max(0, (long)Math.Round(score * CostScale));
+            });
+
+            routing.SetArcCostEvaluatorOfVehicle(costCallbackIndex, vehicleId);
+        }
 
         var maxEndMinute = input.Drivers.Max(d => d.AvailabilityEndMinute);
         var overtimeBuffer = weights.Overtime > 0 ? DefaultOvertimeRefMinutes : 0;
@@ -156,6 +177,7 @@ public class VrpRouteSolverService : IVrpRouteSolverService
         }
 
         var mapped = _resultMapper.MapSolution(input, routing, manager, solution, matrix);
+        LogPenaltyDiagnostics(input, mapped.Routes, penaltyData);
         foreach (var route in mapped.Routes)
         {
             var sumLegs = route.Stops.Sum(s => s.TravelKmFromPrev);
@@ -211,6 +233,8 @@ public class VrpRouteSolverService : IVrpRouteSolverService
             {
                 var distance = matrix.DistanceKm[driverIndex, nodeIndex];
                 var minutes = matrix.TravelMinutes[driverIndex, nodeIndex];
+                distanceSamples.Add(distance);
+
                 if (distance < minDistance)
                 {
                     minDistance = distance;
@@ -227,7 +251,6 @@ public class VrpRouteSolverService : IVrpRouteSolverService
                 continue;
             }
 
-            distanceSamples.Add(minDistance);
             timeSamples.Add(minTravelMinutes + job.ServiceMinutes);
             costSamples.Add(CostCalculator.CalculateTravelCost(
                 minDistance,
@@ -243,6 +266,8 @@ public class VrpRouteSolverService : IVrpRouteSolverService
         if (distanceRef <= 0) distanceRef = DefaultDistanceRefKm;
         if (timeRef <= 0) timeRef = DefaultTimeRefMinutes;
         if (costRef <= 0) costRef = DefaultCostRefEuro;
+
+        distanceRef = Math.Max(distanceRef, DefaultDistanceRefKm);
 
         return new NormalizationReferences(distanceRef, timeRef, costRef, DefaultOvertimeRefMinutes);
     }
@@ -649,8 +674,255 @@ public class VrpRouteSolverService : IVrpRouteSolverService
         return ordered[low] + (ordered[high] - ordered[low]) * weight;
     }
 
+    private static Dictionary<int, int> BuildJobPrimaryNodeIndices(VrpInput input)
+    {
+        var result = new Dictionary<int, int>();
+        foreach (var entry in input.JobNodeIndices)
+        {
+            if (entry.Value.Count > 0)
+            {
+                result[entry.Key] = entry.Value[0];
+            }
+        }
+
+        return result;
+    }
+
+    private static Dictionary<int, JobPenaltyInfo> BuildPenaltyData(
+        VrpInput input,
+        MatrixResult matrix,
+        Dictionary<int, int> jobPrimaryNodeIndices,
+        bool requireServiceTypeMatch,
+        NormalizationReferences normalizationRefs,
+        NormalizedWeightSet weights,
+        SolverPenaltyOptions options)
+    {
+        var driverCount = input.Drivers.Count;
+        var dueCapNormalized = NormalizeCap(options.DueCostCapKm, normalizationRefs.DistanceKm);
+        var detourCapNormalized = NormalizeCap(options.DetourCostCapKm, normalizationRefs.DistanceKm);
+        var detourRefKm = Math.Max(1, options.DetourRefKm);
+        var lateRefMinutes = Math.Max(1, options.LateRefMinutes);
+        var detourWeight = Math.Max(0.2, Math.Max(weights.Distance, weights.Cost));
+
+        var penalties = new Dictionary<int, JobPenaltyInfo>();
+
+        foreach (var job in input.Jobs)
+        {
+            if (!jobPrimaryNodeIndices.TryGetValue(job.LocationId, out var jobNodeIndex))
+            {
+                continue;
+            }
+
+            var startToJobKm = new double[driverCount];
+            var startToJobMinutes = new int[driverCount];
+            for (var driverIndex = 0; driverIndex < driverCount; driverIndex++)
+            {
+                startToJobKm[driverIndex] = matrix.DistanceKm[driverIndex, jobNodeIndex];
+                startToJobMinutes[driverIndex] = matrix.TravelMinutes[driverIndex, jobNodeIndex];
+            }
+
+            var feasibleDrivers = Enumerable.Range(0, driverCount)
+                .Where(idx => !requireServiceTypeMatch || input.Drivers[idx].ServiceTypeIds.Contains(job.ServiceTypeId))
+                .ToList();
+
+            var nearestKm = feasibleDrivers.Count > 0
+                ? feasibleDrivers.Min(idx => startToJobKm[idx])
+                : startToJobKm.Min();
+
+            var dueEndMinute = ComputeDueEndMinute(input.Date, job.DueDate);
+            var hasOnTimeDriver = false;
+
+            if (dueEndMinute.HasValue && feasibleDrivers.Count > 0)
+            {
+                foreach (var driverIndex in feasibleDrivers)
+                {
+                    var earliest = ComputeEarliestStartMinute(
+                        input.Drivers[driverIndex].AvailabilityStartMinute,
+                        startToJobMinutes[driverIndex],
+                        job.ServiceMinutes,
+                        job.Windows);
+                    if (earliest <= dueEndMinute.Value)
+                    {
+                        hasOnTimeDriver = true;
+                        break;
+                    }
+                }
+            }
+
+            var duePenaltyByDriver = new double[driverCount];
+            var detourPenaltyByDriver = new double[driverCount];
+
+            for (var driverIndex = 0; driverIndex < driverCount; driverIndex++)
+            {
+                if (requireServiceTypeMatch && !input.Drivers[driverIndex].ServiceTypeIds.Contains(job.ServiceTypeId))
+                {
+                    continue;
+                }
+
+                var detourKm = Math.Max(0, startToJobKm[driverIndex] - nearestKm);
+                var detourFactor = Math.Max(0, detourKm / detourRefKm);
+                detourPenaltyByDriver[driverIndex] = detourFactor * detourCapNormalized * detourWeight;
+
+                if (dueEndMinute.HasValue && job.DuePenalty > 0 && dueCapNormalized > 0)
+                {
+                    var earliest = ComputeEarliestStartMinute(
+                        input.Drivers[driverIndex].AvailabilityStartMinute,
+                        startToJobMinutes[driverIndex],
+                        job.ServiceMinutes,
+                        job.Windows);
+                    var latenessMinutes = Math.Max(0, earliest - dueEndMinute.Value);
+                    if (latenessMinutes <= 0 && hasOnTimeDriver)
+                    {
+                        duePenaltyByDriver[driverIndex] = job.DuePenalty * 0.2 * dueCapNormalized;
+                    }
+                    else
+                    {
+                        var latenessFactor = Clamp01(latenessMinutes / lateRefMinutes);
+                        duePenaltyByDriver[driverIndex] = latenessFactor * dueCapNormalized;
+                    }
+                }
+            }
+
+            penalties[job.LocationId] = new JobPenaltyInfo(
+                startToJobKm,
+                duePenaltyByDriver,
+                detourPenaltyByDriver,
+                nearestKm);
+        }
+
+        return penalties;
+    }
+
+    private static int? ComputeDueEndMinute(DateTime scheduleDate, DateTime dueDate)
+    {
+        if (dueDate == default)
+        {
+            return null;
+        }
+
+        var daysOffset = (dueDate.Date - scheduleDate.Date).TotalDays;
+        return (int)Math.Round(daysOffset * 1440 + 1440);
+    }
+
+    private static int ComputeEarliestStartMinute(
+        int driverStartMinute,
+        int travelMinutes,
+        int serviceMinutes,
+        IReadOnlyList<VrpTimeWindow> windows)
+    {
+        var candidate = driverStartMinute + travelMinutes;
+        if (windows.Count == 0)
+        {
+            return candidate;
+        }
+
+        var ordered = windows.OrderBy(w => w.StartMinute);
+        foreach (var window in ordered)
+        {
+            var start = Math.Max(candidate, window.StartMinute);
+            if (start + serviceMinutes <= window.EndMinute)
+            {
+                return start;
+            }
+        }
+
+        return candidate;
+    }
+
+    private static double NormalizeCap(double capKm, double referenceKm)
+    {
+        if (capKm <= 0 || referenceKm <= 0)
+        {
+            return 0;
+        }
+
+        return Clamp01(capKm / referenceKm);
+    }
+
+    private void LogPenaltyDiagnostics(
+        VrpInput input,
+        IReadOnlyList<VrpRoutePlan> routes,
+        Dictionary<int, JobPenaltyInfo> penalties)
+    {
+        if (!_logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        var driverIndexById = input.Drivers
+            .Select((driver, index) => new { driver.Driver.Id, index })
+            .ToDictionary(x => x.Id, x => x.index);
+
+        foreach (var route in routes)
+        {
+            if (!driverIndexById.TryGetValue(route.Driver.Id, out var driverIndex))
+            {
+                continue;
+            }
+
+            foreach (var stop in route.Stops)
+            {
+                if (!penalties.TryGetValue(stop.ServiceLocationId, out var penalty))
+                {
+                    continue;
+                }
+
+                var assignedKm = penalty.StartToJobKm[driverIndex];
+                var detourKm = Math.Max(0, assignedKm - penalty.NearestKm);
+                _logger.LogDebug(
+                    "VRP penalty job={JobId} driver={DriverId} nearestKm={NearestKm:F1} assignedKm={AssignedKm:F1} detourKm={DetourKm:F1} detourPenalty={DetourPenalty:F3} duePenalty={DuePenalty:F3}",
+                    stop.ServiceLocationId,
+                    route.Driver.Id,
+                    penalty.NearestKm,
+                    assignedKm,
+                    detourKm,
+                    penalty.DetourPenaltyByDriver[driverIndex],
+                    penalty.DuePenaltyByDriver[driverIndex]);
+            }
+        }
+    }
+
     private static double Clamp01(double value) => Math.Max(0, Math.Min(1, value));
+
+    private SolverPenaltyOptions ResolvePenaltyOptions(VrpSolveRequest request)
+    {
+        return new SolverPenaltyOptions(
+            ApplyPercentToBase(_options.DueCostCapKm, request.DueCostCapPercent),
+            ApplyPercentToBase(_options.DetourCostCapKm, request.DetourCostCapPercent),
+            ApplyPercentToBase(_options.DetourRefKm, request.DetourRefKmPercent),
+            (int)Math.Round(ApplyPercentToBase(_options.LateRefMinutes, request.LateRefMinutesPercent)));
+    }
+
+    private static double ApplyPercentToBase(double baseValue, double? percent)
+    {
+        var pct = ClampPercent(percent ?? 50);
+        var minValue = 1.0;
+        if (baseValue <= minValue)
+        {
+            return minValue;
+        }
+
+        if (pct <= 50)
+        {
+            return minValue + (baseValue - minValue) * (pct / 50.0);
+        }
+
+        return baseValue + baseValue * ((pct - 50.0) / 50.0);
+    }
+
+    private static double ClampPercent(double value)
+    {
+        if (value < 0) return 0;
+        if (value > 100) return 100;
+        return value;
+    }
 
     private sealed record NormalizedWeightSet(double Time, double Distance, double Date, double Cost, double Overtime);
     private sealed record NormalizationReferences(double DistanceKm, double TimeMinutes, double CostEuro, double OvertimeMinutes);
+    private sealed record SolverPenaltyOptions(double DueCostCapKm, double DetourCostCapKm, double DetourRefKm, int LateRefMinutes);
+    private sealed record JobPenaltyInfo(
+        double[] StartToJobKm,
+        double[] DuePenaltyByDriver,
+        double[] DetourPenaltyByDriver,
+        double NearestKm);
 }

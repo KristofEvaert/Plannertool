@@ -26,6 +26,10 @@ public class AutoGenerateRouteRequest
     public double? WeightDate { get; set; }
     public double? WeightCost { get; set; }
     public double? WeightOvertime { get; set; }
+    public double? DueCostCapPercent { get; set; }
+    public double? DetourCostCapPercent { get; set; }
+    public double? DetourRefKmPercent { get; set; }
+    public double? LateRefMinutesPercent { get; set; }
     public int? WeightTemplateId { get; set; }
     public bool? RequireServiceTypeMatch { get; set; }
     public bool? NormalizeWeights { get; set; }
@@ -42,6 +46,10 @@ public class AutoGenerateAllRequest
     public double? WeightDate { get; set; }
     public double? WeightCost { get; set; }
     public double? WeightOvertime { get; set; }
+    public double? DueCostCapPercent { get; set; }
+    public double? DetourCostCapPercent { get; set; }
+    public double? DetourRefKmPercent { get; set; }
+    public double? LateRefMinutesPercent { get; set; }
     public int? WeightTemplateId { get; set; }
     public bool? RequireServiceTypeMatch { get; set; }
     public bool? NormalizeWeights { get; set; }
@@ -128,6 +136,12 @@ public class AutoRoutesController : ControllerBase
         await ClearTempRoutesForDayAsync(date, request.OwnerId, cancellationToken);
 
         var weights = ResolveWeights(weightTemplateResult.Template, request.WeightTime, request.WeightDistance, request.WeightDate, request.WeightCost, request.WeightOvertime);
+        var solverCaps = ResolveSolverCaps(
+            weightTemplateResult.Template,
+            request.DueCostCapPercent,
+            request.DetourCostCapPercent,
+            request.DetourRefKmPercent,
+            request.LateRefMinutesPercent);
         var vrpRequest = new VrpSolveRequest(
             date,
             request.OwnerId,
@@ -137,7 +151,11 @@ public class AutoRoutesController : ControllerBase
             new VrpCostSettings(costSettings.FuelCostPerKm, costSettings.PersonnelCostPerHour, costSettings.CurrencyCode),
             request.RequireServiceTypeMatch == true,
             request.NormalizeWeights ?? true,
-            weightTemplateResult.Template?.Id);
+            weightTemplateResult.Template?.Id,
+            solverCaps.DueCostCapPercent,
+            solverCaps.DetourCostCapPercent,
+            solverCaps.DetourRefKmPercent,
+            solverCaps.LateRefMinutesPercent);
 
         VrpSolveResult result;
         try
@@ -187,6 +205,12 @@ public class AutoRoutesController : ControllerBase
 
         await ClearTempRoutesForDayAsync(date, request.OwnerId, cancellationToken);
         var weights = ResolveWeights(weightTemplateResult.Template, request.WeightTime, request.WeightDistance, request.WeightDate, request.WeightCost, request.WeightOvertime);
+        var solverCaps = ResolveSolverCaps(
+            weightTemplateResult.Template,
+            request.DueCostCapPercent,
+            request.DetourCostCapPercent,
+            request.DetourRefKmPercent,
+            request.LateRefMinutesPercent);
         var vrpRequest = new VrpSolveRequest(
             date,
             request.OwnerId,
@@ -196,7 +220,11 @@ public class AutoRoutesController : ControllerBase
             new VrpCostSettings(costSettings.FuelCostPerKm, costSettings.PersonnelCostPerHour, costSettings.CurrencyCode),
             request.RequireServiceTypeMatch == true,
             request.NormalizeWeights ?? true,
-            weightTemplateResult.Template?.Id);
+            weightTemplateResult.Template?.Id,
+            solverCaps.DueCostCapPercent,
+            solverCaps.DetourCostCapPercent,
+            solverCaps.DetourRefKmPercent,
+            solverCaps.LateRefMinutesPercent);
 
         VrpSolveResult result;
         try
@@ -661,6 +689,12 @@ public class AutoRoutesController : ControllerBase
 
     private sealed record CostSettings(decimal FuelCostPerKm, decimal PersonnelCostPerHour, string CurrencyCode);
 
+    private sealed record SolverCapPercents(
+        double DueCostCapPercent,
+        double DetourCostCapPercent,
+        double DetourRefKmPercent,
+        double LateRefMinutesPercent);
+
     private static double NormalizeWeight(double? value)
     {
         var normalized = value ?? 1.0;
@@ -693,6 +727,29 @@ public class AutoRoutesController : ControllerBase
             NormalizeWeight(date),
             NormalizeWeight(cost),
             NormalizeWeight(overtime));
+    }
+
+    private static SolverCapPercents ResolveSolverCaps(
+        WeightTemplate? template,
+        double? dueCostCapPercent,
+        double? detourCostCapPercent,
+        double? detourRefKmPercent,
+        double? lateRefMinutesPercent)
+    {
+        if (template != null)
+        {
+            return new SolverCapPercents(
+                NormalizePercent((double)template.DueCostCapPercent),
+                NormalizePercent((double)template.DetourCostCapPercent),
+                NormalizePercent((double)template.DetourRefKmPercent),
+                NormalizePercent((double)template.LateRefMinutesPercent));
+        }
+
+        return new SolverCapPercents(
+            NormalizePercent(dueCostCapPercent ?? 50),
+            NormalizePercent(detourCostCapPercent ?? 50),
+            NormalizePercent(detourRefKmPercent ?? 50),
+            NormalizePercent(lateRefMinutesPercent ?? 50));
     }
 
     private static NormalizedWeightSet BuildNormalizedWeights(WeightSet weights, bool normalizeWeights)
@@ -737,6 +794,13 @@ public class AutoRoutesController : ControllerBase
 
         var dominant = max >= 90 && rawPercents.Where(p => p != max).All(p => p <= 10);
         return dominant ? 3.0 : 2.0;
+    }
+
+    private static double NormalizePercent(double value)
+    {
+        if (value < 0) return 0;
+        if (value > 100) return 100;
+        return value;
     }
 
     private async Task<NormalizationReferences> BuildNormalizationReferencesAsync(

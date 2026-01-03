@@ -13,6 +13,10 @@ public class WeightTemplateDto
     public decimal WeightOvertime { get; set; }
     public decimal WeightCost { get; set; }
     public decimal WeightDate { get; set; }
+    public decimal DueCostCapPercent { get; set; }
+    public decimal DetourCostCapPercent { get; set; }
+    public decimal DetourRefKmPercent { get; set; }
+    public decimal LateRefMinutesPercent { get; set; }
     public List<int> ServiceLocationIds { get; set; } = new();
 }
 
@@ -28,5 +32,9 @@ public class SaveWeightTemplateRequest
     public decimal WeightOvertime { get; set; } = 1;
     public decimal WeightCost { get; set; } = 1;
     public decimal WeightDate { get; set; } = 1;
+    public decimal DueCostCapPercent { get; set; } = 50;
+    public decimal DetourCostCapPercent { get; set; } = 50;
+    public decimal DetourRefKmPercent { get; set; } = 50;
+    public decimal LateRefMinutesPercent { get; set; } = 50;
     public List<int> ServiceLocationIds { get; set; } = new();
 }

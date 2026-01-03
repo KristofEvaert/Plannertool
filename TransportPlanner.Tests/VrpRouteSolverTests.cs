@@ -6,11 +6,19 @@ using TransportPlanner.Infrastructure.Data;
 using TransportPlanner.Infrastructure.Options;
 using TransportPlanner.Infrastructure.Services.Vrp;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace TransportPlanner.Tests;
 
 public class VrpRouteSolverTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public VrpRouteSolverTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     [Fact]
     public async Task SolveDay_AssignsStopsToNearestDrivers_WhenDistanceDominates()
     {
@@ -36,16 +44,17 @@ public class VrpRouteSolverTests
         var result = await solver.SolveDayAsync(
             new VrpSolveRequest(
                 new DateTime(2026, 1, 5),
-                ownerId: 1,
-                serviceLocationToolIds: null,
-                maxStopsPerDriver: null,
+                OwnerId: 1,
+                ServiceLocationToolIds: null,
+                MaxStopsPerDriver: null,
                 new VrpWeightSet(0, 100, 0, 0, 0),
                 new VrpCostSettings(0m, 0m, "EUR"),
-                requireServiceTypeMatch: false,
-                normalizeWeights: true,
-                weightTemplateId: null),
+                RequireServiceTypeMatch: false,
+                NormalizeWeights: true,
+                WeightTemplateId: null),
             CancellationToken.None);
 
+        LogDiagnostics(result);
         Assert.Equal(2, result.Routes.Count);
 
         var routeA = result.Routes.Single(r => r.DriverId == driverA.Id);
@@ -87,15 +96,20 @@ public class VrpRouteSolverTests
         var result = await solver.SolveDayAsync(
             new VrpSolveRequest(
                 new DateTime(2026, 1, 6),
-                ownerId: 1,
-                serviceLocationToolIds: null,
-                maxStopsPerDriver: null,
+                OwnerId: 1,
+                ServiceLocationToolIds: null,
+                MaxStopsPerDriver: null,
                 new VrpWeightSet(100, 0, 0, 0, 0),
                 new VrpCostSettings(0m, 0m, "EUR"),
-                requireServiceTypeMatch: false,
-                normalizeWeights: true,
-                weightTemplateId: null),
+                RequireServiceTypeMatch: false,
+                NormalizeWeights: true,
+                WeightTemplateId: null),
             CancellationToken.None);
+
+        LogDiagnostics(result);
+        Assert.False(
+            result.UnassignedServiceLocationIds.Contains(job.Id),
+            $"Expected lunch-break job to be assigned. {FormatDiagnostics(result)}");
 
         var stop = await db.RouteStops.FirstAsync();
         Assert.NotNull(stop.PlannedStart);
@@ -131,16 +145,17 @@ public class VrpRouteSolverTests
         var result = await solver.SolveDayAsync(
             new VrpSolveRequest(
                 new DateTime(2026, 1, 7),
-                ownerId: 1,
-                serviceLocationToolIds: null,
-                maxStopsPerDriver: null,
+                OwnerId: 1,
+                ServiceLocationToolIds: null,
+                MaxStopsPerDriver: null,
                 new VrpWeightSet(100, 0, 0, 0, 0),
                 new VrpCostSettings(0m, 0m, "EUR"),
-                requireServiceTypeMatch: true,
-                normalizeWeights: true,
-                weightTemplateId: null),
+                RequireServiceTypeMatch: true,
+                NormalizeWeights: true,
+                WeightTemplateId: null),
             CancellationToken.None);
 
+        LogDiagnostics(result);
         Assert.Empty(result.Routes);
         Assert.Contains(job.Id, result.UnassignedServiceLocationIds);
     }
@@ -172,16 +187,17 @@ public class VrpRouteSolverTests
         var result = await solver.SolveDayAsync(
             new VrpSolveRequest(
                 new DateTime(2026, 1, 8),
-                ownerId: 1,
-                serviceLocationToolIds: null,
-                maxStopsPerDriver: null,
+                OwnerId: 1,
+                ServiceLocationToolIds: null,
+                MaxStopsPerDriver: null,
                 new VrpWeightSet(100, 0, 0, 0, 0),
                 new VrpCostSettings(0m, 0m, "EUR"),
-                requireServiceTypeMatch: false,
-                normalizeWeights: true,
-                weightTemplateId: null),
+                RequireServiceTypeMatch: false,
+                NormalizeWeights: true,
+                WeightTemplateId: null),
             CancellationToken.None);
 
+        LogDiagnostics(result);
         Assert.Empty(result.Routes);
         Assert.Contains(job.Id, result.UnassignedServiceLocationIds);
     }
@@ -268,6 +284,22 @@ public class VrpRouteSolverTests
             new VrpResultMapper(),
             options,
             loggerFactory.CreateLogger<VrpRouteSolverService>());
+    }
+
+    private void LogDiagnostics(VrpSolveResult result)
+    {
+        _output.WriteLine(FormatDiagnostics(result));
+    }
+
+    private static string FormatDiagnostics(VrpSolveResult result)
+    {
+        var skipped = result.SkippedDrivers.Count == 0
+            ? "none"
+            : string.Join(", ", result.SkippedDrivers);
+        var unassigned = result.UnassignedServiceLocationIds.Count == 0
+            ? "none"
+            : string.Join(", ", result.UnassignedServiceLocationIds);
+        return $"SkippedDrivers=[{skipped}] UnassignedServiceLocationIds=[{unassigned}]";
     }
 
     private sealed class FakeMatrixProvider : IMatrixProvider

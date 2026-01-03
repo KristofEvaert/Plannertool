@@ -12,7 +12,11 @@ public sealed record VrpSolveRequest(
     VrpCostSettings CostSettings,
     bool RequireServiceTypeMatch,
     bool NormalizeWeights,
-    int? WeightTemplateId);
+    int? WeightTemplateId,
+    double? DueCostCapPercent = null,
+    double? DetourCostCapPercent = null,
+    double? DetourRefKmPercent = null,
+    double? LateRefMinutesPercent = null);
 
 public sealed record VrpSolveResult(
     IReadOnlyList<RouteDto> Routes,
@@ -33,6 +37,7 @@ public sealed record VrpJob(
     double Latitude,
     double Longitude,
     int ServiceMinutes,
+    DateTime DueDate,
     double DuePenalty,
     IReadOnlyList<VrpTimeWindow> Windows);
 

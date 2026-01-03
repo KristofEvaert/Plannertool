@@ -106,6 +106,10 @@ public class WeightTemplatesController : ControllerBase
                 WeightOvertime = t.WeightOvertime,
                 WeightCost = t.WeightCost,
                 WeightDate = t.WeightDate,
+                DueCostCapPercent = t.DueCostCapPercent,
+                DetourCostCapPercent = t.DetourCostCapPercent,
+                DetourRefKmPercent = t.DetourRefKmPercent,
+                LateRefMinutesPercent = t.LateRefMinutesPercent,
                 ServiceLocationIds = t.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
             })
             .ToListAsync(cancellationToken);
@@ -148,6 +152,10 @@ public class WeightTemplatesController : ControllerBase
             WeightOvertime = template.WeightOvertime,
             WeightCost = template.WeightCost,
             WeightDate = template.WeightDate,
+            DueCostCapPercent = template.DueCostCapPercent,
+            DetourCostCapPercent = template.DetourCostCapPercent,
+            DetourRefKmPercent = template.DetourRefKmPercent,
+            LateRefMinutesPercent = template.LateRefMinutesPercent,
             ServiceLocationIds = template.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
         });
     }
@@ -229,6 +237,10 @@ public class WeightTemplatesController : ControllerBase
             WeightOvertime = NormalizeWeight(request.WeightOvertime),
             WeightCost = NormalizeWeight(request.WeightCost),
             WeightDate = NormalizeWeight(request.WeightDate),
+            DueCostCapPercent = NormalizePercent(request.DueCostCapPercent),
+            DetourCostCapPercent = NormalizePercent(request.DetourCostCapPercent),
+            DetourRefKmPercent = NormalizePercent(request.DetourRefKmPercent),
+            LateRefMinutesPercent = NormalizePercent(request.LateRefMinutesPercent),
             CreatedUtc = nowUtc,
             UpdatedUtc = nowUtc,
             CreatedBy = CurrentUserId ?? Guid.Empty
@@ -341,6 +353,10 @@ public class WeightTemplatesController : ControllerBase
         template.WeightOvertime = NormalizeWeight(request.WeightOvertime);
         template.WeightCost = NormalizeWeight(request.WeightCost);
         template.WeightDate = NormalizeWeight(request.WeightDate);
+        template.DueCostCapPercent = NormalizePercent(request.DueCostCapPercent);
+        template.DetourCostCapPercent = NormalizePercent(request.DetourCostCapPercent);
+        template.DetourRefKmPercent = NormalizePercent(request.DetourRefKmPercent);
+        template.LateRefMinutesPercent = NormalizePercent(request.LateRefMinutesPercent);
         template.UpdatedUtc = DateTime.UtcNow;
 
         var existingLinks = await _dbContext.WeightTemplateLocationLinks
@@ -415,6 +431,13 @@ public class WeightTemplatesController : ControllerBase
     private static decimal NormalizeWeight(decimal value)
     {
         if (value < 1) return 1;
+        if (value > 100) return 100;
+        return value;
+    }
+
+    private static decimal NormalizePercent(decimal value)
+    {
+        if (value < 0) return 0;
         if (value > 100) return 100;
         return value;
     }
@@ -496,6 +519,10 @@ public class WeightTemplatesController : ControllerBase
             WeightOvertime = template.WeightOvertime,
             WeightCost = template.WeightCost,
             WeightDate = template.WeightDate,
+            DueCostCapPercent = template.DueCostCapPercent,
+            DetourCostCapPercent = template.DetourCostCapPercent,
+            DetourRefKmPercent = template.DetourRefKmPercent,
+            LateRefMinutesPercent = template.LateRefMinutesPercent,
             ServiceLocationIds = template.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
         };
     }
