@@ -16,6 +16,8 @@ public class LearnedTravelStatsConfiguration : IEntityTypeConfiguration<LearnedT
         builder.Property(x => x.DistanceBandKmMax).HasColumnType("decimal(8,2)");
         builder.Property(x => x.AvgMinutesPerKm).HasColumnType("decimal(8,4)");
         builder.Property(x => x.AvgStopServiceMinutes).HasColumnType("decimal(8,2)");
+        builder.Property(x => x.MinMinutesPerKm).HasColumnType("decimal(8,4)");
+        builder.Property(x => x.MaxMinutesPerKm).HasColumnType("decimal(8,4)");
 
         builder.HasIndex(x => new
             {

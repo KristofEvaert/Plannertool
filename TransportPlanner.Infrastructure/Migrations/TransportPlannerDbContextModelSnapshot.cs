@@ -357,11 +357,17 @@ namespace TransportPlanner.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("AvgMinutesPerKm")
+                    b.Property<decimal?>("AvgMinutesPerKm")
                         .HasColumnType("decimal(8,4)");
 
                     b.Property<decimal?>("AvgStopServiceMinutes")
                         .HasColumnType("decimal(8,2)");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("BucketEndHour")
                         .HasColumnType("int");
@@ -378,10 +384,28 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<decimal>("DistanceBandKmMin")
                         .HasColumnType("decimal(8,2)");
 
+                    b.Property<DateTime?>("LastSampleAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("MaxMinutesPerKm")
+                        .HasColumnType("decimal(8,4)");
+
+                    b.Property<decimal?>("MinMinutesPerKm")
+                        .HasColumnType("decimal(8,4)");
+
                     b.Property<int>("RegionId")
                         .HasColumnType("int");
 
                     b.Property<int>("SampleCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SuspiciousSampleCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalSampleCount")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -390,6 +414,36 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("LearnedTravelStats", (string)null);
+                });
+
+            modelBuilder.Entity("TransportPlanner.Domain.Entities.LearnedTravelStatContributor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastContributionUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LearnedTravelStatsId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("LearnedTravelStatsId", "DriverId")
+                        .IsUnique();
+
+                    b.ToTable("LearnedTravelStatContributors", (string)null);
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.PlanningCluster", b =>
@@ -1383,6 +1437,27 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Region");
+
+                    b.Navigation("Contributors");
+                });
+
+            modelBuilder.Entity("TransportPlanner.Domain.Entities.LearnedTravelStatContributor", b =>
+                {
+                    b.HasOne("TransportPlanner.Domain.Entities.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TransportPlanner.Domain.Entities.LearnedTravelStats", "LearnedTravelStats")
+                        .WithMany("Contributors")
+                        .HasForeignKey("LearnedTravelStatsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("LearnedTravelStats");
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.PlanningClusterItem", b =>

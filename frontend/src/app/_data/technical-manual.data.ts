@@ -69,7 +69,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'DatabaseSeeder runs on API startup after migrations.',
       'Seeds roles (SuperAdmin, Admin, Planner, Driver) and initial super admin user from configuration.',
       'Does not seed service types, owners, drivers, or service locations.',
-      'Travel time model data is seeded only when regions and speed profiles are empty.',
+      'Travel time model data is seeded when regions, speed profiles, or learned stats are empty.',
     ],
     database: [
       'TravelTimeRegions are inserted with explicit IDs from seed CSV using IDENTITY_INSERT.',
@@ -81,7 +81,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
     notes: [
       'InitialSuperAdmin credentials are read from configuration; missing values skip the seed.',
-      'To reseed travel time data, clear TravelTimeRegions and RegionSpeedProfiles and restart.',
+      'To reseed travel time data, clear TravelTimeRegions, RegionSpeedProfiles, and LearnedTravelStats and restart.',
     ],
   },
   {
@@ -142,24 +142,29 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
   {
     id: 'travel-model',
     title: 'Travel time and cost model',
-    summary: 'Uses regional speed profiles and learned travel stats for ETA.',
+    summary: 'Uses regional speed profiles and learned travel stats for ETA with SuperAdmin approval.',
     businessLogic: [
-      'Travel time uses LearnedTravelStats when sample count threshold is met.',
-      'Fallback order: learned stats, region profile, routing engine duration.',
+      'Learning updates LearnedTravelStats continuously, regardless of status.',
+      'Learned stats are used only when Approved, above sample threshold, and not stale.',
+      'Fallback order: approved learned stats, region profile, region 99 profile, 50 km/h fallback.',
       'Cost formula: distanceKm * fuelCostPerKm + (travelMinutes/60) * personnelCostPerHour.',
     ],
     database: [
       'TravelTimeRegions, RegionSpeedProfiles define regional defaults.',
       'LearnedTravelStats stores aggregated averages by region and hour.',
+      'LearnedTravelStatContributors stores per-driver contribution counts.',
       'SystemCostSettings stores fuel/personnel cost values per owner (OwnerId).',
     ],
     api: [
       'SystemCostSettingsController: /api/system-cost-settings.',
       'SystemCostSettingsController: /api/system-cost-settings/overview (SuperAdmin only).',
       'Travel time is used in route calculations within TravelTimeModelService.',
+      'TravelTimeModelAdminController: /api/admin/travelTimeModel/learned, /status, /reset (SuperAdmin only).',
     ],
     notes: [
       'Travel time seed data is loaded automatically on first run.',
+      'Approval metadata (status, approved by/at) is stored per learned bucket.',
+      'Suspicious samples are flagged but not auto-blocked; SuperAdmin decides.',
       'Cost settings are resolved per owner; SuperAdmin supplies ownerId in API calls.',
       'Overview endpoint returns the latest settings per owner and defaults to 0/EUR when missing.',
     ],

@@ -82,6 +82,13 @@ export const routes: Routes = [
     loadComponent: () => import('@pages/audit-trail/audit-trail.page').then((m) => m.AuditTrailPage),
   },
   {
+    path: 'travel-time-model',
+    canMatch: [authGuard],
+    data: { roles: ['SuperAdmin'] },
+    loadComponent: () =>
+      import('@pages/travel-time-model-admin/travel-time-model-admin.page').then((m) => m.TravelTimeModelAdminPage),
+  },
+  {
     path: 'start',
     canMatch: [authGuard],
     loadComponent: () => import('@pages/start/start.page').then((m) => m.StartPage),

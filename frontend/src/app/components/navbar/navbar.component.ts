@@ -71,6 +71,7 @@ export class NavbarComponent {
         if (isSuperAdmin) {
           items.push({ label: 'Owners', routerLink: '/owners' });
           items.push({ label: 'Audit Trail', routerLink: '/audit-trail' });
+          items.push({ label: 'Travel Time Model', routerLink: '/travel-time-model' });
         }
         items.push({
           label: `Logout (${user.displayName || user.email})`,

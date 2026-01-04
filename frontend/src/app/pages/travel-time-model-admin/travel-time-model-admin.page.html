@@ -1,0 +1,219 @@
+<p-toast></p-toast>
+<div class="pt-20 px-6 pb-6">
+  <div class="max-w-7xl mx-auto space-y-4">
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-gray-900">Travel Time Model (Admin)</h1>
+        <app-help-manual [sectionId]="'travel-time-model'"></app-help-manual>
+        <span class="text-xs text-gray-500">SuperAdmin only</span>
+      </div>
+      <p-button label="Refresh" icon="pi pi-refresh" (onClick)="load()" [loading]="loading()" />
+    </div>
+
+    <div class="card p-3">
+      <div class="filters">
+        <div class="filter">
+          <label class="block text-sm font-semibold mb-1">Region</label>
+          <p-select
+            [options]="regionOptions()"
+            [ngModel]="selectedRegionId()"
+            (ngModelChange)="selectedRegionId.set($event)"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All regions"
+            [showClear]="true"
+            [filter]="true"
+          />
+        </div>
+        <div class="filter">
+          <label class="block text-sm font-semibold mb-1">Status</label>
+          <p-select
+            [options]="statusOptions()"
+            [ngModel]="selectedStatus()"
+            (ngModelChange)="selectedStatus.set($event)"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All statuses"
+            [showClear]="true"
+          />
+        </div>
+        <div class="filter">
+          <label class="block text-sm font-semibold mb-1">Day type</label>
+          <p-select
+            [options]="dayTypeOptions()"
+            [ngModel]="selectedDayType()"
+            (ngModelChange)="selectedDayType.set($event)"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All day types"
+            [showClear]="true"
+          />
+        </div>
+        <div class="filter">
+          <label class="block text-sm font-semibold mb-1">Distance band</label>
+          <p-select
+            [options]="distanceBandOptions()"
+            [ngModel]="selectedDistanceBand()"
+            (ngModelChange)="selectedDistanceBand.set($event)"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All bands"
+            [showClear]="true"
+          />
+        </div>
+        <div class="filter flagged-only">
+          <p-checkbox
+            [binary]="true"
+            [ngModel]="showFlaggedOnly()"
+            (ngModelChange)="showFlaggedOnly.set($event)"
+            inputId="flagged-only"
+          />
+          <label for="flagged-only" class="text-sm font-semibold">Show flagged only</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-3">
+      <p-table
+        [value]="filteredRows()"
+        [loading]="loading()"
+        dataKey="id"
+        [expandedRowKeys]="expandedRows()"
+        (onRowExpand)="onRowExpand($event)"
+        (onRowCollapse)="onRowCollapse($event)"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th class="w-8"></th>
+            <th>Region</th>
+            <th>Day</th>
+            <th>Bucket</th>
+            <th>Band</th>
+            <th>Status</th>
+            <th>Samples</th>
+            <th>Avg</th>
+            <th>Min/Max</th>
+            <th>Baseline</th>
+            <th>Expected</th>
+            <th>Deviation</th>
+            <th>Last Sample</th>
+            <th>Flags</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-row let-expanded="expanded">
+          <tr>
+            <td>
+              <button
+                type="button"
+                pButton
+                pRowToggler
+                [pRowToggler]="row"
+                [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                class="p-button-text p-button-sm"
+              ></button>
+            </td>
+            <td class="font-medium">{{ row.regionName }}</td>
+            <td>{{ row.dayType }}</td>
+            <td>{{ formatBucket(row) }}</td>
+            <td>{{ formatDistanceBand(row) }}</td>
+            <td><p-tag [value]="row.status" [severity]="statusSeverity(row.status)" /></td>
+            <td>{{ row.totalSampleCount }}</td>
+            <td>{{ row.avgMinutesPerKm != null ? (row.avgMinutesPerKm | number: '1.2-2') : '—' }}</td>
+            <td>
+              {{ row.minMinutesPerKm != null ? (row.minMinutesPerKm | number: '1.2-2') : '—' }} /
+              {{ row.maxMinutesPerKm != null ? (row.maxMinutesPerKm | number: '1.2-2') : '—' }}
+            </td>
+            <td>{{ row.baselineMinutesPerKm | number: '1.2-2' }}</td>
+            <td>{{ row.expectedRangeMin | number: '1.2-2' }} - {{ row.expectedRangeMax | number: '1.2-2' }}</td>
+            <td>{{ formatDeviation(row) }}</td>
+            <td>{{ row.lastSampleAtUtc ? (row.lastSampleAtUtc | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
+            <td>
+              <div class="flags">
+                <i
+                  *ngIf="row.isOutOfRange"
+                  class="pi pi-exclamation-circle text-red-600"
+                  pTooltip="Out of plausible range"
+                ></i>
+                <i *ngIf="row.isStale" class="pi pi-clock text-orange-600" pTooltip="Stale"></i>
+                <i *ngIf="row.isLowSample" class="pi pi-database text-yellow-600" pTooltip="Low sample count"></i>
+                <i
+                  *ngIf="row.isHighDeviation"
+                  class="pi pi-chart-line text-purple-600"
+                  pTooltip="High deviation vs baseline"
+                ></i>
+                <span *ngIf="row.suspiciousRatio > 0" class="text-xs text-gray-600" pTooltip="Suspicious ratio">
+                  S {{ formatRatio(row) }}
+                </span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="actions">
+                <p-button
+                  label="Approve"
+                  size="small"
+                  [disabled]="row.status === 'Approved'"
+                  (onClick)="applyStatus(row, 'Approved')"
+                />
+                <p-button
+                  label="Quarantine"
+                  size="small"
+                  severity="warn"
+                  [outlined]="true"
+                  (onClick)="applyStatus(row, 'Quarantined')"
+                />
+                <p-button
+                  label="Reject"
+                  size="small"
+                  severity="danger"
+                  [outlined]="true"
+                  (onClick)="applyStatus(row, 'Rejected')"
+                />
+                <p-button
+                  label="Reset"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="resetBucket(row)"
+                />
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="rowexpansion" let-row>
+          <tr>
+            <td colspan="15">
+              <div class="expansion">
+                <div class="expansion-header">
+                  <span class="font-semibold">Contributing Drivers</span>
+                  <span class="text-xs text-gray-500">Top contributors</span>
+                </div>
+                <div *ngIf="!row.contributors?.length" class="text-sm text-gray-500">
+                  No contributors recorded yet.
+                </div>
+                <p-table *ngIf="row.contributors?.length" [value]="row.contributors">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>Driver</th>
+                      <th>Samples</th>
+                      <th>Last Contribution</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-contrib>
+                    <tr>
+                      <td>{{ contrib.driverName || ('Driver #' + contrib.driverId) }}</td>
+                      <td>{{ contrib.sampleCount }}</td>
+                      <td>
+                        {{ contrib.lastContributionUtc ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm') : '—' }}
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>

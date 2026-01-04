@@ -271,6 +271,7 @@ public class RouteStopsController : ControllerBase
             distanceKm,
             travelMinutes,
             stop.ActualServiceMinutes,
+            stop.Route.DriverId,
             previousStop.Latitude,
             previousStop.Longitude,
             stop.Latitude,

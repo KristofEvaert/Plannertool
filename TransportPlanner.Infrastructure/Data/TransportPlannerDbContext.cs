@@ -43,6 +43,7 @@ public class TransportPlannerDbContext : IdentityDbContext<ApplicationUser, Iden
     public DbSet<TravelTimeRegion> TravelTimeRegions { get; set; }
     public DbSet<RegionSpeedProfile> RegionSpeedProfiles { get; set; }
     public DbSet<LearnedTravelStats> LearnedTravelStats { get; set; }
+    public DbSet<LearnedTravelStatContributor> LearnedTravelStatContributors { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

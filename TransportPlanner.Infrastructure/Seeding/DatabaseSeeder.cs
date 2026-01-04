@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using TransportPlanner.Domain.Entities;
 using TransportPlanner.Infrastructure.Data;
 using TransportPlanner.Infrastructure.Identity;
 
@@ -124,8 +123,8 @@ public class DatabaseSeeder
     {
         var hasRegions = await _dbContext.TravelTimeRegions.AnyAsync(cancellationToken);
         var hasProfiles = await _dbContext.RegionSpeedProfiles.AnyAsync(cancellationToken);
-
-        if (hasRegions && hasProfiles)
+       
+        if (hasRegions && hasProfiles )
         {
             _logger.LogInformation("Travel time model data already exists. Skipping seed.");
             return;
@@ -171,6 +170,8 @@ public class DatabaseSeeder
                 await _dbContext.SaveChangesAsync(cancellationToken);
             }
         }
+
+       
 
         _logger.LogInformation("Travel time model seed completed.");
     }

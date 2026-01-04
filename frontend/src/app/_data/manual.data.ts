@@ -209,4 +209,20 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Duration highlights when a request exceeds 500 ms.',
     ],
   },
+  {
+    id: 'travel-time-model',
+    title: 'Travel Time Model',
+    route: '/travel-time-model',
+    summary: 'Review learned travel-time buckets and approve them for planning.',
+    functions: [
+      'Filter learned buckets by region, status, day type, distance band, or flagged-only.',
+      'Review baseline reference values and deviation indicators.',
+      'Expand a bucket to see contributing drivers and sample counts.',
+      'Approve, quarantine, reject, or reset a learned bucket.',
+    ],
+    options: [
+      'Only SuperAdmin can access this page.',
+      'Reset clears the bucket so it relearns from new samples.',
+    ],
+  },
 ];

@@ -1180,6 +1180,7 @@ public class RoutesController : ControllerBase
             distanceKm,
             travelMinutes,
             stop.ActualServiceMinutes,
+            stop.Route.DriverId,
             previousStop.Latitude,
             previousStop.Longitude,
             stop.Latitude,

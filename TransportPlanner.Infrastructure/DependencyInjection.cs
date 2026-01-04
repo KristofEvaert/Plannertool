@@ -40,6 +40,8 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<OpenStreetMapOptions>(configuration.GetSection(OpenStreetMapOptions.SectionName));
+        services.Configure<TravelTimeModelQualitySettings>(
+            configuration.GetSection(TravelTimeModelQualitySettings.SectionName));
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 

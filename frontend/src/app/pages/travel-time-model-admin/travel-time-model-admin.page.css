@@ -1,0 +1,44 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.filter {
+  min-width: 180px;
+  flex: 1 1 200px;
+}
+
+.flagged-only {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1.75rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.flags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expansion {
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.expansion-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}

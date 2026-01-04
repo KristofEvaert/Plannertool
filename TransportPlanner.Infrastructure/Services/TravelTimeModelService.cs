@@ -1,19 +1,24 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using TransportPlanner.Domain.Entities;
 using TransportPlanner.Infrastructure.Data;
+using TransportPlanner.Infrastructure.Options;
 
 namespace TransportPlanner.Infrastructure.Services;
 
 public class TravelTimeModelService : ITravelTimeModelService
 {
-    private const int LearnedSampleThreshold = 30;
     private static readonly decimal[] DistanceBands = { 0, 5, 15, 30, 60, 120, 10000 };
 
     private readonly TransportPlannerDbContext _dbContext;
+    private readonly TravelTimeModelQualitySettings _settings;
 
-    public TravelTimeModelService(TransportPlannerDbContext dbContext)
+    public TravelTimeModelService(
+        TransportPlannerDbContext dbContext,
+        IOptions<TravelTimeModelQualitySettings> settings)
     {
         _dbContext = dbContext;
+        _settings = settings?.Value ?? new TravelTimeModelQualitySettings();
     }
 
     public async Task<double> EstimateMinutesAsync(
@@ -31,20 +36,36 @@ public class TravelTimeModelService : ITravelTimeModelService
         var (bucketStart, bucketEnd) = GetBucketRange(departureMinute);
         var (bandMin, bandMax) = GetDistanceBand(distanceKm);
 
-        var learned = await _dbContext.LearnedTravelStats
+        var learnedQuery = _dbContext.LearnedTravelStats
             .AsNoTracking()
             .Where(x => x.RegionId == region.Id
                 && x.DayType == dayType
                 && x.BucketStartHour == bucketStart
                 && x.BucketEndHour == bucketEnd
                 && x.DistanceBandKmMin == bandMin
-                && x.DistanceBandKmMax == bandMax
-                && x.SampleCount >= LearnedSampleThreshold)
-            .FirstOrDefaultAsync(cancellationToken);
+                && x.DistanceBandKmMax == bandMax);
 
-        if (learned != null)
+        if (_settings.UseLearnedOnlyIfApproved)
         {
-            return (double)(learned.AvgMinutesPerKm * (decimal)distanceKm);
+            learnedQuery = learnedQuery.Where(x => x.Status == LearnedTravelStatStatus.Approved);
+        }
+
+        if (_settings.LearnedSampleThreshold > 0)
+        {
+            learnedQuery = learnedQuery.Where(x => x.TotalSampleCount >= _settings.LearnedSampleThreshold);
+        }
+
+        if (_settings.StaleAfterDays > 0)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-_settings.StaleAfterDays);
+            learnedQuery = learnedQuery.Where(x => x.LastSampleAtUtc.HasValue && x.LastSampleAtUtc.Value >= cutoff);
+        }
+
+        var learned = await learnedQuery.FirstOrDefaultAsync(cancellationToken);
+
+        if (learned?.AvgMinutesPerKm != null)
+        {
+            return (double)(learned.AvgMinutesPerKm.Value * (decimal)distanceKm);
         }
 
         var profile = await _dbContext.RegionSpeedProfiles
@@ -80,6 +101,7 @@ public class TravelTimeModelService : ITravelTimeModelService
         double distanceKm,
         double travelMinutes,
         double? stopServiceMinutes,
+        int driverId,
         double startLat,
         double startLng,
         double endLat,
@@ -110,18 +132,40 @@ public class TravelTimeModelService : ITravelTimeModelService
                 DistanceBandKmMin = bandMin,
                 DistanceBandKmMax = bandMax,
                 SampleCount = 0,
-                AvgMinutesPerKm = 0,
-                AvgStopServiceMinutes = stopServiceMinutes.HasValue ? (decimal?)stopServiceMinutes.Value : null
+                TotalSampleCount = 0,
+                SuspiciousSampleCount = 0,
+                AvgMinutesPerKm = null,
+                AvgStopServiceMinutes = stopServiceMinutes.HasValue ? (decimal?)stopServiceMinutes.Value : null,
+                Status = LearnedTravelStatStatus.Draft
             };
             _dbContext.LearnedTravelStats.Add(stat);
         }
 
+        var nowUtc = DateTime.UtcNow;
         var minutesPerKm = distanceKm > 0 ? travelMinutes / distanceKm : 0;
         var sampleCount = stat.SampleCount;
         var newSampleCount = sampleCount + 1;
 
-        stat.AvgMinutesPerKm = (decimal)(((double)stat.AvgMinutesPerKm * sampleCount + minutesPerKm) / newSampleCount);
+        var existingAvg = stat.AvgMinutesPerKm.HasValue ? (double)stat.AvgMinutesPerKm.Value : 0;
+        stat.AvgMinutesPerKm = (decimal)((existingAvg * sampleCount + minutesPerKm) / newSampleCount);
         stat.SampleCount = newSampleCount;
+        stat.TotalSampleCount = newSampleCount;
+        stat.LastSampleAtUtc = nowUtc;
+
+        if (!stat.MinMinutesPerKm.HasValue || minutesPerKm < (double)stat.MinMinutesPerKm.Value)
+        {
+            stat.MinMinutesPerKm = (decimal)minutesPerKm;
+        }
+
+        if (!stat.MaxMinutesPerKm.HasValue || minutesPerKm > (double)stat.MaxMinutesPerKm.Value)
+        {
+            stat.MaxMinutesPerKm = (decimal)minutesPerKm;
+        }
+
+        if (IsSuspiciousSample(travelMinutes, minutesPerKm, bandMin, bandMax))
+        {
+            stat.SuspiciousSampleCount += 1;
+        }
 
         if (stopServiceMinutes.HasValue)
         {
@@ -130,6 +174,31 @@ public class TravelTimeModelService : ITravelTimeModelService
                 : stopServiceMinutes.Value;
             var averaged = (existingService * sampleCount + stopServiceMinutes.Value) / newSampleCount;
             stat.AvgStopServiceMinutes = (decimal)averaged;
+        }
+
+        if (driverId > 0)
+        {
+            LearnedTravelStatContributor? contributor = null;
+            if (stat.Id != 0)
+            {
+                contributor = await _dbContext.LearnedTravelStatContributors
+                    .FirstOrDefaultAsync(x => x.LearnedTravelStatsId == stat.Id && x.DriverId == driverId, cancellationToken);
+            }
+
+            if (contributor == null)
+            {
+                contributor = new LearnedTravelStatContributor
+                {
+                    LearnedTravelStats = stat,
+                    DriverId = driverId,
+                    SampleCount = 0,
+                    LastContributionUtc = nowUtc
+                };
+                _dbContext.LearnedTravelStatContributors.Add(contributor);
+            }
+
+            contributor.SampleCount += 1;
+            contributor.LastContributionUtc = nowUtc;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -185,5 +254,20 @@ public class TravelTimeModelService : ITravelTimeModelService
         }
 
         return (DistanceBands[^2], DistanceBands[^1]);
+    }
+
+    private static bool IsSuspiciousSample(double travelMinutes, double minutesPerKm, decimal bandMin, decimal bandMax)
+    {
+        if (bandMin == 0 && bandMax == 5 && travelMinutes > 90)
+        {
+            return true;
+        }
+
+        if (bandMin == 30 && bandMax == 60 && travelMinutes < 10)
+        {
+            return true;
+        }
+
+        return minutesPerKm < 0.3 || minutesPerKm > 6.0;
     }
 }

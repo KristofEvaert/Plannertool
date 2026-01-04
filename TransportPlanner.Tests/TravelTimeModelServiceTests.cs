@@ -80,7 +80,9 @@ public class TravelTimeModelServiceTests
 
         await db.SaveChangesAsync();
 
-        var service = new TravelTimeModelService(db);
+        var service = new TravelTimeModelService(
+            db,
+            Microsoft.Extensions.Options.Options.Create(new TransportPlanner.Infrastructure.Options.TravelTimeModelQualitySettings()));
         var minutes = await service.EstimateMinutesAsync(
             new DateTime(2025, 1, 6),
             departureMinute: 9 * 60,
