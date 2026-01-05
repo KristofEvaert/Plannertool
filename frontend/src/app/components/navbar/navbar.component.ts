@@ -75,7 +75,11 @@ export class NavbarComponent {
         });
       }
       if (this.isDriver() || this.isAdmin()) {
-        items.push({ label: 'Driver', icon: 'pi pi-car', routerLink: '/driver' });
+        items.push({
+          label: this.isDriver() ? 'My Schedule' : 'Driver',
+          icon: 'pi pi-car',
+          routerLink: '/driver',
+        });
       }
     }
     return items;
