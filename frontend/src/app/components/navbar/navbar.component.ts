@@ -59,15 +59,23 @@ export class NavbarComponent {
     const items: MenuItem[] = [];
     if (this.auth.currentUser()) {
       if (this.isStaff()) {
-        items.push({ label: 'Dashboard', routerLink: '/start' });
-        items.push({ label: 'Map', routerLink: '/map' });
-        items.push({ label: 'Drivers', routerLink: '/drivers' });
-        items.push({ label: 'Service Types', routerLink: '/service-types' });
-        items.push({ label: 'Service Locations', routerLink: '/service-locations' });
-        items.push({ label: 'Route Follow-up', routerLink: '/route-followup' });
+        items.push({ label: 'Dashboard', icon: 'pi pi-home', routerLink: '/start' });
+        items.push({ label: 'Map', icon: 'pi pi-map', routerLink: '/map' });
+        items.push({ label: 'Drivers', icon: 'pi pi-users', routerLink: '/drivers' });
+        items.push({ label: 'Service Types', icon: 'pi pi-list', routerLink: '/service-types' });
+        items.push({
+          label: 'Service Locations',
+          icon: 'pi pi-map-marker',
+          routerLink: '/service-locations',
+        });
+        items.push({
+          label: 'Route Follow-up',
+          icon: 'pi pi-compass',
+          routerLink: '/route-followup',
+        });
       }
       if (this.isDriver() || this.isAdmin()) {
-        items.push({ label: 'Driver', routerLink: '/driver' });
+        items.push({ label: 'Driver', icon: 'pi pi-car', routerLink: '/driver' });
       }
     }
     return items;
@@ -79,22 +87,27 @@ export class NavbarComponent {
       const userItems: MenuItem[] = [];
       if (this.isAdmin()) {
         userItems.push(
-          { label: 'Users/Roles', routerLink: '/users' },
-          { label: 'Weight Templates', routerLink: '/weight-templates' },
-          { label: 'Cost Settings', routerLink: '/system-cost-settings' },
+          { label: 'Users/Roles', icon: 'pi pi-user-edit', routerLink: '/users' },
+          { label: 'Weight Templates', icon: 'pi pi-cog', routerLink: '/weight-templates' },
+          { label: 'Cost Settings', icon: 'pi pi-dollar', routerLink: '/system-cost-settings' },
         );
 
         if (this.isSuperAdmin()) {
           userItems.push(
-            { label: 'Owners', routerLink: '/owners' },
-            { label: 'Audit Trail', routerLink: '/audit-trail' },
-            { label: 'Travel Time Model', routerLink: '/travel-time-model' },
+            { label: 'Owners', icon: 'pi pi-building', routerLink: '/owners' },
+            { label: 'Audit Trail', icon: 'pi pi-history', routerLink: '/audit-trail' },
+            {
+              label: 'Travel Time Model',
+              icon: 'pi pi-chart-line',
+              routerLink: '/travel-time-model',
+            },
           );
         }
       }
 
       userItems.push({
-        label: 'logout',
+        label: 'Logout',
+        icon: 'pi pi-sign-out',
         command: () => {
           this.auth.logout();
           this.router.navigate(['/login']);
@@ -102,6 +115,7 @@ export class NavbarComponent {
       });
       items.push({
         label: this.auth.currentUser()?.displayName || this.auth.currentUser()?.email,
+        icon: 'pi pi-user',
         items: userItems,
       });
     }
