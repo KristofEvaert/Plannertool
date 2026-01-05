@@ -25,13 +25,14 @@ import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { parseYmd, toYmd } from '@utils/date.utils';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { CalendarModule } from 'primeng/calendar';
+import { DatePicker } from 'primeng/datepicker';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputTextarea } from 'primeng/inputtextarea';
+import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
+import { TextareaModule } from 'primeng/textarea';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
@@ -41,7 +42,7 @@ type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & {
   hasLunchBreak?: boolean;
 };
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
-type ServiceLocationFormState = {
+interface ServiceLocationFormState {
   erpId: number;
   name: string;
   address?: string;
@@ -54,13 +55,13 @@ type ServiceLocationFormState = {
   ownerId: number;
   driverInstruction?: string;
   extraInstructions?: string[];
-};
-type ServiceLocationDetail = {
+}
+interface ServiceLocationDetail {
   loading: boolean;
   hours: ServiceLocationOpeningHoursDto[];
   exceptions: ServiceLocationExceptionDto[];
   constraints: ServiceLocationConstraintDto | null;
-};
+}
 
 @Component({
   selector: 'app-service-locations',
@@ -72,10 +73,10 @@ type ServiceLocationDetail = {
     InputTextModule,
     SelectModule,
     DialogModule,
-    CalendarModule,
+    DatePicker,
     InputNumberModule,
     ToastModule,
-    InputTextarea,
+    TextareaModule,
     TagModule,
     TooltipModule,
     HelpManualComponent,

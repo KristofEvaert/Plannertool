@@ -1,42 +1,44 @@
+import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
+  DestroyRef,
   effect,
   inject,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import * as L from 'leaflet';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
 import { DatePickerModule } from 'primeng/datepicker';
 import { SelectModule } from 'primeng/select';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-import * as L from 'leaflet';
-import { interval, Subscription, switchMap, startWith, catchError, of } from 'rxjs';
+import { catchError, interval, of, startWith, Subscription, switchMap } from 'rxjs';
 
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import type { RouteMessageDto } from '@models/route-message.model';
 import { DriversApiService } from '@services/drivers-api.service';
-import { RoutesApiService, type RouteDto, type RouteStopDto } from '@services/routes-api.service';
 import { RouteMessagesApiService } from '@services/route-messages-api.service';
 import { RouteMessagesHubService } from '@services/route-messages-hub.service';
+import { RoutesApiService, type RouteDto, type RouteStopDto } from '@services/routes-api.service';
 import {
   ServiceLocationOwnersApiService,
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
-import type { RouteMessageDto } from '@models/route-message.model';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 
 type DriverOption = { label: string; value: string; ownerId: number };
 type OwnerOption = { label: string; value: number };
 
-type DriverPosition =
-  | { lat: number; lng: number; mode: 'at-stop' | 'between' | 'start' | 'finished' }
-  | null;
+type DriverPosition = {
+  lat: number;
+  lng: number;
+  mode: 'at-stop' | 'between' | 'start' | 'finished';
+} | null;
 
 @Component({
   selector: 'app-route-followup',
@@ -262,7 +264,7 @@ export class RouteFollowupPage implements AfterViewInit {
     date: Date,
     driverToolId: string,
     ownerId: number,
-    options?: { enablePollingIfToday?: boolean }
+    options?: { enablePollingIfToday?: boolean },
   ): void {
     this.loading.set(true);
     this.routesApi.getDriverDayRoute(date, driverToolId, ownerId, true).subscribe({
@@ -295,10 +297,10 @@ export class RouteFollowupPage implements AfterViewInit {
       .pipe(
         startWith(0),
         switchMap(() =>
-          this.routesApi.getDriverDayRoute(date, driverToolId, ownerId, true).pipe(
-            catchError(() => of(null))
-          )
-        )
+          this.routesApi
+            .getDriverDayRoute(date, driverToolId, ownerId, true)
+            .pipe(catchError(() => of(null))),
+        ),
       )
       .subscribe((route) => {
         if (!route) return;
@@ -402,16 +404,20 @@ export class RouteFollowupPage implements AfterViewInit {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  severityForStopStatus(status?: string): 'success' | 'warning' | 'info' {
+  severityForStopStatus(
+    status?: string,
+  ): 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast' | undefined | null {
     if (status === 'Completed') return 'success';
-    if (status === 'Arrived') return 'warning';
+    if (status === 'Arrived') return 'warn';
     return 'info';
   }
 
-  messageStatusSeverity(status?: string): 'success' | 'warning' | 'info' {
+  messageStatusSeverity(
+    status?: string,
+  ): 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast' | undefined | null {
     if (status === 'Resolved') return 'success';
     if (status === 'Read') return 'info';
-    return 'warning';
+    return 'warn';
   }
 
   markMessageRead(message: RouteMessageDto): void {
@@ -419,7 +425,7 @@ export class RouteFollowupPage implements AfterViewInit {
     this.routeMessagesApi.markRead(message.id).subscribe({
       next: () => {
         this.messages.update((items) =>
-          items.map((m) => (m.id === message.id ? { ...m, status: 'Read' } : m))
+          items.map((m) => (m.id === message.id ? { ...m, status: 'Read' } : m)),
         );
       },
     });
@@ -430,7 +436,7 @@ export class RouteFollowupPage implements AfterViewInit {
     this.routeMessagesApi.markResolved(message.id).subscribe({
       next: () => {
         this.messages.update((items) =>
-          items.map((m) => (m.id === message.id ? { ...m, status: 'Resolved' } : m))
+          items.map((m) => (m.id === message.id ? { ...m, status: 'Resolved' } : m)),
         );
       },
     });
@@ -440,7 +446,12 @@ export class RouteFollowupPage implements AfterViewInit {
     if (!utcIso) return '-';
     const d = new Date(utcIso);
     if (Number.isNaN(d.getTime())) return '-';
-    return d.toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: '2-digit' });
+    return d.toLocaleString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      month: 'short',
+      day: '2-digit',
+    });
   }
 
   private static isSameDay(a: Date, b: Date): boolean {

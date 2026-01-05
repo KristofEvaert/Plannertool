@@ -31,11 +31,16 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-2">From Date</label>
-        <p-calendar [(ngModel)]="fromDate" dateFormat="yy-mm-dd" [showIcon]="true" class="w-full" />
+        <p-datepicker
+          [(ngModel)]="fromDate"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          class="w-full"
+        />
       </div>
       <div>
         <label class="block text-sm font-medium mb-2">To Date</label>
-        <p-calendar [(ngModel)]="toDate" dateFormat="yy-mm-dd" [showIcon]="true" class="w-full" />
+        <p-datepicker [(ngModel)]="toDate" dateFormat="yy-mm-dd" [showIcon]="true" class="w-full" />
       </div>
     </div>
     <div class="flex items-center gap-4 mb-4">

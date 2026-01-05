@@ -1,6 +1,6 @@
-import { Calendar } from 'primeng/calendar';
+import { DatePicker } from 'primeng/datepicker';
 
-const calendarProto = (Calendar as unknown as { prototype?: any })?.prototype;
+const calendarProto = (DatePicker as unknown as { prototype?: any })?.prototype;
 
 if (calendarProto) {
   if (typeof window !== 'undefined' && !calendarProto.window) {

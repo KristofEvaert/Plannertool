@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <h1 class="text-3xl font-bold text-gray-900">Driver Availability</h1>
-        <app-help-manual [sectionId]="'drivers'"></app-help-manual>
+        <app-help-manual [sectionId]="'drivers'" />
       </div>
       <div class="flex items-center gap-2">
         <p-button
@@ -20,11 +20,11 @@
           (onClick)="downloadServiceTypesTemplate()"
         />
         <input
+          #fileInput
           type="file"
           accept=".xlsx,.xls"
-          (change)="onFileSelected($event)"
           style="display: none"
-          #fileInput
+          (change)="onFileSelected($event)"
         />
         <p-button
           label="Upload Availability Excel"
@@ -52,33 +52,33 @@
       <div class="flex items-center gap-4">
         <label class="text-sm font-medium">Owner:</label>
         <p-select
-          [options]="owners()"
-          [(ngModel)]="ownerFilterId"
           optionLabel="name"
           optionValue="id"
-          [showClear]="true"
           placeholder="All owners"
           styleClass="w-56"
+          [options]="owners()"
+          [showClear]="true"
+          [(ngModel)]="ownerFilterId"
         />
         <label class="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" [(ngModel)]="showOnlyDriversWithAvailability" />
           <span>Only drivers with availability</span>
         </label>
         <label class="text-sm font-medium">Start date:</label>
-        <p-calendar
-          [(ngModel)]="startDate"
+        <p-datepicker
+          styleClass="w-40"
           [dateFormat]="'yy-mm-dd'"
           [showIcon]="true"
-          styleClass="w-40"
+          [(ngModel)]="startDate"
         />
         <label class="text-sm font-medium">Range:</label>
         <p-select
-          [(ngModel)]="visibleDays"
-          [options]="rangeOptions"
           optionLabel="label"
           optionValue="value"
-          (onChange)="onRangeChange()"
           styleClass="w-32"
+          [options]="rangeOptions"
+          (onChange)="onRangeChange()"
+          [(ngModel)]="visibleDays"
         />
         <p-button label="Prev" icon="pi pi-chevron-left" [text]="true" (onClick)="goToPrev()" />
         <p-button label="Today" icon="pi pi-calendar" [text]="true" (onClick)="goToToday()" />
@@ -134,8 +134,8 @@
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <div
-                  class="truncate"
                   pTooltip="{{ getServiceTypeTooltip(driver) }}"
+                  class="truncate"
                   tooltipPosition="top"
                 >
                   {{ driver.name }}
@@ -150,21 +150,21 @@
                   icon="pi pi-pencil"
                   severity="secondary"
                   size="small"
-                  (onClick)="openEditDriverDialog(driver)"
                   styleClass="driver-action-icon-btn"
                   [style]="{ padding: '0.25rem' }"
+                  (onClick)="openEditDriverDialog(driver)"
                 />
                 <p-button
                   icon="pi pi-trash"
                   severity="danger"
                   size="small"
-                  (onClick)="deleteDriver(driver)"
                   [style]="{
                     'background-color': '#dc2626',
                     'border-color': '#dc2626',
                     color: 'white',
                     padding: '0.25rem',
                   }"
+                  (onClick)="deleteDriver(driver)"
                 />
               </div>
             </div>
@@ -204,7 +204,6 @@
 
   <!-- Edit Dialog -->
   <p-dialog
-    [(visible)]="showDialogValue"
     [header]="
       selectedCell()
         ? 'Availability: ' +
@@ -218,31 +217,30 @@
     [appendTo]="'body'"
     [baseZIndex]="10000"
     (onHide)="showDialog.set(false)"
+    [(visible)]="showDialogValue"
   >
     @if (selectedCell(); as cell) {
       <div class="flex flex-col gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Start Time</label>
           <p-select
-            [(ngModel)]="dialogForm().startMinuteOfDay"
-            [options]="timeOptions()"
             optionLabel="label"
             optionValue="value"
-            [appendTo]="'body'"
-            [baseZIndex]="10001"
             class="w-full"
+            [options]="timeOptions()"
+            [appendTo]="'body'"
+            [(ngModel)]="dialogForm().startMinuteOfDay"
           />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">End Time</label>
           <p-select
-            [(ngModel)]="dialogForm().endMinuteOfDay"
-            [options]="timeOptions()"
             optionLabel="label"
             optionValue="value"
-            [appendTo]="'body'"
-            [baseZIndex]="10001"
             class="w-full"
+            [options]="timeOptions()"
+            [appendTo]="'body'"
+            [(ngModel)]="dialogForm().endMinuteOfDay"
           />
         </div>
         @if (cell.availability) {
@@ -259,88 +257,85 @@
         <p-button
           label="Clear"
           severity="danger"
-          (onClick)="clearAvailability()"
           [loading]="loading()"
+          (onClick)="clearAvailability()"
         />
       }
       <p-button label="Cancel" severity="secondary" (onClick)="showDialog.set(false)" />
-      <p-button label="Save" (onClick)="saveAvailability()" [loading]="loading()" />
+      <p-button label="Save" [loading]="loading()" (onClick)="saveAvailability()" />
     </ng-template>
   </p-dialog>
 
   <!-- Driver Dialog -->
   <p-dialog
-    [(visible)]="showDriverDialogValue"
     [header]="'Edit Driver'"
     [modal]="true"
     [style]="{ width: '600px' }"
     [appendTo]="'body'"
-    [baseZIndex]="10000"
     (onHide)="showDriverDialog.set(false)"
+    [(visible)]="showDriverDialogValue"
   >
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">ErpId *</label>
-        <p-inputNumber [(ngModel)]="driverForm().erpId" [useGrouping]="false" class="w-full" />
+        <p-inputNumber class="w-full" [useGrouping]="false" [(ngModel)]="driverForm().erpId" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Name *</label>
-        <input pInputText [(ngModel)]="driverForm().name" class="w-full" />
+        <input pInputText class="w-full" [(ngModel)]="driverForm().name" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Start Address</label>
-        <input pInputText [(ngModel)]="driverForm().startAddress" class="w-full" />
+        <input pInputText class="w-full" [(ngModel)]="driverForm().startAddress" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1"
           >Owner <span class="text-red-500">*</span></label
         >
         <p-select
-          [options]="owners()"
-          [ngModel]="driverForm().ownerId"
-          (ngModelChange)="onDriverFormOwnerChange($event)"
           optionLabel="name"
           optionValue="id"
-          [style]="{ width: '100%' }"
           placeholder="Select Owner"
+          [options]="owners()"
+          [ngModel]="driverForm().ownerId"
+          [style]="{ width: '100%' }"
           [appendTo]="'body'"
-          [baseZIndex]="10001"
+          (ngModelChange)="onDriverFormOwnerChange($event)"
         />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Service Types</label>
         <p-multiSelect
-          [options]="driverFormServiceTypes()"
-          [ngModel]="driverForm().serviceTypeIds"
-          (ngModelChange)="onDriverFormServiceTypesChange($event)"
           optionLabel="name"
           optionValue="id"
+          placeholder="Select service types"
+          [options]="driverFormServiceTypes()"
+          [ngModel]="driverForm().serviceTypeIds"
           [filter]="true"
           [display]="'chip'"
           [style]="{ width: '100%' }"
-          placeholder="Select service types"
           [appendTo]="'body'"
-          [baseZIndex]="10001"
           [disabled]="!driverForm().ownerId"
+          (ngModelChange)="onDriverFormServiceTypesChange($event)"
         />
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Latitude *</label>
           <p-inputNumber
-            [(ngModel)]="driverForm().startLatitude"
+            class="w-full"
             [minFractionDigits]="6"
             [maxFractionDigits]="6"
-            class="w-full"
+            [(ngModel)]="driverForm().startLatitude"
           />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Longitude *</label>
           <p-inputNumber
-            [(ngModel)]="driverForm().startLongitude"
+            class="w-full"
             [minFractionDigits]="6"
             [maxFractionDigits]="6"
-            class="w-full"
+            [(ngModel)]="driverForm().startLongitude"
           />
         </div>
       </div>
@@ -348,19 +343,19 @@
         <div>
           <label class="block text-sm font-medium mb-1">Default Service Minutes</label>
           <p-inputNumber
-            [(ngModel)]="driverForm().defaultServiceMinutes"
+            class="w-full"
             [min]="1"
             [max]="240"
-            class="w-full"
+            [(ngModel)]="driverForm().defaultServiceMinutes"
           />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Max Work Minutes/Day</label>
           <p-inputNumber
-            [(ngModel)]="driverForm().maxWorkMinutesPerDay"
+            class="w-full"
             [min]="60"
             [max]="900"
-            class="w-full"
+            [(ngModel)]="driverForm().maxWorkMinutesPerDay"
           />
         </div>
       </div>
@@ -373,7 +368,7 @@
     </div>
     <ng-template pTemplate="footer">
       <p-button label="Cancel" severity="secondary" (onClick)="showDriverDialog.set(false)" />
-      <p-button label="Save" (onClick)="saveDriver()" [loading]="loading()" />
+      <p-button label="Save" [loading]="loading()" (onClick)="saveDriver()" />
     </ng-template>
   </p-dialog>
 

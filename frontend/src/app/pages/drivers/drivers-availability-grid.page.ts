@@ -22,12 +22,13 @@ import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { toYmd } from '@utils/date.utils';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { CalendarModule } from 'primeng/calendar';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DatePickerModule } from 'primeng/datepicker';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { MultiSelectModule } from 'primeng/multiselect';
+import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { catchError, forkJoin, of } from 'rxjs';
@@ -51,7 +52,7 @@ interface GridCell {
     FormsModule,
     ButtonModule,
     DialogModule,
-    CalendarModule,
+    DatePickerModule,
     SelectModule,
     MultiSelectModule,
     ToastModule,

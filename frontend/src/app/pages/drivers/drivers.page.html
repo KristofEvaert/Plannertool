@@ -166,7 +166,7 @@
 
               <div class="mb-4">
                 <label class="block text-sm font-medium mb-2">Select Month</label>
-                <p-calendar
+                <p-datepicker
                   [(ngModel)]="currentMonth"
                   [view]="'month'"
                   [dateFormat]="'mm/yy'"
@@ -179,7 +179,7 @@
                 <label class="block text-sm font-medium mb-2"
                   >Click a date to set availability</label
                 >
-                <p-calendar
+                <p-datepicker
                   [(ngModel)]="selectedDate"
                   [inline]="true"
                   [selectionMode]="'single'"

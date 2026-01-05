@@ -2,14 +2,14 @@
   <div class="audit-trail-header">
     <div class="audit-trail-title">
       <h1>Audit Trail</h1>
-      <app-help-manual [sectionId]="'audit-trail'"></app-help-manual>
+      <app-help-manual [sectionId]="'audit-trail'" />
     </div>
   </div>
 
   <div class="audit-filter-bar">
     <div class="audit-filter">
       <label>Date range</label>
-      <p-calendar
+      <p-datepicker
         [ngModel]="dateRange()"
         (ngModelChange)="onDateRangeChange($event)"
         [selectionMode]="'range'"
@@ -160,17 +160,17 @@
       <tr>
         <th pSortableColumn="timestampUtc">
           Timestamp
-          <p-sortIcon field="timestampUtc"></p-sortIcon>
+          <p-sortIcon field="timestampUtc" />
         </th>
         <th pSortableColumn="statusCode">
           Method + Status
-          <p-sortIcon field="statusCode"></p-sortIcon>
+          <p-sortIcon field="statusCode" />
         </th>
         <th>Endpoint</th>
         <th>User</th>
         <th class="text-right" pSortableColumn="durationMs">
           Duration
-          <p-sortIcon field="durationMs"></p-sortIcon>
+          <p-sortIcon field="durationMs" />
         </th>
         <th class="text-right"></th>
       </tr>
@@ -361,8 +361,8 @@
               </div>
             </div>
 
-            <p-tabView>
-              <p-tabPanel header="Response">
+            <p-tabs>
+              <p-tabpanel header="Response">
                 <app-json-viewer
                   [value]="item.responseBody"
                   emptyMessage="No response body"
@@ -370,28 +370,28 @@
                 @if (item.responseBodyTruncated) {
                   <div class="audit-truncated">Response truncated.</div>
                 }
-              </p-tabPanel>
-              <p-tabPanel header="Request / Payload">
+              </p-tabpanel>
+              <p-tabpanel header="Request / Payload">
                 <app-json-viewer [value]="item.body" emptyMessage="No payload"></app-json-viewer>
                 @if (item.bodyTruncated) {
                   <div class="audit-truncated">Request body truncated.</div>
                 }
-              </p-tabPanel>
-              <p-tabPanel header="Headers">
+              </p-tabpanel>
+              <p-tabpanel header="Headers">
                 <app-json-viewer
                   [value]="item.requestHeaders"
                   emptyMessage="No headers"
                 ></app-json-viewer>
-              </p-tabPanel>
+              </p-tabpanel>
               @if (hasTraceData(item)) {
-                <p-tabPanel header="Trace / Exception">
+                <p-tabpanel header="Trace / Exception">
                   <app-json-viewer
                     [value]="getTraceDetails(item)"
                     emptyMessage="No trace data"
                   ></app-json-viewer>
-                </p-tabPanel>
+                </p-tabpanel>
               }
-            </p-tabView>
+            </p-tabs>
           </div>
         </td>
       </tr>

@@ -8,12 +8,13 @@ import { AuditTrailApiService } from '@services/audit-trail-api.service';
 import { MessageService } from 'primeng/api';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';
-import { CalendarModule } from 'primeng/calendar';
 import { ChipModule } from 'primeng/chip';
+import { DatePickerModule } from 'primeng/datepicker';
 import { InputTextModule } from 'primeng/inputtext';
 import { MultiSelectModule } from 'primeng/multiselect';
+import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
-import { TabViewModule } from 'primeng/tabview';
+import { TabsModule } from 'primeng/tabs';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
@@ -31,13 +32,13 @@ type StatusFilter = 'all' | '2xx' | '4xx' | '5xx' | string;
     TableModule,
     InputTextModule,
     SelectModule,
-    CalendarModule,
+    DatePickerModule,
     ToastModule,
     MultiSelectModule,
     AutoCompleteModule,
     TagModule,
     TooltipModule,
-    TabViewModule,
+    TabsModule,
     ChipModule,
     HelpManualComponent,
     JsonViewerComponent,
@@ -343,7 +344,9 @@ export class AuditTrailPage {
     }
   }
 
-  getMethodSeverity(method: string): 'info' | 'success' | 'warning' | 'danger' {
+  getMethodSeverity(
+    method: string,
+  ): 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast' | undefined | null {
     switch (method?.toUpperCase()) {
       case 'GET':
         return 'info';
@@ -351,7 +354,7 @@ export class AuditTrailPage {
         return 'success';
       case 'PUT':
       case 'PATCH':
-        return 'warning';
+        return 'warn';
       case 'DELETE':
         return 'danger';
       default:
@@ -359,9 +362,11 @@ export class AuditTrailPage {
     }
   }
 
-  getStatusSeverity(statusCode: number): 'info' | 'success' | 'warning' | 'danger' {
+  getStatusSeverity(
+    statusCode: number,
+  ): 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast' | undefined | null {
     if (statusCode >= 500) return 'danger';
-    if (statusCode >= 400) return 'warning';
+    if (statusCode >= 400) return 'warn';
     if (statusCode >= 200) return 'success';
     return 'info';
   }
