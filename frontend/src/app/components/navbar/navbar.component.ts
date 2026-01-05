@@ -11,8 +11,12 @@ import { MenubarModule } from 'primeng/menubar';
     <div class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm h-16">
       <div class="container mx-auto px-6 h-full">
         <p-menubar [model]="menuItems()" [style]="{ border: 'none', borderRadius: '0' }">
-          <ng-template pTemplate="start">
+          <ng-template #start>
             <span class="text-xl font-bold text-gray-900">Service Planning Tool</span>
+          </ng-template>
+
+          <ng-template #end>
+            <p-menubar [model]="userMenuItems()" [style]="{ border: 'none', borderRadius: '0' }" />
           </ng-template>
         </p-menubar>
       </div>
@@ -37,20 +41,24 @@ import { MenubarModule } from 'primeng/menubar';
   standalone: true,
 })
 export class NavbarComponent {
-  private readonly auth = inject(AuthService);
+  public readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  public readonly menuItems = computed<MenuItem[]>(() => {
-    const user = this.auth.currentUser();
-    const roles = user?.roles ?? [];
-    const isStaff = roles.some((r) => ['SuperAdmin', 'Admin', 'Planner'].includes(r));
-    const isAdmin = roles.some((r) => ['SuperAdmin', 'Admin'].includes(r));
-    const isSuperAdmin = roles.includes('SuperAdmin');
-    const isDriver = roles.includes('Driver');
+  private readonly roles = computed(() => this.auth.currentUser()?.roles ?? []);
 
+  private readonly isStaff = computed(() =>
+    this.roles().some((r) => ['SuperAdmin', 'Admin', 'Planner'].includes(r)),
+  );
+  private readonly isAdmin = computed(() =>
+    this.roles().some((r) => ['SuperAdmin', 'Admin'].includes(r)),
+  );
+  private readonly isSuperAdmin = computed(() => this.roles().includes('SuperAdmin'));
+  private readonly isDriver = computed(() => this.roles().includes('Driver'));
+
+  public readonly menuItems = computed<MenuItem[]>(() => {
     const items: MenuItem[] = [];
-    if (user) {
-      if (isStaff) {
+    if (this.auth.currentUser()) {
+      if (this.isStaff()) {
         items.push({ label: 'Dashboard', routerLink: '/start' });
         items.push({ label: 'Map', routerLink: '/map' });
         items.push({ label: 'Drivers', routerLink: '/drivers' });
@@ -58,27 +66,46 @@ export class NavbarComponent {
         items.push({ label: 'Service Locations', routerLink: '/service-locations' });
         items.push({ label: 'Route Follow-up', routerLink: '/route-followup' });
       }
-      if (isDriver || isAdmin) {
+      if (this.isDriver() || this.isAdmin()) {
         items.push({ label: 'Driver', routerLink: '/driver' });
       }
-      if (isAdmin) {
-        items.push({ label: 'Users/Roles', routerLink: '/users' });
-        items.push({ label: 'Weight Templates', routerLink: '/weight-templates' });
-        items.push({ label: 'Cost Settings', routerLink: '/system-cost-settings' });
+    }
+    return items;
+  });
+
+  public readonly userMenuItems = computed<MenuItem[]>(() => {
+    const items: MenuItem[] = [];
+    if (this.auth.currentUser()) {
+      const userItems: MenuItem[] = [];
+      if (this.isAdmin()) {
+        userItems.push(
+          { label: 'Users/Roles', routerLink: '/users' },
+          { label: 'Weight Templates', routerLink: '/weight-templates' },
+          { label: 'Cost Settings', routerLink: '/system-cost-settings' },
+        );
+
+        if (this.isSuperAdmin()) {
+          userItems.push(
+            { label: 'Owners', routerLink: '/owners' },
+            { label: 'Audit Trail', routerLink: '/audit-trail' },
+            { label: 'Travel Time Model', routerLink: '/travel-time-model' },
+          );
+        }
       }
-      if (isSuperAdmin) {
-        items.push({ label: 'Owners', routerLink: '/owners' });
-        items.push({ label: 'Audit Trail', routerLink: '/audit-trail' });
-        items.push({ label: 'Travel Time Model', routerLink: '/travel-time-model' });
-      }
-      items.push({
-        label: `Logout (${user.displayName || user.email})`,
+
+      userItems.push({
+        label: 'logout',
         command: () => {
           this.auth.logout();
           this.router.navigate(['/login']);
         },
       });
+      items.push({
+        label: this.auth.currentUser()?.displayName || this.auth.currentUser()?.email,
+        items: userItems,
+      });
     }
+
     return items;
   });
 }
