@@ -8,7 +8,7 @@ import { MenubarModule } from 'primeng/menubar';
 @Component({
   selector: 'app-navbar',
   imports: [RouterModule, MenubarModule, MenuModule],
-  template: ` @if (menuItems().length > 0) {
+  template: ` @if (this.auth.currentUser()) {
     <div class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm h-16">
       <div class="mx-auto px-6 h-full">
         <p-menubar
