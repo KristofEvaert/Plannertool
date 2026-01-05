@@ -1,6 +1,6 @@
 {
-  "name": "frontend",
-  "version": "0.0.0",
+  "name": "planner",
+  "version": "0.0.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -54,10 +54,9 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.4.0",
     "husky": "^9.1.7",
-    "jsdom": "^27.1.0",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
-    "prettier-eslint": "^16.4.2",
+    "prettier-eslint": "https://pkg.pr.new/prettier-eslint@1197",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "primeng": "^21.0.2",
     "tailwindcss": "^4.1.6",
