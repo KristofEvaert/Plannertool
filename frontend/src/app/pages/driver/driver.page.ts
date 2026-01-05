@@ -36,6 +36,7 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { ToastModule } from 'primeng/toast';
+import { firstValueFrom } from 'rxjs';
 
 interface DriverOption {
   label: string;
@@ -255,12 +256,12 @@ export class DriverPage {
     }
     this.error.set(null);
     try {
-      const dto = await this.routesApi
-        .updateRouteStop(stop.id, {
+      const dto = await firstValueFrom(
+        this.routesApi.updateRouteStop(stop.id, {
           status: 'NotVisited',
           note: stop.note.trim(),
-        })
-        .toPromise();
+        }),
+      );
       if (dto) {
         this.reloadRoute();
         this.selectedStopId.set(dto.id);
