@@ -1,8 +1,8 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '@services/auth.service';
 import { MenuItem } from 'primeng/api';
-import { MenuModule } from 'primeng/menu';
+import { Menu, MenuModule } from 'primeng/menu';
 import { MenubarModule } from 'primeng/menubar';
 
 @Component({
@@ -57,6 +57,7 @@ import { MenubarModule } from 'primeng/menubar';
 })
 export class NavbarComponent {
   public readonly auth = inject(AuthService);
+  public userMenu = viewChild<Menu>('userMenu');
   private readonly router = inject(Router);
 
   private readonly roles = computed(() => this.auth.currentUser()?.roles ?? []);
@@ -130,8 +131,11 @@ export class NavbarComponent {
       label: 'Logout',
       icon: 'pi pi-sign-out',
       command: () => {
-        this.auth.logout();
-        this.router.navigate(['/login']);
+        this.userMenu()?.hide();
+        this.userMenu()?.onHide.subscribe(() => {
+          this.auth.logout();
+          this.router.navigate(['/login']);
+        });
       },
     });
 
