@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -9,7 +9,6 @@ using TransportPlanner.Application.DTOs;
 using TransportPlanner.Domain.Entities;
 using TransportPlanner.Infrastructure.Data;
 using TransportPlanner.Infrastructure.Identity;
-using TransportPlanner.Infrastructure.Services;
 using TransportPlanner.Infrastructure.Services;
 using RouteEntity = TransportPlanner.Domain.Entities.Route;
 
@@ -1374,4 +1373,5 @@ public class RoutesController : ControllerBase
 
     private static double ToRad(double value) => (Math.PI / 180) * value;
 }
+
 
