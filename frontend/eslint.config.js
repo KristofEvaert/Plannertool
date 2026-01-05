@@ -23,7 +23,7 @@ module.exports = tseslint.config(
       '@typescript-eslint/no-empty-function': 'warn',
       '@angular-eslint/template/alt-text': 'off',
       '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
-      '@typescript-eslint/member-ordering': 'warn',
+      '@typescript-eslint/member-ordering': 'off',
       '@typescript-eslint/naming-convention': [
         'warn',
         {

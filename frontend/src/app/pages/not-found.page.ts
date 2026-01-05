@@ -10,4 +10,3 @@ import { ButtonModule } from 'primeng/button';
   standalone: true,
 })
 export class NotFoundPage {}
-
