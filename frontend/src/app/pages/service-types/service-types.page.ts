@@ -1,23 +1,25 @@
-import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { InputTextModule } from 'primeng/inputtext';
-import { DropdownModule } from 'primeng/dropdown';
-import { DialogModule } from 'primeng/dialog';
-import { CheckboxModule } from 'primeng/checkbox';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
-import { AuthService } from '@services/auth.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
-  ServiceTypeDto,
   CreateServiceTypeRequest,
+  ServiceTypeDto,
   UpdateServiceTypeRequest,
 } from '@models/service-type.model';
+import { AuthService } from '@services/auth.service';
+import {
+  ServiceLocationOwnersApiService,
+  type ServiceLocationOwnerDto,
+} from '@services/service-location-owners-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { TableModule } from 'primeng/table';
+import { ToastModule } from 'primeng/toast';
 import { catchError, of } from 'rxjs';
 
 type ServiceTypeForm = {
@@ -37,7 +39,7 @@ type OwnerFilterOption = { label: string; value: number | null };
     ButtonModule,
     TableModule,
     InputTextModule,
-    DropdownModule,
+    SelectModule,
     DialogModule,
     CheckboxModule,
     ToastModule,
@@ -91,8 +93,8 @@ export class ServiceTypesPage {
 
   loadData(): void {
     const ownerId = this.isSuperAdmin()
-      ? this.ownerFilterId() ?? undefined
-      : this.auth.currentUser()?.ownerId ?? undefined;
+      ? (this.ownerFilterId() ?? undefined)
+      : (this.auth.currentUser()?.ownerId ?? undefined);
 
     this.loading.set(true);
     this.api
@@ -106,7 +108,7 @@ export class ServiceTypesPage {
             detail: err.detail || err.message || 'Failed to load service types',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((types) => {
         this.loading.set(false);
@@ -133,12 +135,11 @@ export class ServiceTypesPage {
             detail: err.detail || err.message || 'Failed to load owners',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((owners) => {
-        const filtered = !isSuperAdmin && currentOwnerId
-          ? owners.filter((o) => o.id === currentOwnerId)
-          : owners;
+        const filtered =
+          !isSuperAdmin && currentOwnerId ? owners.filter((o) => o.id === currentOwnerId) : owners;
         this.owners.set(filtered);
         this.loadData();
       });
@@ -227,12 +228,13 @@ export class ServiceTypesPage {
       ownerId: form.ownerId,
     };
 
-    const request$ = this.isEditMode() && this.editingId()
-      ? this.api.update(this.editingId()!, {
-          ...baseRequest,
-          isActive: form.isActive,
-        } as UpdateServiceTypeRequest)
-      : this.api.create(baseRequest as CreateServiceTypeRequest);
+    const request$ =
+      this.isEditMode() && this.editingId()
+        ? this.api.update(this.editingId()!, {
+            ...baseRequest,
+            isActive: form.isActive,
+          } as UpdateServiceTypeRequest)
+        : this.api.create(baseRequest as CreateServiceTypeRequest);
 
     request$
       .pipe(
@@ -244,7 +246,7 @@ export class ServiceTypesPage {
             detail: err.detail || err.message || 'Failed to save service type',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -260,4 +262,3 @@ export class ServiceTypesPage {
       });
   }
 }
-

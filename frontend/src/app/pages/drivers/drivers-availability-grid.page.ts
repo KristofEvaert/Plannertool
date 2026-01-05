@@ -1,36 +1,36 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
-import { CalendarModule } from 'primeng/calendar';
-import { DropdownModule } from 'primeng/dropdown';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { TooltipModule } from 'primeng/tooltip';
-import { MessageService, ConfirmationService } from 'primeng/api';
-import { forkJoin, catchError, of } from 'rxjs';
-import { DriversApiService } from '@services/drivers-api.service';
-import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
-import { ServiceLocationOwnersApiService, ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import type { ServiceTypeDto } from '@models/service-type.model';
-import {
-  DriversBulkApiService,
-} from '@services/drivers-bulk-api.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
-  DriverDto,
-  DriverAvailabilityDto,
-  UpsertAvailabilityRequest,
   CreateDriverRequest,
+  DriverAvailabilityDto,
+  DriverDto,
   UpdateDriverRequest,
+  UpsertAvailabilityRequest,
 } from '@models/driver.model';
-import { toYmd, parseYmd } from '@utils/date.utils';
+import type { ServiceTypeDto } from '@models/service-type.model';
 import { AuthService } from '@services/auth.service';
+import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
+import { DriversApiService } from '@services/drivers-api.service';
+import { DriversBulkApiService } from '@services/drivers-bulk-api.service';
+import {
+  ServiceLocationOwnerDto,
+  ServiceLocationOwnersApiService,
+} from '@services/service-location-owners-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { toYmd } from '@utils/date.utils';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CalendarModule } from 'primeng/calendar';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DialogModule } from 'primeng/dialog';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { ToastModule } from 'primeng/toast';
+import { TooltipModule } from 'primeng/tooltip';
+import { catchError, forkJoin, of } from 'rxjs';
 
 interface AvailabilityMap {
   [driverToolId: string]: {
@@ -52,7 +52,7 @@ interface GridCell {
     ButtonModule,
     DialogModule,
     CalendarModule,
-    DropdownModule,
+    SelectModule,
     MultiSelectModule,
     ToastModule,
     ConfirmDialogModule,
@@ -94,7 +94,7 @@ export class DriversAvailabilityGridPage {
   selectedCell = signal<GridCell | null>(null);
   dialogForm = signal<UpsertAvailabilityRequest>({
     startMinuteOfDay: 480, // 08:00
-    endMinuteOfDay: 960,   // 16:00
+    endMinuteOfDay: 960, // 16:00
   });
 
   // Driver dialog state
@@ -145,7 +145,9 @@ export class DriversAvailabilityGridPage {
   ];
 
   // Computed properties
-  gridTemplateColumns = computed(() => `${this.driverColumnWidth()}px repeat(${this.visibleDays()}, 110px)`);
+  gridTemplateColumns = computed(
+    () => `${this.driverColumnWidth()}px repeat(${this.visibleDays()}, 110px)`,
+  );
 
   endDate = computed(() => {
     const start = this.startDate();
@@ -168,7 +170,7 @@ export class DriversAvailabilityGridPage {
     const ownerId = this.ownerFilterId();
     const dates = this.dateRange();
     const map = this.availabilityMap();
-    
+
     const ownerFiltered = ownerId ? drivers.filter((d) => d.ownerId === ownerId) : drivers;
 
     if (!this.showOnlyDriversWithAvailability()) {
@@ -234,7 +236,14 @@ export class DriversAvailabilityGridPage {
       const start = this.startDate();
       const end = this.endDate();
       if (drivers.length > 0) {
-        console.log('Loading availability for', drivers.length, 'drivers from', this.dateToYmd(start), 'to', this.dateToYmd(end));
+        console.log(
+          'Loading availability for',
+          drivers.length,
+          'drivers from',
+          this.dateToYmd(start),
+          'to',
+          this.dateToYmd(end),
+        );
         this.loadAvailabilityForRange(start, end);
       }
     });
@@ -317,23 +326,26 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to load owners',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((owners) => {
         const userOwnerId = this.auth.currentUser()?.ownerId ?? null;
-        const filtered = !this.isSuperAdmin() && userOwnerId ? owners.filter((o) => o.id === userOwnerId) : owners;
+        const filtered =
+          !this.isSuperAdmin() && userOwnerId ? owners.filter((o) => o.id === userOwnerId) : owners;
         this.owners.set(filtered);
         // Set default owner in form if empty
         const effective = filtered.length > 0 ? filtered : owners;
         if (effective.length > 0 && this.driverForm().ownerId === 0) {
-          this.driverForm.update(f => ({ ...f, ownerId: effective[0].id }));
+          this.driverForm.update((f) => ({ ...f, ownerId: effective[0].id }));
         }
       });
   }
 
   loadServiceTypes(): void {
     const current = this.auth.currentUser();
-    const resolvedOwnerId = current?.roles.includes('SuperAdmin') ? null : current?.ownerId ?? null;
+    const resolvedOwnerId = current?.roles.includes('SuperAdmin')
+      ? null
+      : (current?.ownerId ?? null);
     this.serviceTypesApi
       .getAll(true, resolvedOwnerId ?? undefined)
       .pipe(
@@ -344,7 +356,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to load service types',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((serviceTypes) => {
         this.serviceTypes.set(serviceTypes);
@@ -356,7 +368,7 @@ export class DriversAvailabilityGridPage {
     const allowedIds = new Set(
       this.serviceTypes()
         .filter((type) => type.ownerId === nextOwnerId)
-        .map((type) => type.id)
+        .map((type) => type.id),
     );
     this.driverForm.update((current) => ({
       ...current,
@@ -396,7 +408,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to load drivers',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((drivers) => {
         this.loading.set(false);
@@ -422,7 +434,15 @@ export class DriversAvailabilityGridPage {
     const fromYmd = this.dateToYmd(start);
     const toYmd = this.dateToYmd(end);
 
-    console.log('Loading availability from', fromYmd, 'to', toYmd, 'for', drivers.length, 'drivers');
+    console.log(
+      'Loading availability from',
+      fromYmd,
+      'to',
+      toYmd,
+      'for',
+      drivers.length,
+      'drivers',
+    );
 
     // Load availability for all drivers in parallel
     const requests = drivers.map((driver) =>
@@ -430,8 +450,8 @@ export class DriversAvailabilityGridPage {
         catchError((err) => {
           console.error(`Failed to load availability for ${driver.name} (${driver.toolId}):`, err);
           return of([]);
-        })
-      )
+        }),
+      ),
     );
 
     forkJoin(requests).subscribe({
@@ -499,7 +519,7 @@ export class DriversAvailabilityGridPage {
     } else {
       this.dialogForm.set({
         startMinuteOfDay: 480, // 08:00
-        endMinuteOfDay: 960,   // 16:00
+        endMinuteOfDay: 960, // 16:00
       });
     }
     this.showDialog.set(true);
@@ -533,7 +553,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to save availability',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((availability) => {
         this.loading.set(false);
@@ -576,7 +596,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to delete availability',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loading.set(false);
@@ -598,7 +618,11 @@ export class DriversAvailabilityGridPage {
 
   getCellForDriverAndDate(driver: DriverDto, date: Date): GridCell | null {
     const cells = this.gridCells();
-    return cells.find((c) => c.driver.toolId === driver.toolId && this.dateToYmd(c.date) === this.dateToYmd(date)) || null;
+    return (
+      cells.find(
+        (c) => c.driver.toolId === driver.toolId && this.dateToYmd(c.date) === this.dateToYmd(date),
+      ) || null
+    );
   }
 
   getAvailabilityForCell(driver: DriverDto, date: Date): DriverAvailabilityDto | null {
@@ -619,7 +643,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to download availability template',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((blob) => {
         if (blob) {
@@ -651,7 +675,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to download service types template',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((blob) => {
         if (blob) {
@@ -704,7 +728,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to upload availability file',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -744,7 +768,7 @@ export class DriversAvailabilityGridPage {
             detail: err.detail || err.message || 'Failed to upload service types file',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -841,7 +865,7 @@ export class DriversAvailabilityGridPage {
               detail: err.detail || err.message || 'Failed to save driver',
             });
             return of(null);
-          })
+          }),
         )
         .subscribe((driver) => {
           this.loading.set(false);
@@ -861,7 +885,8 @@ export class DriversAvailabilityGridPage {
       this.messageService.add({
         severity: 'warn',
         summary: 'Not allowed',
-        detail: 'Manual driver creation is disabled. Drivers are created automatically when the role is assigned.',
+        detail:
+          'Manual driver creation is disabled. Drivers are created automatically when the role is assigned.',
       });
     }
   }
@@ -884,7 +909,7 @@ export class DriversAvailabilityGridPage {
                 detail: err.detail || err.message || 'Failed to deactivate driver',
               });
               return of(null);
-            })
+            }),
           )
           .subscribe(() => {
             this.loading.set(false);

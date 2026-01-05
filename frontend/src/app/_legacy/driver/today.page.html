@@ -7,7 +7,7 @@
 
   <div class="mb-6">
     <label class="block text-sm font-medium mb-2">Select Driver</label>
-    <p-dropdown
+    <p-select
       [options]="drivers()"
       [(ngModel)]="selectedDriver"
       optionLabel="name"
@@ -45,14 +45,8 @@
             }
           </div>
         </div>
-        <p-button
-          label="Go to Run Mode"
-          icon="pi pi-play"
-          (onClick)="goToRunMode()"
-        />
+        <p-button label="Go to Run Mode" icon="pi pi-play" (onClick)="goToRunMode()" />
       }
     </div>
   }
 </div>
-
-

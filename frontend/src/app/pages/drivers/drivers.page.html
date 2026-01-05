@@ -1,15 +1,10 @@
-  <div class="container mx-auto p-6">
+<div class="container mx-auto p-6">
   <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-2">
       <h1 class="text-3xl font-bold text-gray-900">Drivers</h1>
       <app-help-manual [sectionId]="'drivers'"></app-help-manual>
     </div>
-    <p-button
-      label="Grid View"
-      icon="pi pi-table"
-      [outlined]="true"
-      routerLink="/drivers/grid"
-    />
+    <p-button label="Grid View" icon="pi pi-table" [outlined]="true" routerLink="/drivers/grid" />
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -24,7 +19,7 @@
           <div class="flex flex-wrap items-center gap-3 mb-4">
             <div class="flex items-center gap-2">
               <label class="text-sm font-medium">Owner:</label>
-              <p-dropdown
+              <p-select
                 [options]="owners()"
                 [(ngModel)]="ownerFilterId"
                 optionLabel="name"
@@ -63,10 +58,7 @@
               <ng-template pTemplate="body" let-driver>
                 <tr [class.bg-blue-50]="selectedDriver()?.toolId === driver.toolId">
                   <td>
-                    <span
-                      pTooltip="{{ getServiceTypeTooltip(driver) }}"
-                      tooltipPosition="top"
-                    >
+                    <span pTooltip="{{ getServiceTypeTooltip(driver) }}" tooltipPosition="top">
                       {{ driver.name }}
                     </span>
                   </td>
@@ -74,7 +66,7 @@
                   <td>
                     @if (editingOwnerId() === driver.toolId) {
                       <div class="flex items-center gap-2">
-                        <p-dropdown
+                        <p-select
                           [options]="owners()"
                           [(ngModel)]="driver.ownerId"
                           optionLabel="name"
@@ -112,22 +104,40 @@
                       <span class="text-gray-400">Inactive</span>
                     }
                   </td>
-                  <td style="min-width: 120px; position: relative; z-index: 10;">
-                    <div class="flex gap-1" style="position: relative; z-index: 10;">
+                  <td style="min-width: 120px; position: relative; z-index: 10">
+                    <div class="flex gap-1" style="position: relative; z-index: 10">
                       <p-button
                         icon="pi pi-pencil"
                         severity="secondary"
                         size="small"
                         (onClick)="openEditDriverDialog(driver); $event.stopPropagation()"
                         styleClass="driver-action-icon-btn"
-                        [style]="{ 'position': 'relative', 'z-index': '10', 'min-width': '40px', 'height': '32px', 'display': 'inline-flex', 'visibility': 'visible', 'opacity': '1' }"
+                        [style]="{
+                          position: 'relative',
+                          'z-index': '10',
+                          'min-width': '40px',
+                          height: '32px',
+                          display: 'inline-flex',
+                          visibility: 'visible',
+                          opacity: '1',
+                        }"
                       ></p-button>
                       <p-button
                         icon="pi pi-trash"
                         severity="danger"
                         size="small"
                         (onClick)="deleteDriver(driver); $event.stopPropagation()"
-                        [style]="{ 'position': 'relative', 'z-index': '10', 'min-width': '40px', 'height': '32px', 'display': 'inline-flex', 'visibility': 'visible', 'opacity': '1',  'border-color': '#dc2626', 'color': 'black' }"
+                        [style]="{
+                          position: 'relative',
+                          'z-index': '10',
+                          'min-width': '40px',
+                          height: '32px',
+                          display: 'inline-flex',
+                          visibility: 'visible',
+                          opacity: '1',
+                          'border-color': '#dc2626',
+                          color: 'black',
+                        }"
                       ></p-button>
                     </div>
                   </td>
@@ -149,7 +159,8 @@
               <div class="mb-4">
                 <p class="text-sm text-gray-600">
                   Start: {{ driver.startAddress || 'N/A' }}<br />
-                  Location: {{ driver.startLatitude.toFixed(4) }}, {{ driver.startLongitude.toFixed(4) }}
+                  Location: {{ driver.startLatitude.toFixed(4) }},
+                  {{ driver.startLongitude.toFixed(4) }}
                 </p>
               </div>
 
@@ -165,7 +176,9 @@
               </div>
 
               <div>
-                <label class="block text-sm font-medium mb-2">Click a date to set availability</label>
+                <label class="block text-sm font-medium mb-2"
+                  >Click a date to set availability</label
+                >
                 <p-calendar
                   [(ngModel)]="selectedDate"
                   [inline]="true"
@@ -175,20 +188,24 @@
                 <div class="mt-2 text-xs text-gray-500">
                   @for (av of availabilities(); track av.date) {
                     <div>
-                      {{ av.date | date:'MMM d' }}: {{ formatTime(av.startMinuteOfDay) }}-{{ formatTime(av.endMinuteOfDay) }}
+                      {{ av.date | date: 'MMM d' }}: {{ formatTime(av.startMinuteOfDay) }}-{{
+                        formatTime(av.endMinuteOfDay)
+                      }}
                     </div>
                   }
                 </div>
               </div>
 
               <div class="mt-4">
-                <h3 class="text-sm font-semibold mb-2">Availability for {{ currentMonth() | date:'MMMM yyyy' }}</h3>
+                <h3 class="text-sm font-semibold mb-2">
+                  Availability for {{ currentMonth() | date: 'MMMM yyyy' }}
+                </h3>
                 <div class="space-y-1 max-h-48 overflow-y-auto">
                   @for (av of availabilities(); track av.date) {
                     <div class="text-sm p-2 bg-gray-50 rounded">
-                      <strong>{{ av.date | date:'MMM d' }}:</strong>
-                      {{ formatTime(av.startMinuteOfDay) }} - {{ formatTime(av.endMinuteOfDay) }}
-                      ({{ av.availableMinutes }} min)
+                      <strong>{{ av.date | date: 'MMM d' }}:</strong>
+                      {{ formatTime(av.startMinuteOfDay) }} -
+                      {{ formatTime(av.endMinuteOfDay) }} ({{ av.availableMinutes }} min)
                     </div>
                   } @empty {
                     <p class="text-sm text-gray-500">No availability set for this month</p>
@@ -219,31 +236,21 @@
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">ErpId *</label>
-        <p-inputNumber
-          [(ngModel)]="driverForm().erpId"
-          [useGrouping]="false"
-          class="w-full"
-        />
+        <p-inputNumber [(ngModel)]="driverForm().erpId" [useGrouping]="false" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Name *</label>
-        <input
-          pInputText
-          [(ngModel)]="driverForm().name"
-          class="w-full"
-        />
+        <input pInputText [(ngModel)]="driverForm().name" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Start Address</label>
-        <input
-          pInputText
-          [(ngModel)]="driverForm().startAddress"
-          class="w-full"
-        />
+        <input pInputText [(ngModel)]="driverForm().startAddress" class="w-full" />
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Owner <span class="text-red-500">*</span></label>
-        <p-dropdown
+        <label class="block text-sm font-medium mb-1"
+          >Owner <span class="text-red-500">*</span></label
+        >
+        <p-select
           [options]="owners()"
           [ngModel]="driverForm().ownerId"
           (ngModelChange)="onDriverFormOwnerChange($event)"
@@ -310,32 +317,21 @@
       </div>
       <div>
         <label class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            [(ngModel)]="driverForm().isActive"
-          />
+          <input type="checkbox" [(ngModel)]="driverForm().isActive" />
           <span>Active</span>
         </label>
       </div>
     </div>
     <ng-template pTemplate="footer">
-      <p-button
-        label="Cancel"
-        severity="secondary"
-        (onClick)="showDriverDialog.set(false)"
-      />
-      <p-button
-        label="Save"
-        (onClick)="saveDriver()"
-        [loading]="loading()"
-      />
+      <p-button label="Cancel" severity="secondary" (onClick)="showDriverDialog.set(false)" />
+      <p-button label="Save" (onClick)="saveDriver()" [loading]="loading()" />
     </ng-template>
   </p-dialog>
 
   <!-- Availability Dialog -->
   <p-dialog
     [(visible)]="showAvailabilityDialogValue"
-    [header]="'Set Availability for ' + (selectedDate() | date:'MMM d, yyyy')"
+    [header]="'Set Availability for ' + (selectedDate() | date: 'MMM d, yyyy')"
     [modal]="true"
     [style]="{ width: '400px' }"
     (onHide)="showAvailabilityDialog.set(false)"
@@ -343,7 +339,7 @@
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">Start Time</label>
-        <p-dropdown
+        <p-select
           [(ngModel)]="availabilityForm().startMinuteOfDay"
           [options]="timeOptions()"
           optionLabel="label"
@@ -353,7 +349,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">End Time</label>
-        <p-dropdown
+        <p-select
           [(ngModel)]="availabilityForm().endMinuteOfDay"
           [options]="timeOptions()"
           optionLabel="label"
@@ -363,7 +359,8 @@
       </div>
       @if (selectedAvailability()) {
         <div class="text-sm text-gray-600">
-          Current: {{ formatTime(selectedAvailability()!.startMinuteOfDay) }} - {{ formatTime(selectedAvailability()!.endMinuteOfDay) }}
+          Current: {{ formatTime(selectedAvailability()!.startMinuteOfDay) }} -
+          {{ formatTime(selectedAvailability()!.endMinuteOfDay) }}
         </div>
       }
     </div>
@@ -376,16 +373,8 @@
           [loading]="loading()"
         />
       }
-      <p-button
-        label="Cancel"
-        severity="secondary"
-        (onClick)="showAvailabilityDialog.set(false)"
-      />
-      <p-button
-        label="Save"
-        (onClick)="saveAvailability()"
-        [loading]="loading()"
-      />
+      <p-button label="Cancel" severity="secondary" (onClick)="showAvailabilityDialog.set(false)" />
+      <p-button label="Save" (onClick)="saveAvailability()" [loading]="loading()" />
     </ng-template>
   </p-dialog>
 

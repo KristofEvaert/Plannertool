@@ -1,24 +1,23 @@
-import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { InputTextModule } from 'primeng/inputtext';
-import { DropdownModule } from 'primeng/dropdown';
-import { CalendarModule } from 'primeng/calendar';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { AutoCompleteModule } from 'primeng/autocomplete';
-import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { TabViewModule } from 'primeng/tabview';
-import { ChipModule } from 'primeng/chip';
-import { AuditTrailApiService } from '@services/audit-trail-api.service';
-import type { AuditTrailEntryDto } from '@models/audit-trail.model';
-import { catchError, of } from 'rxjs';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import { JsonViewerComponent } from '@components/json-viewer/json-viewer.component';
+import type { AuditTrailEntryDto } from '@models/audit-trail.model';
+import { AuditTrailApiService } from '@services/audit-trail-api.service';
+import { MessageService } from 'primeng/api';
+import { AutoCompleteModule } from 'primeng/autocomplete';
+import { ButtonModule } from 'primeng/button';
+import { CalendarModule } from 'primeng/calendar';
+import { ChipModule } from 'primeng/chip';
+import { InputTextModule } from 'primeng/inputtext';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { TableModule } from 'primeng/table';
+import { TabViewModule } from 'primeng/tabview';
+import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { TooltipModule } from 'primeng/tooltip';
+import { catchError, of } from 'rxjs';
 
 type AuditTrailRow = AuditTrailEntryDto & { rowId: string };
 type StatusFilter = 'all' | '2xx' | '4xx' | '5xx' | string;
@@ -31,7 +30,7 @@ type StatusFilter = 'all' | '2xx' | '4xx' | '5xx' | string;
     ButtonModule,
     TableModule,
     InputTextModule,
-    DropdownModule,
+    SelectModule,
     CalendarModule,
     ToastModule,
     MultiSelectModule,
@@ -198,8 +197,14 @@ export class AuditTrailPage {
             summary: 'Error',
             detail: err.detail || err.message || 'Failed to load audit trail',
           });
-          return of({ items: [], page: 1, pageSize: this.pageSize(), totalCount: 0, totalPages: 0 });
-        })
+          return of({
+            items: [],
+            page: 1,
+            pageSize: this.pageSize(),
+            totalCount: 0,
+            totalPages: 0,
+          });
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -214,9 +219,8 @@ export class AuditTrailPage {
       return;
     }
     const nextRows = event?.rows ?? this.pageSize();
-    const nextPage = event?.page != null
-      ? event.page + 1
-      : Math.floor((event?.first ?? 0) / nextRows) + 1;
+    const nextPage =
+      event?.page != null ? event.page + 1 : Math.floor((event?.first ?? 0) / nextRows) + 1;
     this.page.set(nextPage);
     this.pageSize.set(nextRows);
     this.loadData(false);
@@ -443,7 +447,9 @@ export class AuditTrailPage {
     }
 
     if (this.quickMutatingOnly()) {
-      filtered = filtered.filter((item) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(item.method.toUpperCase()));
+      filtered = filtered.filter((item) =>
+        ['POST', 'PUT', 'PATCH', 'DELETE'].includes(item.method.toUpperCase()),
+      );
     }
 
     return filtered;
@@ -531,5 +537,4 @@ export class AuditTrailPage {
     }
     return copy.toISOString();
   }
-
 }

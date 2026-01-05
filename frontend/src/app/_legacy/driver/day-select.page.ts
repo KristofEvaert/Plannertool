@@ -1,19 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { CalendarModule } from 'primeng/calendar';
-import { DropdownModule } from 'primeng/dropdown';
-import { ButtonModule } from 'primeng/button';
-import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
 import { FormsModule } from '@angular/forms';
-import { catchError, of } from 'rxjs';
-import { DriversApiService } from '@services/drivers-api.service';
+import { Router } from '@angular/router';
 import type { DriverDto } from '@models/driver.model';
+import { DriversApiService } from '@services/drivers-api.service';
 import { toYmd } from '@utils/date.utils';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CalendarModule } from 'primeng/calendar';
+import { MessageModule } from 'primeng/message';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-driver-day-select',
-  imports: [CalendarModule, DropdownModule, ButtonModule, MessageModule, FormsModule],
+  imports: [CalendarModule, SelectModule, ButtonModule, MessageModule, FormsModule],
   providers: [MessageService],
   templateUrl: './day-select.page.html',
   styleUrl: './day-select.page.css',
@@ -43,7 +42,7 @@ export class DriverDaySelectPage {
         catchError((err) => {
           this.error.set(err.title || err.message || 'Failed to load drivers');
           return of([]);
-        })
+        }),
       )
       .subscribe((data) => {
         this.drivers.set(data);
@@ -60,4 +59,3 @@ export class DriverDaySelectPage {
     }
   }
 }
-

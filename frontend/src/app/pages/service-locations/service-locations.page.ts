@@ -1,40 +1,45 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { InputTextModule } from 'primeng/inputtext';
-import { DropdownModule } from 'primeng/dropdown';
-import { DialogModule } from 'primeng/dialog';
-import { CalendarModule } from 'primeng/calendar';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { ToastModule } from 'primeng/toast';
-import { InputTextarea } from 'primeng/inputtextarea';
-import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { CommonModule } from '@angular/common';
 import type { HttpErrorResponse, HttpResponse } from '@angular/common/http';
-import { ServiceLocationsApiService } from '@services/service-locations-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
-import { AuthService } from '@services/auth.service';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
-  ServiceLocationDto,
-  CreateServiceLocationRequest,
-  UpdateServiceLocationRequest,
-  ServiceLocationListParams,
   BulkInsertResultDto,
-  ServiceLocationOpeningHoursDto,
-  ServiceLocationExceptionDto,
-  ServiceLocationConstraintDto,
+  CreateServiceLocationRequest,
   ResolveServiceLocationGeoRequest,
+  ServiceLocationConstraintDto,
+  ServiceLocationDto,
+  ServiceLocationExceptionDto,
+  ServiceLocationListParams,
+  ServiceLocationOpeningHoursDto,
+  UpdateServiceLocationRequest,
 } from '@models/service-location.model';
 import type { ServiceTypeDto } from '@models/service-type.model';
+import { AuthService } from '@services/auth.service';
+import {
+  ServiceLocationOwnersApiService,
+  type ServiceLocationOwnerDto,
+} from '@services/service-location-owners-api.service';
+import { ServiceLocationsApiService } from '@services/service-locations-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { parseYmd, toYmd } from '@utils/date.utils';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CalendarModule } from 'primeng/calendar';
+import { DialogModule } from 'primeng/dialog';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputTextarea } from 'primeng/inputtextarea';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { TooltipModule } from 'primeng/tooltip';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
-import { toYmd, parseYmd } from '@utils/date.utils';
 
-type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & { label: string; hasLunchBreak?: boolean };
+type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & {
+  label: string;
+  hasLunchBreak?: boolean;
+};
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
 type ServiceLocationFormState = {
   erpId: number;
@@ -65,7 +70,7 @@ type ServiceLocationDetail = {
     ButtonModule,
     TableModule,
     InputTextModule,
-    DropdownModule,
+    SelectModule,
     DialogModule,
     CalendarModule,
     InputNumberModule,
@@ -138,7 +143,15 @@ export class ServiceLocationsPage {
     extraInstructions: [],
   });
 
-  readonly weekDayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  readonly weekDayLabels = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
   useDefaultOpeningHours = signal(true);
   openingHours = signal<OpeningHoursFormRow[]>([]);
   exceptions = signal<ExceptionFormRow[]>([]);
@@ -217,14 +230,14 @@ export class ServiceLocationsPage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     this.fromDue.set(today);
-    
+
     const toDate = new Date(today);
     toDate.setDate(toDate.getDate() + 14);
     this.toDue.set(toDate);
-    
+
     // Load owners first, then service types scoped to the selected owner
     this.loadOwners();
-    
+
     // Don't auto-load - user must click "Load" button
   }
 
@@ -239,7 +252,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to load service types',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((types) => {
         this.serviceTypes.set(types);
@@ -276,7 +289,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to load service types',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((types) => {
         this.formServiceTypes.set(types);
@@ -305,12 +318,11 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to load owners',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((owners) => {
-        const filtered = !isSuperAdmin && currentOwnerId
-          ? owners.filter((o) => o.id === currentOwnerId)
-          : owners;
+        const filtered =
+          !isSuperAdmin && currentOwnerId ? owners.filter((o) => o.id === currentOwnerId) : owners;
         this.owners.set(filtered);
         // Set default selected owner for bulk operations (first active one)
         if (filtered.length > 0 && !this.selectedOwnerId()) {
@@ -330,7 +342,8 @@ export class ServiceLocationsPage {
           this.ownerId.set(currentOwnerId);
         }
 
-        const serviceTypeOwnerId = this.selectedOwnerId() ?? this.ownerId() ?? currentOwnerId ?? null;
+        const serviceTypeOwnerId =
+          this.selectedOwnerId() ?? this.ownerId() ?? currentOwnerId ?? null;
         this.loadServiceTypes(serviceTypeOwnerId);
       });
   }
@@ -414,8 +427,8 @@ export class ServiceLocationsPage {
           of({
             minVisitDurationMinutes: null,
             maxVisitDurationMinutes: null,
-          })
-        )
+          }),
+        ),
       ),
     }).subscribe(({ hours, exceptions, constraints }) => {
       this.rowDetails.set({
@@ -481,7 +494,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to load service locations',
           });
           return of({ items: [], page: 1, pageSize: 50, totalCount: 0, totalPages: 0 });
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -505,9 +518,8 @@ export class ServiceLocationsPage {
       return; // Don't trigger load if no data has been loaded yet
     }
     const nextRows = event?.rows ?? this.pageSize();
-    const nextPage = event?.page != null
-      ? event.page + 1
-      : Math.floor((event?.first ?? 0) / nextRows) + 1;
+    const nextPage =
+      event?.page != null ? event.page + 1 : Math.floor((event?.first ?? 0) / nextRows) + 1;
     this.page.set(nextPage);
     this.pageSize.set(nextRows);
     this.loadData(false);
@@ -561,7 +573,9 @@ export class ServiceLocationsPage {
       latitude,
       longitude,
       dueDate: item.dueDate ? (parseYmd(item.dueDate) ?? new Date(item.dueDate)) : new Date(),
-      priorityDate: item.priorityDate ? (parseYmd(item.priorityDate) ?? new Date(item.priorityDate)) : null,
+      priorityDate: item.priorityDate
+        ? (parseYmd(item.priorityDate) ?? new Date(item.priorityDate))
+        : null,
       serviceMinutes: item.serviceMinutes,
       serviceTypeId: item.serviceTypeId,
       ownerId: item.ownerId,
@@ -614,13 +628,15 @@ export class ServiceLocationsPage {
           of({
             minVisitDurationMinutes: null,
             maxVisitDurationMinutes: null,
-          })
-        )
+          }),
+        ),
       ),
     }).subscribe(({ hours, exceptions, constraints }) => {
       const hasHours = hours.length > 0;
       this.useDefaultOpeningHours.set(!hasHours);
-      this.openingHours.set(hasHours ? this.normalizeOpeningHours(hours) : this.buildDefaultOpeningHours());
+      this.openingHours.set(
+        hasHours ? this.normalizeOpeningHours(hours) : this.buildDefaultOpeningHours(),
+      );
       this.exceptions.set(
         exceptions.map((ex) => ({
           id: ex.id,
@@ -629,7 +645,7 @@ export class ServiceLocationsPage {
           closeTime: ex.closeTime ?? '17:00',
           isClosed: ex.isClosed,
           note: ex.note ?? '',
-        }))
+        })),
       );
       this.constraints.set({
         minVisitDurationMinutes: constraints.minVisitDurationMinutes ?? null,
@@ -764,9 +780,7 @@ export class ServiceLocationsPage {
       return [];
     }
 
-    return lines
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+    return lines.map((line) => line.trim()).filter((line) => line.length > 0);
   }
 
   openPriorityDialog(item: ServiceLocationDto): void {
@@ -840,7 +854,7 @@ export class ServiceLocationsPage {
             detail: message,
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         if (!result) {
@@ -1013,9 +1027,10 @@ export class ServiceLocationsPage {
       extraInstructions,
     };
 
-    const apiCall = isEdit && selected
-      ? this.api.update(selected.toolId, request as UpdateServiceLocationRequest)
-      : this.api.create(request as CreateServiceLocationRequest);
+    const apiCall =
+      isEdit && selected
+        ? this.api.update(selected.toolId, request as UpdateServiceLocationRequest)
+        : this.api.create(request as CreateServiceLocationRequest);
 
     apiCall
       .pipe(
@@ -1027,12 +1042,13 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to save service location',
           });
           return of(null);
-        })
-        )
-        .subscribe((result) => {
-          this.loading.set(false);
-          if (result) {
-            this.saveLocationExtras(result.toolId).pipe(
+        }),
+      )
+      .subscribe((result) => {
+        this.loading.set(false);
+        if (result) {
+          this.saveLocationExtras(result.toolId)
+            .pipe(
               catchError((err) => {
                 this.messageService.add({
                   severity: 'error',
@@ -1040,8 +1056,9 @@ export class ServiceLocationsPage {
                   detail: err.detail || err.message || 'Failed to save opening hours or exceptions',
                 });
                 return of(null);
-              })
-            ).subscribe(() => {
+              }),
+            )
+            .subscribe(() => {
               this.showDialog.set(false);
               this.messageService.add({
                 severity: 'success',
@@ -1050,9 +1067,9 @@ export class ServiceLocationsPage {
               });
               this.loadData();
             });
-          }
-        });
-    }
+        }
+      });
+  }
 
   savePriorityDate(): void {
     const item = this.selectedItemForPriority();
@@ -1072,7 +1089,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to set priority date',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -1101,7 +1118,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to mark as done',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -1129,7 +1146,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to mark as open',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -1144,7 +1161,10 @@ export class ServiceLocationsPage {
       });
   }
 
-  onStatusChange(item: ServiceLocationDto, newStatus: 'Open' | 'Done' | 'Cancelled' | 'Planned' | 'NotVisited'): void {
+  onStatusChange(
+    item: ServiceLocationDto,
+    newStatus: 'Open' | 'Done' | 'Cancelled' | 'Planned' | 'NotVisited',
+  ): void {
     if (!this.canEdit()) {
       return;
     }
@@ -1175,13 +1195,14 @@ export class ServiceLocationsPage {
     }
 
     // Use dedicated endpoints for status changes
-    const apiCall = newStatus === 'Done'
-      ? this.api.markDone(item.toolId)
-      : newStatus === 'Open'
-        ? this.api.markOpen(item.toolId)
-        : newStatus === 'Planned'
-          ? this.api.markPlanned(item.toolId)
-          : this.api.markCancelled(item.toolId, remark!);
+    const apiCall =
+      newStatus === 'Done'
+        ? this.api.markDone(item.toolId)
+        : newStatus === 'Open'
+          ? this.api.markOpen(item.toolId)
+          : newStatus === 'Planned'
+            ? this.api.markPlanned(item.toolId)
+            : this.api.markCancelled(item.toolId, remark!);
 
     apiCall
       .pipe(
@@ -1193,7 +1214,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to update status',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result: ServiceLocationDto | null) => {
         if (result) {
@@ -1247,7 +1268,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to update service minutes',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         if (result) {
@@ -1287,17 +1308,20 @@ export class ServiceLocationsPage {
       driverInstruction: trimmed,
     };
 
-    this.api.update(item.toolId, updateRequest).pipe(
-      catchError((err) => {
-        item.driverInstruction = original;
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: err.detail || err.message || 'Failed to update driver instruction',
-        });
-        return of(null);
-      })
-    ).subscribe();
+    this.api
+      .update(item.toolId, updateRequest)
+      .pipe(
+        catchError((err) => {
+          item.driverInstruction = original;
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.detail || err.message || 'Failed to update driver instruction',
+          });
+          return of(null);
+        }),
+      )
+      .subscribe();
   }
 
   getDayLabel(dayOfWeek: number): string {
@@ -1345,12 +1369,12 @@ export class ServiceLocationsPage {
   getOrderDateAsDate(item: ServiceLocationDto): Date {
     const dateStr = item.priorityDate || item.dueDate;
     const cacheKey = `${item.toolId}_${dateStr}`;
-    
+
     // Return cached date if available to prevent creating new objects on every change detection
     if (this.dateCache.has(cacheKey)) {
       return this.dateCache.get(cacheKey)!;
     }
-    
+
     // Create and cache new date
     const date = new Date(dateStr);
     date.setHours(0, 0, 0, 0);
@@ -1368,12 +1392,12 @@ export class ServiceLocationsPage {
 
     const newDateStr = toYmd(newDate);
     const currentOrderDate = item.priorityDate || item.dueDate;
-    
+
     // Prevent unnecessary updates if date hasn't actually changed
     if (newDateStr === currentOrderDate) {
       return;
     }
-    
+
     // Clear cache for this item since date is changing
     const oldCacheKey = `${item.toolId}_${currentOrderDate}`;
     this.dateCache.delete(oldCacheKey);
@@ -1404,7 +1428,7 @@ export class ServiceLocationsPage {
               detail: err.detail || err.message || 'Failed to update date',
             });
             return of(null);
-          })
+          }),
         )
         .subscribe((result: ServiceLocationDto | null) => {
           this.isUpdatingDate = false;
@@ -1419,7 +1443,7 @@ export class ServiceLocationsPage {
               detail: 'Priority date updated',
               life: 2000,
             });
-            const index = this.items().findIndex(i => i.toolId === item.toolId);
+            const index = this.items().findIndex((i) => i.toolId === item.toolId);
             if (index >= 0) {
               const updatedItems = [...this.items()];
               updatedItems[index] = result;
@@ -1471,7 +1495,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to update date',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result: ServiceLocationDto | null) => {
         this.isUpdatingDate = false;
@@ -1491,7 +1515,7 @@ export class ServiceLocationsPage {
             life: 2000,
           });
 
-          const index = this.items().findIndex(i => i.toolId === item.toolId);
+          const index = this.items().findIndex((i) => i.toolId === item.toolId);
           if (index >= 0) {
             const updatedItems = [...this.items()];
             updatedItems[index] = result;
@@ -1514,7 +1538,7 @@ export class ServiceLocationsPage {
 
     const serviceTypeId = this.selectedServiceTypeId();
     const ownerId = this.selectedOwnerId();
-    
+
     if (!serviceTypeId || serviceTypeId <= 0) {
       this.messageService.add({
         severity: 'warn',
@@ -1523,12 +1547,13 @@ export class ServiceLocationsPage {
       });
       return;
     }
-    
+
     if (!ownerId || ownerId <= 0) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Validation',
-        detail: 'Please select an owner first. If no owner is visible, owners may still be loading.',
+        detail:
+          'Please select an owner first. If no owner is visible, owners may still be loading.',
       });
       return;
     }
@@ -1545,7 +1570,7 @@ export class ServiceLocationsPage {
             detail: err.detail || err.message || 'Failed to download template',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((blob) => {
         this.loading.set(false);
@@ -1590,7 +1615,7 @@ export class ServiceLocationsPage {
 
     const serviceTypeId = this.selectedServiceTypeId();
     const ownerId = this.selectedOwnerId();
-    
+
     if (!serviceTypeId || serviceTypeId <= 0) {
       this.messageService.add({
         severity: 'warn',
@@ -1599,12 +1624,13 @@ export class ServiceLocationsPage {
       });
       return;
     }
-    
+
     if (!ownerId || ownerId <= 0) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Validation',
-        detail: 'Please select an owner first. If no owner is visible, owners may still be loading.',
+        detail:
+          'Please select an owner first. If no owner is visible, owners may still be loading.',
       });
       return;
     }
@@ -1641,7 +1667,7 @@ export class ServiceLocationsPage {
             detail: err.error?.detail || err.message || 'Failed to upload Excel file',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((response: HttpResponse<Blob> | null) => {
         this.loading.set(false);
@@ -1653,7 +1679,7 @@ export class ServiceLocationsPage {
         if (!contentType.includes('application/json')) {
           const filename = this.getDownloadFilename(
             response.headers.get('content-disposition'),
-            `ServiceLocations_Errors_${new Date().toISOString().split('T')[0]}.xlsx`
+            `ServiceLocations_Errors_${new Date().toISOString().split('T')[0]}.xlsx`,
           );
           this.downloadBlob(response.body, filename);
           this.messageService.add({
@@ -1745,4 +1771,3 @@ export class ServiceLocationsPage {
     }
   }
 }
-

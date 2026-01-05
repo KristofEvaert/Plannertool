@@ -4,10 +4,12 @@
       <h1 class="page-title">Service Locations Map</h1>
       <app-help-manual [sectionId]="'map'"></app-help-manual>
     </div>
-    
+
     <div class="controls-section">
       <div class="control-group">
-        <label for="serviceType" class="control-label">Service Type <span class="required">*</span></label>
+        <label for="serviceType" class="control-label"
+          >Service Type <span class="required">*</span></label
+        >
         <p-multiSelect
           id="serviceType"
           [options]="serviceTypes()"
@@ -25,7 +27,7 @@
 
       <div class="control-group">
         <label for="owner" class="control-label">Owner <span class="required">*</span></label>
-        <p-dropdown
+        <p-select
           id="owner"
           [options]="owners()"
           [(ngModel)]="selectedOwnerId"
@@ -144,18 +146,18 @@
             severity="secondary"
             (onClick)="autoGenerateForAllDrivers()"
             [loading]="autoGenerateLoading()"
-            [disabled]="!selectedOwnerId() || !(mapData()?.items?.length)"
+            [disabled]="!selectedOwnerId() || !mapData()?.items?.length"
           ></p-button>
           <p-button
             label="Clear day routes"
             icon="pi pi-trash"
             size="small"
             severity="secondary"
-              (onClick)="clearAllRoutesForDay()"
-              [disabled]="driverRoutes().size === 0"
-            ></p-button>
-          </div>
-        
+            (onClick)="clearAllRoutesForDay()"
+            [disabled]="driverRoutes().size === 0"
+          ></p-button>
+        </div>
+
         <div class="date-picker-container">
           <label for="driverDate" class="date-picker-label">Select Date</label>
           <div class="date-picker-row">
@@ -192,7 +194,7 @@
           <div class="auto-generate-title">Auto-generate weights</div>
           <div class="weight-row">
             <label class="weight-label">Template</label>
-            <p-dropdown
+            <p-select
               [options]="weightTemplateOptions()"
               [ngModel]="selectedWeightTemplateId()"
               (ngModelChange)="onWeightTemplateChange($event)"
@@ -221,135 +223,82 @@
               [disabled]="!canUpdateSelectedTemplate()"
             ></p-button>
           </div>
-            <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
-              <label class="weight-label">
-                Driver Time
-                <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="weightTime"
-              />
-              <span class="weight-value">{{ activeWeightTime() }}%</span>
-            </div>
-            <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
-              <label class="weight-label">
-                Distance
-                <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="weightDistance"
-              />
-              <span class="weight-value">{{ activeWeightDistance() }}%</span>
-            </div>
+          <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
+            <label class="weight-label">
+              Driver Time
+              <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
+            </label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightTime" />
+            <span class="weight-value">{{ activeWeightTime() }}%</span>
+          </div>
+          <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
+            <label class="weight-label">
+              Distance
+              <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
+            </label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDistance" />
+            <span class="weight-value">{{ activeWeightDistance() }}%</span>
+          </div>
           <div class="weight-row">
             <label class="weight-label">Due Date</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              [(ngModel)]="weightDate"
-            />
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDate" />
             <span class="weight-value">{{ activeWeightDate() }}%</span>
           </div>
           <div class="weight-row">
             <label class="weight-label">Cost</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              [(ngModel)]="weightCost"
-            />
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightCost" />
             <span class="weight-value">{{ activeWeightCost() }}%</span>
           </div>
-            <div class="weight-row">
-              <label class="weight-label">Overtime</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="weightOvertime"
-              />
-              <span class="weight-value">{{ activeWeightOvertime() }}%</span>
-            </div>
-            <div class="solver-caps-title">Solver caps</div>
-            <div class="weight-row">
-              <label class="weight-label">Due cap</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="dueCostCapPercent"
-              />
-              <span class="weight-value">{{ dueCostCapPercent() }}%</span>
-            </div>
-            <div class="weight-row">
-              <label class="weight-label">Detour cap</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="detourCostCapPercent"
-              />
-              <span class="weight-value">{{ detourCostCapPercent() }}%</span>
-            </div>
-            <div class="weight-row">
-              <label class="weight-label">Detour ref</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="detourRefKmPercent"
-              />
-              <span class="weight-value">{{ detourRefKmPercent() }}%</span>
-            </div>
-            <div class="weight-row">
-              <label class="weight-label">Late ref</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                [(ngModel)]="lateRefMinutesPercent"
-              />
-              <span class="weight-value">{{ lateRefMinutesPercent() }}%</span>
-            </div>
-            <label class="weight-checkbox">
-              <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
-              <span>Enforce service type match</span>
-            </label>           
-            <button
-              type="button"
-              class="weight-toggle"
-              *ngIf="hasInactiveWeights()"
-              (click)="showInactiveWeights.set(!showInactiveWeights())"
-            >
-              {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
-            </button>
-           
+          <div class="weight-row">
+            <label class="weight-label">Overtime</label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightOvertime" />
+            <span class="weight-value">{{ activeWeightOvertime() }}%</span>
           </div>
+          <div class="solver-caps-title">Solver caps</div>
+          <div class="weight-row">
+            <label class="weight-label">Due cap</label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="dueCostCapPercent" />
+            <span class="weight-value">{{ dueCostCapPercent() }}%</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Detour cap</label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="detourCostCapPercent" />
+            <span class="weight-value">{{ detourCostCapPercent() }}%</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Detour ref</label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="detourRefKmPercent" />
+            <span class="weight-value">{{ detourRefKmPercent() }}%</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label">Late ref</label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="lateRefMinutesPercent" />
+            <span class="weight-value">{{ lateRefMinutesPercent() }}%</span>
+          </div>
+          <label class="weight-checkbox">
+            <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
+            <span>Enforce service type match</span>
+          </label>
+          <button
+            type="button"
+            class="weight-toggle"
+            *ngIf="hasInactiveWeights()"
+            (click)="showInactiveWeights.set(!showInactiveWeights())"
+          >
+            {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
+          </button>
+        </div>
 
         <div class="drivers-list" *ngIf="!loadingDrivers()">
-          <div 
-            *ngFor="let item of driversWithAvailability(); trackBy: trackByDriverId" 
+          <div
+            *ngFor="let item of driversWithAvailability(); trackBy: trackByDriverId"
             class="driver-item"
             [class.driver-item-selected]="isDriverExpanded(item)"
             [class.driver-item-unavailable]="!item.availability"
             [class.driver-item-overbooked]="isDriverOverbooked(item)"
-            [class.driver-item-selected.driver-item-overbooked]="isDriverOverbooked(item) && isDriverExpanded(item)"
+            [class.driver-item-selected.driver-item-overbooked]="
+              isDriverOverbooked(item) && isDriverExpanded(item)
+            "
           >
             <div
               class="driver-header"
@@ -387,17 +336,28 @@
               </div>
               <div class="route-summary">
                 <i class="pi pi-map-marker mr-1"></i>
-                <span>{{ getLocationCount(getCurrentRouteForDisplay()!.waypoints) }} location(s)</span>
+                <span
+                  >{{ getLocationCount(getCurrentRouteForDisplay()!.waypoints) }} location(s)</span
+                >
                 <span class="route-time" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1">
                   <i class="pi pi-clock mr-1"></i>
                   {{ formatRouteTime(getCurrentRouteForDisplay()!.totalTimeMinutes) }}
-                  <span style="opacity: 0.75;">
-                    ({{ formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!)) }} service + {{ formatRouteTime(getDriveMinutes(getCurrentRouteForDisplay()!)) }} driving)
+                  <span style="opacity: 0.75">
+                    ({{
+                      formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!))
+                    }}
+                    service +
+                    {{ formatRouteTime(getDriveMinutes(getCurrentRouteForDisplay()!)) }} driving)
                   </span>
                 </span>
-                <span class="route-distance" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1">
+                <span
+                  class="route-distance"
+                  *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1"
+                >
                   <i class="pi pi-map mr-1"></i>
-                  <ng-container *ngIf="isRouteCalculating(getCurrentRouteForDisplay()); else showKm">
+                  <ng-container
+                    *ngIf="isRouteCalculating(getCurrentRouteForDisplay()); else showKm"
+                  >
                     Calculating...
                   </ng-container>
                   <ng-template #showKm>
@@ -405,7 +365,10 @@
                   </ng-template>
                 </span>
               </div>
-              <div class="route-locations" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 0">
+              <div
+                class="route-locations"
+                *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 0"
+              >
                 <div
                   class="route-location-item route-start route-location-clickable"
                   *ngIf="getStartWaypoint(getCurrentRouteForDisplay()!) as startWp"
@@ -464,7 +427,10 @@
 
                 <div *ngIf="getStopSchedule(getCurrentRouteForDisplay()) as stopSchedule">
                   <div
-                    *ngFor="let waypoint of getLocationWaypoints(getCurrentRouteForDisplay()!); let i = index"
+                    *ngFor="
+                      let waypoint of getLocationWaypoints(getCurrentRouteForDisplay()!);
+                      let i = index
+                    "
                     class="route-location-item"
                   >
                     <button
@@ -489,7 +455,9 @@
                       <button
                         type="button"
                         class="route-reorder-btn"
-                        [disabled]="i === getLocationWaypoints(getCurrentRouteForDisplay()!).length - 1"
+                        [disabled]="
+                          i === getLocationWaypoints(getCurrentRouteForDisplay()!).length - 1
+                        "
                         (click)="$event.stopPropagation(); moveSelectedStop('down')"
                         title="Move down"
                       >
@@ -510,7 +478,10 @@
                     <span class="route-location-time" *ngIf="stopSchedule[i]?.label">
                       {{ stopSchedule[i]?.label }}
                     </span>
-                    <span class="route-location-time" *ngIf="!stopSchedule[i]?.label && waypoint.serviceMinutes">
+                    <span
+                      class="route-location-time"
+                      *ngIf="!stopSchedule[i]?.label && waypoint.serviceMinutes"
+                    >
                       ({{ waypoint.serviceMinutes }}m)
                     </span>
                   </div>
@@ -572,7 +543,13 @@
                   </div>
                 </div>
               </div>
-              <div class="route-actions" *ngIf="isBuildingRoute() && getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId">
+              <div
+                class="route-actions"
+                *ngIf="
+                  isBuildingRoute() &&
+                  getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId
+                "
+              >
                 <p-button
                   label="Clear Route"
                   icon="pi pi-times"
@@ -584,7 +561,7 @@
               </div>
             </div>
           </div>
-          
+
           <div *ngIf="driversWithAvailability().length === 0" class="no-drivers">
             <i class="pi pi-info-circle mr-2"></i>
             No drivers found
@@ -612,12 +589,7 @@
   <div class="flex flex-col gap-4">
     <div>
       <label class="block text-sm font-semibold mb-1">Template name</label>
-      <input
-        pInputText
-        class="w-full"
-        [(ngModel)]="newTemplateName"
-        placeholder="Enter a name"
-      />
+      <input pInputText class="w-full" [(ngModel)]="newTemplateName" placeholder="Enter a name" />
     </div>
   </div>
   <ng-template pTemplate="footer">
@@ -645,9 +617,7 @@
   header="Some locations were not added"
 >
   <div class="bulk-add-dialog">
-    <div class="bulk-add-subtitle">
-      These locations were skipped during the bulk add.
-    </div>
+    <div class="bulk-add-subtitle">These locations were skipped during the bulk add.</div>
     <div class="bulk-add-list" *ngIf="bulkAddRejections().length > 0">
       <div class="bulk-add-item" *ngFor="let item of bulkAddRejections()">
         <div class="bulk-add-name">{{ item.name }}</div>

@@ -50,7 +50,7 @@
 
     <div class="audit-filter">
       <label>Status</label>
-      <p-dropdown
+      <p-select
         [options]="statusOptions"
         [ngModel]="statusFilter()"
         (ngModelChange)="statusFilter.set($event)"
@@ -100,11 +100,7 @@
         (onClick)="applyFilters()"
         [loading]="loading()"
       />
-      <p-button
-        label="Clear"
-        severity="secondary"
-        (onClick)="clearFilters()"
-      />
+      <p-button label="Clear" severity="secondary" (onClick)="clearFilters()" />
       <p-button
         label="Refresh"
         icon="pi pi-refresh"
@@ -189,7 +185,10 @@
         <td class="audit-cell">
           <div class="audit-tags">
             <p-tag [value]="item.method" [severity]="getMethodSeverity(item.method)" />
-            <p-tag [value]="item.statusCode.toString()" [severity]="getStatusSeverity(item.statusCode)" />
+            <p-tag
+              [value]="item.statusCode.toString()"
+              [severity]="getStatusSeverity(item.statusCode)"
+            />
           </div>
         </td>
         <td class="audit-cell">
@@ -264,7 +263,9 @@
                   <span class="audit-duration" [class.audit-duration-slow]="isSlow(item)">
                     {{ item.durationMs }} ms
                   </span>
-                  <span class="audit-detail-timestamp">{{ formatTimestamp(item.timestampUtc) }}</span>
+                  <span class="audit-detail-timestamp">{{
+                    formatTimestamp(item.timestampUtc)
+                  }}</span>
                 </div>
               </div>
 
@@ -304,21 +305,57 @@
               <div class="audit-detail-grid">
                 <div class="audit-detail-col">
                   <ng-container
-                    *ngTemplateOutlet="metaItem; context: { label: 'User + Role', value: getUserWithRole(item), tooltip: getUserWithRole(item) }"
+                    *ngTemplateOutlet="
+                      metaItem;
+                      context: {
+                        label: 'User + Role',
+                        value: getUserWithRole(item),
+                        tooltip: getUserWithRole(item),
+                      }
+                    "
                   ></ng-container>
                   <ng-container
-                    *ngTemplateOutlet="metaItem; context: { label: 'IP address', value: item.ipAddress || '-' }"
+                    *ngTemplateOutlet="
+                      metaItem;
+                      context: { label: 'IP address', value: item.ipAddress || '-' }
+                    "
                   ></ng-container>
                   <ng-container
-                    *ngTemplateOutlet="metaItem; context: { label: 'Trace / Correlation', value: item.traceId || '-', tooltip: item.traceId || '-', copy: true }"
+                    *ngTemplateOutlet="
+                      metaItem;
+                      context: {
+                        label: 'Trace / Correlation',
+                        value: item.traceId || '-',
+                        tooltip: item.traceId || '-',
+                        copy: true,
+                      }
+                    "
                   ></ng-container>
                 </div>
                 <div class="audit-detail-col">
                   <ng-container
-                    *ngTemplateOutlet="metaItem; context: { label: 'Endpoint (full)', value: getFullEndpoint(item), tooltip: getFullEndpoint(item), copy: true, clamp: true }"
+                    *ngTemplateOutlet="
+                      metaItem;
+                      context: {
+                        label: 'Endpoint (full)',
+                        value: getFullEndpoint(item),
+                        tooltip: getFullEndpoint(item),
+                        copy: true,
+                        clamp: true,
+                      }
+                    "
                   ></ng-container>
                   <ng-container
-                    *ngTemplateOutlet="metaItem; context: { label: 'Controller + Action', value: item.endpoint || '-', tooltip: item.endpoint || '-', copy: true, clamp: true }"
+                    *ngTemplateOutlet="
+                      metaItem;
+                      context: {
+                        label: 'Controller + Action',
+                        value: item.endpoint || '-',
+                        tooltip: item.endpoint || '-',
+                        copy: true,
+                        clamp: true,
+                      }
+                    "
                   ></ng-container>
                 </div>
               </div>
@@ -335,10 +372,7 @@
                 }
               </p-tabPanel>
               <p-tabPanel header="Request / Payload">
-                <app-json-viewer
-                  [value]="item.body"
-                  emptyMessage="No payload"
-                ></app-json-viewer>
+                <app-json-viewer [value]="item.body" emptyMessage="No payload"></app-json-viewer>
                 @if (item.bodyTruncated) {
                   <div class="audit-truncated">Request body truncated.</div>
                 }
@@ -365,9 +399,7 @@
 
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="6" class="audit-empty">
-          No audit entries found
-        </td>
+        <td colspan="6" class="audit-empty">No audit entries found</td>
       </tr>
     </ng-template>
   </p-table>

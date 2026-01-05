@@ -30,7 +30,12 @@
         <tr>
           <td>{{ user.email }}</td>
           <td>
-            <input pInputText [(ngModel)]="user.displayName" class="w-48" placeholder="Display name" />
+            <input
+              pInputText
+              [(ngModel)]="user.displayName"
+              class="w-48"
+              placeholder="Display name"
+            />
           </td>
           <td>
             <div class="flex flex-wrap gap-2">
@@ -48,17 +53,20 @@
             </div>
           </td>
           <td>
-            <p-dropdown
+            <p-select
               [options]="owners()"
               optionLabel="label"
               optionValue="value"
               placeholder="Owner for admin/planner"
-              [disabled]="rolesFor(user.id).includes('SuperAdmin') || !(rolesFor(user.id).includes('Admin') || rolesFor(user.id).includes('Planner'))"
+              [disabled]="
+                rolesFor(user.id).includes('SuperAdmin') ||
+                !(rolesFor(user.id).includes('Admin') || rolesFor(user.id).includes('Planner'))
+              "
               [(ngModel)]="staffOwnerSelection[user.id]"
               (onChange)="staffOwnerSelection[user.id] = $event.value"
               styleClass="w-52 mb-2"
-            ></p-dropdown>
-            <p-dropdown
+            ></p-select>
+            <p-select
               [options]="owners()"
               optionLabel="label"
               optionValue="value"
@@ -67,7 +75,7 @@
               [(ngModel)]="driverOwnerSelection[user.id]"
               (onChange)="driverOwnerSelection[user.id] = $event.value"
               styleClass="w-52"
-            ></p-dropdown>
+            ></p-select>
             <div class="mt-2 space-y-2">
               <input
                 pInputText
@@ -95,7 +103,9 @@
                 />
               </div>
               <div class="text-xs text-gray-500">
-                Current: {{ user.driverStartAddress || 'N/A' }} ({{ user.driverStartLatitude ?? '—' }}, {{ user.driverStartLongitude ?? '—' }})
+                Current: {{ user.driverStartAddress || 'N/A' }} ({{
+                  user.driverStartLatitude ?? '—'
+                }}, {{ user.driverStartLongitude ?? '—' }})
               </div>
             </div>
           </td>

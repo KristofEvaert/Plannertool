@@ -1,20 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { TableModule } from 'primeng/table';
-import { PaginatorModule } from 'primeng/paginator';
-import { DropdownModule } from 'primeng/dropdown';
-import { CheckboxModule } from 'primeng/checkbox';
-import { CalendarModule } from 'primeng/calendar';
-import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
-import { catchError, of } from 'rxjs';
-import { PolesApiService } from '@services/poles-api.service';
-import type { PoleListItemDto, SetFixedDateRequest } from '@models/pole.model';
-import type { PagedResultDto } from '@models/paging.model';
-import { addDaysYmd, todayYmd, toYmd } from '@utils/date.utils';
 import { FormsModule } from '@angular/forms';
+import type { PagedResultDto } from '@models/paging.model';
+import type { PoleListItemDto, SetFixedDateRequest } from '@models/pole.model';
+import { PolesApiService } from '@services/poles-api.service';
+import { addDaysYmd, todayYmd, toYmd } from '@utils/date.utils';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CalendarModule } from 'primeng/calendar';
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputTextModule } from 'primeng/inputtext';
+import { MessageModule } from 'primeng/message';
+import { PaginatorModule } from 'primeng/paginator';
+import { TableModule } from 'primeng/table';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-pole-list',
@@ -23,7 +21,7 @@ import { FormsModule } from '@angular/forms';
     InputTextModule,
     TableModule,
     PaginatorModule,
-    DropdownModule,
+    SelectModule,
     CheckboxModule,
     CalendarModule,
     MessageModule,
@@ -89,7 +87,7 @@ export class PoleListPage {
             detail: err.detail || err.title || err.message || 'Failed to load poles',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((data) => {
         this.poles.set(data);
@@ -126,7 +124,7 @@ export class PoleListPage {
             detail: err.detail || err.title || err.message || 'Failed to fix date',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loadPoles();
@@ -144,11 +142,10 @@ export class PoleListPage {
             detail: err.detail || err.title || err.message || 'Failed to unfix date',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loadPoles();
       });
   }
 }
-

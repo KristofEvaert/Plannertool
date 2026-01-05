@@ -1,36 +1,38 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { CardModule } from 'primeng/card';
-import { DialogModule } from 'primeng/dialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { CalendarModule } from 'primeng/calendar';
-import { DropdownModule } from 'primeng/dropdown';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { TooltipModule } from 'primeng/tooltip';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ToastModule } from 'primeng/toast';
-import { MessageService, ConfirmationService } from 'primeng/api';
-import { catchError, of } from 'rxjs';
-import { DriversApiService } from '@services/drivers-api.service';
-import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
-import { ServiceLocationOwnersApiService, ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import { AuthService } from '@services/auth.service';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { ServiceTypeDto } from '@models/service-type.model';
 import type {
-  DriverDto,
   CreateDriverRequest,
-  UpdateDriverRequest,
   DriverAvailabilityDto,
+  DriverDto,
+  UpdateDriverRequest,
   UpsertAvailabilityRequest,
 } from '@models/driver.model';
-import { toYmd, parseYmd } from '@utils/date.utils';
+import type { ServiceTypeDto } from '@models/service-type.model';
+import { AuthService } from '@services/auth.service';
+import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
+import { DriversApiService } from '@services/drivers-api.service';
+import {
+  ServiceLocationOwnerDto,
+  ServiceLocationOwnersApiService,
+} from '@services/service-location-owners-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { toYmd } from '@utils/date.utils';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CalendarModule } from 'primeng/calendar';
+import { CardModule } from 'primeng/card';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DialogModule } from 'primeng/dialog';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { TableModule } from 'primeng/table';
+import { ToastModule } from 'primeng/toast';
+import { TooltipModule } from 'primeng/tooltip';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-drivers',
@@ -45,7 +47,7 @@ import { toYmd, parseYmd } from '@utils/date.utils';
     InputTextModule,
     InputNumberModule,
     CalendarModule,
-    DropdownModule,
+    SelectModule,
     MultiSelectModule,
     TooltipModule,
     ConfirmDialogModule,
@@ -76,7 +78,7 @@ export class DriversPage {
 
   // Filters
   ownerFilterId = signal<number | null>(null); // null = all
-  
+
   // Inline editing
   editingOwnerId = signal<string | null>(null); // toolId of driver being edited
 
@@ -108,7 +110,7 @@ export class DriversPage {
   showAvailabilityDialog = signal(false);
   availabilityForm = signal<UpsertAvailabilityRequest>({
     startMinuteOfDay: 480, // 08:00
-    endMinuteOfDay: 960,   // 16:00
+    endMinuteOfDay: 960, // 16:00
   });
   selectedAvailability = signal<DriverAvailabilityDto | null>(null);
 
@@ -204,26 +206,25 @@ export class DriversPage {
             detail: err.detail || err.message || 'Failed to load owners',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((owners) => {
-        const filtered = !isSuperAdmin && currentOwnerId
-          ? owners.filter((o) => o.id === currentOwnerId)
-          : owners;
+        const filtered =
+          !isSuperAdmin && currentOwnerId ? owners.filter((o) => o.id === currentOwnerId) : owners;
         this.owners.set(filtered);
         if (!isSuperAdmin && currentOwnerId) {
           this.ownerFilterId.set(currentOwnerId);
         }
         // Set default owner in form if empty
         if (filtered.length > 0 && this.driverForm().ownerId === 0) {
-          this.driverForm.update(f => ({ ...f, ownerId: filtered[0].id }));
+          this.driverForm.update((f) => ({ ...f, ownerId: filtered[0].id }));
         }
       });
   }
 
   loadServiceTypes(): void {
     const current = this.auth.currentUser();
-    const resolvedOwnerId = this.isSuperAdmin() ? null : current?.ownerId ?? null;
+    const resolvedOwnerId = this.isSuperAdmin() ? null : (current?.ownerId ?? null);
     this.serviceTypesApi
       .getAll(true, resolvedOwnerId ?? undefined)
       .pipe(
@@ -234,7 +235,7 @@ export class DriversPage {
             detail: err.detail || err.message || 'Failed to load service types',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((serviceTypes) => {
         this.serviceTypes.set(serviceTypes);
@@ -246,7 +247,7 @@ export class DriversPage {
     const allowedIds = new Set(
       this.serviceTypes()
         .filter((type) => type.ownerId === nextOwnerId)
-        .map((type) => type.id)
+        .map((type) => type.id),
     );
     this.driverForm.update((current) => ({
       ...current,
@@ -285,7 +286,7 @@ export class DriversPage {
             detail: err.detail || err.message || 'Failed to load drivers',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((drivers) => {
         this.loading.set(false);
@@ -312,7 +313,7 @@ export class DriversPage {
             detail: err.detail || err.message || 'Failed to load availability',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((availabilities) => {
         this.availabilities.set(availabilities);
@@ -375,7 +376,7 @@ export class DriversPage {
             detail: err.detail || err.message || 'Failed to update owner',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((updatedDriver) => {
         this.loading.set(false);
@@ -443,7 +444,7 @@ export class DriversPage {
               detail: err.detail || err.message || 'Failed to save driver',
             });
             return of(null);
-          })
+          }),
         )
         .subscribe((driver) => {
           this.loading.set(false);
@@ -457,13 +458,13 @@ export class DriversPage {
             this.loadDrivers();
           }
         });
-    }
-    else {
+    } else {
       this.loading.set(false);
       this.messageService.add({
         severity: 'warn',
         summary: 'Not allowed',
-        detail: 'Manual driver creation is disabled. Drivers are created automatically when the role is assigned.',
+        detail:
+          'Manual driver creation is disabled. Drivers are created automatically when the role is assigned.',
       });
     }
   }
@@ -486,7 +487,7 @@ export class DriversPage {
                 detail: err.detail || err.message || 'Failed to deactivate driver',
               });
               return of(null);
-            })
+            }),
           )
           .subscribe(() => {
             this.loading.set(false);
@@ -519,7 +520,7 @@ export class DriversPage {
     } else {
       this.availabilityForm.set({
         startMinuteOfDay: 480, // 08:00
-        endMinuteOfDay: 960,   // 16:00
+        endMinuteOfDay: 960, // 16:00
       });
     }
 
@@ -556,7 +557,7 @@ export class DriversPage {
             detail: err.detail || err.message || 'Failed to save availability',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((availability) => {
         this.loading.set(false);
@@ -598,7 +599,7 @@ export class DriversPage {
                 detail: err.detail || err.message || 'Failed to delete availability',
               });
               return of(null);
-            })
+            }),
           )
           .subscribe(() => {
             this.loading.set(false);
@@ -613,7 +614,6 @@ export class DriversPage {
       },
     });
   }
-
 
   getAvailabilityForDate(date: Date): DriverAvailabilityDto | null {
     const dateYmd = toYmd(date);

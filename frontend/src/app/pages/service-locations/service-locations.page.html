@@ -26,11 +26,7 @@
           [outlined]="true"
           (onClick)="fileInput.click()"
         />
-        <p-button
-          label="Add Service Location"
-          icon="pi pi-plus"
-          (onClick)="openAddDialog()"
-        />
+        <p-button label="Add Service Location" icon="pi pi-plus" (onClick)="openAddDialog()" />
       </div>
     </div>
 
@@ -43,7 +39,7 @@
         </div>
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium">Service Type for Bulk:</label>
-          <p-dropdown
+          <p-select
             [ngModel]="selectedServiceTypeId()"
             (ngModelChange)="selectedServiceTypeId.set($event)"
             [options]="serviceTypes()"
@@ -56,7 +52,7 @@
         </div>
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium">Owner for Bulk:</label>
-          <p-dropdown
+          <p-select
             [ngModel]="selectedOwnerId()"
             (ngModelChange)="onBulkOwnerChange($event)"
             [options]="owners()"
@@ -74,7 +70,7 @@
     <div class="flex flex-wrap items-center gap-4 mb-4">
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">Status:</label>
-        <p-dropdown
+        <p-select
           [ngModel]="status()"
           (ngModelChange)="status.set($event)"
           [options]="statusFilterOptions"
@@ -87,7 +83,7 @@
 
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">Service Type:</label>
-        <p-dropdown
+        <p-select
           [ngModel]="serviceTypeId()"
           (ngModelChange)="serviceTypeId.set($event)"
           [options]="serviceTypeFilterOptions()"
@@ -101,7 +97,7 @@
 
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">Owner:</label>
-        <p-dropdown
+        <p-select
           [ngModel]="ownerId()"
           (ngModelChange)="onOwnerFilterChange($event)"
           [options]="ownerFilterOptions()"
@@ -148,12 +144,7 @@
         />
       </div>
 
-      <p-button
-        label="Load"
-        icon="pi pi-search"
-        (onClick)="loadData()"
-        [loading]="loading()"
-      />
+      <p-button label="Load" icon="pi pi-search" (onClick)="loadData()" [loading]="loading()" />
     </div>
   </div>
 
@@ -183,8 +174,8 @@
         <th>Owner</th>
         <th>Address</th>
         <th>Order Date</th>
-        <th style="width: 110px; min-width: 110px; max-width: 110px;">Service Minutes</th>
-        <th style="width: 190px; min-width: 190px; max-width: 190px;">Status</th>
+        <th style="width: 110px; min-width: 110px; max-width: 110px">Service Minutes</th>
+        <th style="width: 190px; min-width: 190px; max-width: 190px">Status</th>
         <th class="text-right">Actions</th>
       </tr>
     </ng-template>
@@ -238,7 +229,7 @@
             }
           </div>
         </td>
-        <td style="width: 110px; min-width: 110px; max-width: 110px;">
+        <td style="width: 110px; min-width: 110px; max-width: 110px">
           <p-inputNumber
             [(ngModel)]="item.serviceMinutes"
             [min]="1"
@@ -251,8 +242,8 @@
             [disabled]="!canEdit()"
           />
         </td>
-        <td style="width: 190px; min-width: 190px; max-width: 190px;">
-          <p-dropdown
+        <td style="width: 190px; min-width: 190px; max-width: 190px">
+          <p-select
             [ngModel]="item.status"
             (ngModelChange)="onStatusChange(item, $event)"
             [options]="statusEditOptions"
@@ -301,9 +292,11 @@
                     <div class="text-sm font-semibold mb-2">Scheduling</div>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                       <div class="text-gray-500">Due Date</div>
-                      <div>{{ item.dueDate | date:'yyyy-MM-dd' }}</div>
+                      <div>{{ item.dueDate | date: 'yyyy-MM-dd' }}</div>
                       <div class="text-gray-500">Priority Date</div>
-                      <div>{{ item.priorityDate ? (item.priorityDate | date:'yyyy-MM-dd') : '-' }}</div>
+                      <div>
+                        {{ item.priorityDate ? (item.priorityDate | date: 'yyyy-MM-dd') : '-' }}
+                      </div>
                       <div class="text-gray-500">Min Visit Duration</div>
                       <div>{{ detail.constraints?.minVisitDurationMinutes ?? '-' }}</div>
                       <div class="text-gray-500">Max Visit Duration</div>
@@ -313,7 +306,9 @@
                         {{ item.driverInstruction || '-' }}
                       </div>
                       <div class="text-gray-500">Remark</div>
-                      <div class="truncate" pTooltip="{{ item.remark || '-' }}">{{ item.remark || '-' }}</div>
+                      <div class="truncate" pTooltip="{{ item.remark || '-' }}">
+                        {{ item.remark || '-' }}
+                      </div>
                     </div>
                   </div>
                   <div class="rounded border border-gray-200 bg-white p-3">
@@ -321,7 +316,9 @@
                     <div class="space-y-2 text-sm">
                       <div>
                         <div class="text-gray-500">Address</div>
-                        <div class="truncate" pTooltip="{{ item.address || '-' }}">{{ item.address || '-' }}</div>
+                        <div class="truncate" pTooltip="{{ item.address || '-' }}">
+                          {{ item.address || '-' }}
+                        </div>
                       </div>
                       <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -372,10 +369,15 @@
                       <div class="space-y-2 text-sm">
                         @for (ex of detail.exceptions; track ex.id ?? ex.date) {
                           <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div class="font-medium">{{ ex.date | date:'yyyy-MM-dd' }}</div>
+                            <div class="font-medium">{{ ex.date | date: 'yyyy-MM-dd' }}</div>
                             <div class="text-gray-700">{{ formatExceptionRow(ex) }}</div>
                             @if (ex.note) {
-                              <div class="text-gray-500 truncate max-w-[200px]" pTooltip="{{ ex.note }}">{{ ex.note }}</div>
+                              <div
+                                class="text-gray-500 truncate max-w-[200px]"
+                                pTooltip="{{ ex.note }}"
+                              >
+                                {{ ex.note }}
+                              </div>
                             }
                           </div>
                         }
@@ -407,9 +409,7 @@
 
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="8" class="text-center py-8 text-gray-500">
-          No service locations found
-        </td>
+        <td colspan="8" class="text-center py-8 text-gray-500">No service locations found</td>
       </tr>
     </ng-template>
   </p-table>
@@ -427,28 +427,15 @@
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">ErpId *</label>
-        <p-inputNumber
-          [(ngModel)]="form().erpId"
-          [useGrouping]="false"
-          class="w-full"
-        />
+        <p-inputNumber [(ngModel)]="form().erpId" [useGrouping]="false" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Name *</label>
-        <input
-          pInputText
-          [(ngModel)]="form().name"
-          class="w-full"
-        />
+        <input pInputText [(ngModel)]="form().name" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Address</label>
-        <input
-          pInputText
-          [(ngModel)]="form().address"
-          (blur)="onAddressBlur()"
-          class="w-full"
-        />
+        <input pInputText [(ngModel)]="form().address" (blur)="onAddressBlur()" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Driver Instruction</label>
@@ -463,7 +450,12 @@
       <div class="border-t border-gray-200 pt-3">
         <div class="flex items-center justify-between mb-2">
           <div class="text-sm font-semibold">Visit checklist / Instructions</div>
-          <p-button label="Add line" icon="pi pi-plus" size="small" (onClick)="addInstructionLine()" />
+          <p-button
+            label="Add line"
+            icon="pi pi-plus"
+            size="small"
+            (onClick)="addInstructionLine()"
+          />
         </div>
         @if ((form().extraInstructions?.length ?? 0) === 0) {
           <div class="text-xs text-gray-500">No instructions added yet.</div>
@@ -539,12 +531,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Service Minutes</label>
-        <p-inputNumber
-          [(ngModel)]="form().serviceMinutes"
-          [min]="1"
-          [max]="240"
-          class="w-full"
-        />
+        <p-inputNumber [(ngModel)]="form().serviceMinutes" [min]="1" [max]="240" class="w-full" />
       </div>
       <div class="border-t border-gray-200 pt-3">
         <div class="text-sm font-semibold mb-2">Opening Hours</div>
@@ -612,7 +599,12 @@
       <div class="border-t border-gray-200 pt-3">
         <div class="flex items-center justify-between mb-2">
           <div class="text-sm font-semibold">Exceptions</div>
-          <p-button label="Add Exception" icon="pi pi-plus" size="small" (onClick)="addExceptionRow()" />
+          <p-button
+            label="Add Exception"
+            icon="pi pi-plus"
+            size="small"
+            (onClick)="addExceptionRow()"
+          />
         </div>
         <div class="space-y-2">
           @for (ex of exceptions(); let idx = $index; track idx) {
@@ -679,7 +671,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Owner *</label>
-        <p-dropdown
+        <p-select
           [ngModel]="form().ownerId"
           (ngModelChange)="onFormOwnerChange($event)"
           [options]="owners()"
@@ -691,7 +683,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Service Type *</label>
-        <p-dropdown
+        <p-select
           [ngModel]="form().serviceTypeId"
           (ngModelChange)="updateFormServiceTypeId($event)"
           [options]="formServiceTypes()"
@@ -705,16 +697,8 @@
       </div>
     </div>
     <ng-template pTemplate="footer">
-      <p-button
-        label="Cancel"
-        severity="secondary"
-        (onClick)="showDialog.set(false)"
-      />
-      <p-button
-        label="Save"
-        (onClick)="save()"
-        [loading]="loading()"
-      />
+      <p-button label="Cancel" severity="secondary" (onClick)="showDialog.set(false)" />
+      <p-button label="Save" (onClick)="save()" [loading]="loading()" />
     </ng-template>
   </p-dialog>
 
@@ -755,16 +739,8 @@
         (onClick)="priorityDate.set(null); savePriorityDate()"
         [loading]="loading()"
       />
-      <p-button
-        label="Cancel"
-        severity="secondary"
-        (onClick)="showPriorityDialog.set(false)"
-      />
-      <p-button
-        label="Save"
-        (onClick)="savePriorityDate()"
-        [loading]="loading()"
-      />
+      <p-button label="Cancel" severity="secondary" (onClick)="showPriorityDialog.set(false)" />
+      <p-button label="Save" (onClick)="savePriorityDate()" [loading]="loading()" />
     </ng-template>
   </p-dialog>
 
@@ -821,11 +797,7 @@
       </div>
     }
     <ng-template pTemplate="footer">
-      <p-button
-        label="Close"
-        (onClick)="showBulkResultDialog.set(false)"
-      />
+      <p-button label="Close" (onClick)="showBulkResultDialog.set(false)" />
     </ng-template>
   </p-dialog>
 </div>
-

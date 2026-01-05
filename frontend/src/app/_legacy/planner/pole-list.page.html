@@ -20,7 +20,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-2">Status</label>
-        <p-dropdown
+        <p-select
           [options]="statusOptions"
           [(ngModel)]="status"
           optionLabel="label"
@@ -31,29 +31,15 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-2">From Date</label>
-        <p-calendar
-          [(ngModel)]="fromDate"
-          dateFormat="yy-mm-dd"
-          [showIcon]="true"
-          class="w-full"
-        />
+        <p-calendar [(ngModel)]="fromDate" dateFormat="yy-mm-dd" [showIcon]="true" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-2">To Date</label>
-        <p-calendar
-          [(ngModel)]="toDate"
-          dateFormat="yy-mm-dd"
-          [showIcon]="true"
-          class="w-full"
-        />
+        <p-calendar [(ngModel)]="toDate" dateFormat="yy-mm-dd" [showIcon]="true" class="w-full" />
       </div>
     </div>
     <div class="flex items-center gap-4 mb-4">
-      <p-checkbox
-        [(ngModel)]="hasFixedDate"
-        [binary]="true"
-        inputId="hasFixedDate"
-      />
+      <p-checkbox [(ngModel)]="hasFixedDate" [binary]="true" inputId="hasFixedDate" />
       <label for="hasFixedDate">Has Fixed Date</label>
     </div>
     <p-button label="Apply Filters" (onClick)="applyFilters()" />
@@ -92,11 +78,7 @@
                 (onClick)="unfixDate(pole.poleId)"
               />
             } @else {
-              <p-button
-                label="Fix Tomorrow"
-                size="small"
-                (onClick)="fixDate(pole.poleId)"
-              />
+              <p-button label="Fix Tomorrow" size="small" (onClick)="fixDate(pole.poleId)" />
             }
           </td>
         </tr>
@@ -116,4 +98,3 @@
     />
   }
 </div>
-

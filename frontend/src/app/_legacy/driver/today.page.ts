@@ -1,20 +1,19 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { DropdownModule } from 'primeng/dropdown';
-import { ButtonModule } from 'primeng/button';
-import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
 import { FormsModule } from '@angular/forms';
-import { catchError, of } from 'rxjs';
-import { DriversApiService } from '@services/drivers-api.service';
-import { PlanApiService } from '@services/plan-api.service';
+import { Router } from '@angular/router';
 import type { DriverDto } from '@models/driver.model';
 import type { DriverDayDto } from '@models/plan.model';
+import { DriversApiService } from '@services/drivers-api.service';
+import { PlanApiService } from '@services/plan-api.service';
 import { todayYmd } from '@utils/date.utils';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { MessageModule } from 'primeng/message';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-driver-today',
-  imports: [DropdownModule, ButtonModule, MessageModule, FormsModule],
+  imports: [SelectModule, ButtonModule, MessageModule, FormsModule],
   providers: [MessageService],
   templateUrl: './today.page.html',
   styleUrl: './today.page.css',
@@ -45,7 +44,7 @@ export class DriverTodayPage {
         catchError((err) => {
           this.error.set(err.title || err.message || 'Failed to load drivers');
           return of([]);
-        })
+        }),
       )
       .subscribe((data) => {
         this.drivers.set(data);
@@ -77,7 +76,7 @@ export class DriverTodayPage {
             detail: err.detail || err.title || err.message || 'Failed to load driver day',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((data) => {
         this.driverDay.set(data);
@@ -92,4 +91,3 @@ export class DriverTodayPage {
     }
   }
 }
-
