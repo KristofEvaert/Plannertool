@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,35 +8,34 @@ import {
   NgZone,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import * as L from 'leaflet';
-import { SelectModule } from 'primeng/select';
-import { DatePickerModule } from 'primeng/datepicker';
-import { ButtonModule } from 'primeng/button';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { InputTextarea } from 'primeng/inputtextarea';
-import { TagModule } from 'primeng/tag';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-import { CheckboxModule } from 'primeng/checkbox';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import type { RouteChangeNotificationDto } from '@models/route-change-notification.model';
+import { AuthService } from '@services/auth.service';
 import { DriversApiService } from '@services/drivers-api.service';
+import { RouteChangeNotificationsApiService } from '@services/route-change-notifications-api.service';
+import { RouteMessagesApiService } from '@services/route-messages-api.service';
 import {
   RoutesApiService,
   type RouteDto,
   type RouteStopDto,
   type UpdateRouteStopRequest,
 } from '@services/routes-api.service';
-import { RouteMessagesApiService } from '@services/route-messages-api.service';
-import { RouteChangeNotificationsApiService } from '@services/route-change-notifications-api.service';
 import {
   ServiceLocationOwnersApiService,
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import { AuthService } from '@services/auth.service';
-import type { RouteChangeNotificationDto } from '@models/route-change-notification.model';
+import * as L from 'leaflet';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { DatePickerModule } from 'primeng/datepicker';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { SelectModule } from 'primeng/select';
+import { TagModule } from 'primeng/tag';
+import { TextareaModule } from 'primeng/textarea';
+import { ToastModule } from 'primeng/toast';
 
 type DriverOption = { label: string; value: string };
 type OwnerOption = { label: string; value: number };
@@ -50,7 +50,7 @@ type OwnerOption = { label: string; value: number };
     DatePickerModule,
     ButtonModule,
     InputNumberModule,
-    InputTextarea,
+    TextareaModule,
     TagModule,
     ToastModule,
     CheckboxModule,
@@ -123,7 +123,7 @@ export class DriverPage {
   });
 
   activeRouteChangeNotifications = computed(() =>
-    this.routeChangeNotifications().filter((n) => !n.acknowledgedUtc)
+    this.routeChangeNotifications().filter((n) => !n.acknowledgedUtc),
   );
 
   constructor() {
@@ -183,7 +183,9 @@ export class DriverPage {
     const currentUser = this.auth.currentUser();
     const isDriver = currentUser?.roles.includes('Driver');
     if (isDriver && currentUser?.driverToolId) {
-      this.driverOptions.set([{ label: currentUser.displayName || currentUser.email, value: currentUser.driverToolId }]);
+      this.driverOptions.set([
+        { label: currentUser.displayName || currentUser.email, value: currentUser.driverToolId },
+      ]);
       this.selectedDriverToolId.set(currentUser.driverToolId);
     } else {
       this.driversApi.getDrivers(true).subscribe({
@@ -305,7 +307,9 @@ export class DriverPage {
     this.routeChangeNotificationsApi.acknowledge(notification.id).subscribe({
       next: () => {
         this.routeChangeNotifications.update((items) =>
-          items.map((n) => (n.id === notification.id ? { ...n, acknowledgedUtc: new Date().toISOString() } : n))
+          items.map((n) =>
+            n.id === notification.id ? { ...n, acknowledgedUtc: new Date().toISOString() } : n,
+          ),
         );
       },
       error: (err) => {
@@ -382,14 +386,19 @@ export class DriverPage {
 
     // Ensure local stop carries a computed duration when timestamps exist.
     const finalUpdated: RouteStopDto = (() => {
-      const maybeDuration = this.computeDurationMinutes(updated.arrivedAtUtc, updated.completedAtUtc);
+      const maybeDuration = this.computeDurationMinutes(
+        updated.arrivedAtUtc,
+        updated.completedAtUtc,
+      );
       if (maybeDuration != null && updated.actualServiceMinutes == null) {
         return { ...updated, actualServiceMinutes: maybeDuration };
       }
       return updated;
     })();
 
-    const nextStops = route.stops.map((s) => (s.id === finalUpdated.id ? { ...s, ...finalUpdated } : s));
+    const nextStops = route.stops.map((s) =>
+      s.id === finalUpdated.id ? { ...s, ...finalUpdated } : s,
+    );
     this.route.set({ ...route, stops: nextStops });
     this.scheduleMapRefresh();
 
@@ -564,10 +573,12 @@ export class DriverPage {
     }
   }
 
-  severityForStopStatus(status?: string): 'success' | 'warning' | 'info' {
+  severityForStopStatus(
+    status?: string,
+  ): 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast' | undefined | null {
     if (status === 'Completed') return 'success';
-    if (status === 'Arrived') return 'warning';
-    if (status === 'NotVisited') return 'warning';
+    if (status === 'Arrived') return 'warn';
+    if (status === 'NotVisited') return 'warn';
     return 'info';
   }
 
@@ -604,14 +615,14 @@ export class DriverPage {
     const lng = Number(stop.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-      `${lat},${lng}`
+      `${lat},${lng}`,
     )}`;
     window.open(url, '_blank');
   }
 
   private computeDurationMinutes(
     arrivedAt?: string | null,
-    completedAt?: string | null
+    completedAt?: string | null,
   ): number | null {
     if (!arrivedAt || !completedAt) return null;
     const a = new Date(arrivedAt);
@@ -621,5 +632,3 @@ export class DriverPage {
     return Number.isFinite(minutes) ? minutes : null;
   }
 }
-
-

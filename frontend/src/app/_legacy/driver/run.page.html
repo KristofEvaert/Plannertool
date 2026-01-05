@@ -61,18 +61,14 @@
             </div>
             <div class="flex gap-2">
               <textarea
-                pInputTextarea
+                pTextarea
                 [value]="getNote(stop.poleId)"
                 (input)="setNote(stop.poleId, $any($event.target).value)"
                 placeholder="Add note..."
                 rows="2"
                 class="flex-1"
               ></textarea>
-              <p-button
-                label="Add Note"
-                size="small"
-                (onClick)="addNote(stop.poleId)"
-              />
+              <p-button label="Add Note" size="small" (onClick)="addNote(stop.poleId)" />
             </div>
           </div>
         }
@@ -80,4 +76,3 @@
     }
   }
 </div>
-

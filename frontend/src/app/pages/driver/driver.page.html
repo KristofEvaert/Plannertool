@@ -142,7 +142,7 @@
                   <div class="md:col-span-2">
                     <label class="block text-sm font-semibold mb-1">Message</label>
                     <textarea
-                      pInputTextarea
+                      pTextarea 
                       class="w-full"
                       [ngModel]="routeMessageText()"
                       (ngModelChange)="routeMessageText.set($event)"
@@ -273,7 +273,7 @@
                     <div>
                       <label class="block text-sm font-semibold mb-1">Remark</label>
                       <textarea
-                        pInputTextarea
+                        pTextarea 
                         class="w-full"
                         [ngModel]="s.note"
                         (ngModelChange)="saveNote(s, $event)"
@@ -291,7 +291,7 @@
                     <div>
                       <label class="block text-sm font-semibold mb-1">Driver note</label>
                       <textarea
-                        pInputTextarea
+                        pTextarea 
                         class="w-full"
                         [ngModel]="s.driverNote"
                         (ngModelChange)="saveDriverNote(s, $event)"
@@ -315,7 +315,7 @@
                         <div class="md:col-span-2">
                           <label class="block text-sm font-semibold mb-1">Message</label>
                           <textarea
-                            pInputTextarea
+                            pTextarea 
                             class="w-full"
                             [ngModel]="stopMessageText()"
                             (ngModelChange)="stopMessageText.set($event)"

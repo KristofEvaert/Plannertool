@@ -1,17 +1,20 @@
-import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TableModule } from 'primeng/table';
-import { SelectModule } from 'primeng/select';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { CheckboxModule } from 'primeng/checkbox';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-import { TravelTimeModelAdminApiService } from '@services/travel-time-model-admin-api.service';
-import type { TravelTimeModelLearnedStatDto, TravelTimeModelStatus } from '@models/travel-time-model-admin.model';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import type {
+  TravelTimeModelLearnedStatDto,
+  TravelTimeModelStatus,
+} from '@models/travel-time-model-admin.model';
+import { TravelTimeModelAdminApiService } from '@services/travel-time-model-admin-api.service';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { TooltipModule } from 'primeng/tooltip';
 
 type SelectOption<T> = { label: string; value: T };
 
@@ -110,7 +113,12 @@ export class TravelTimeModelAdminPage {
   }
 
   resetBucket(row: TravelTimeModelLearnedStatDto): void {
-    if (!confirm(`Reset learned bucket for ${row.regionName} ${row.dayType} ${this.formatBucket(row)}?`)) return;
+    if (
+      !confirm(
+        `Reset learned bucket for ${row.regionName} ${row.dayType} ${this.formatBucket(row)}?`,
+      )
+    )
+      return;
     this.api.resetBucket(row.id).subscribe({
       next: () => {
         this.messageService.add({ severity: 'success', summary: 'Bucket reset' });
@@ -170,12 +178,14 @@ export class TravelTimeModelAdminPage {
     );
   }
 
-  statusSeverity(status: string): 'success' | 'warning' | 'danger' | 'secondary' {
+  statusSeverity(
+    status: string,
+  ): 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast' | undefined | null {
     switch (status) {
       case 'Approved':
         return 'success';
       case 'Quarantined':
-        return 'warning';
+        return 'warn';
       case 'Rejected':
         return 'danger';
       default:

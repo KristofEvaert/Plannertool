@@ -14,11 +14,11 @@
           (onClick)="downloadTemplate()"
         />
         <input
+          #fileInput
           type="file"
           accept=".xlsx,.xls"
-          (change)="onFileSelected($event)"
           style="display: none"
-          #fileInput
+          (change)="onFileSelected($event)"
         />
         <p-button
           label="Upload Excel"
@@ -40,27 +40,27 @@
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium">Service Type for Bulk:</label>
           <p-select
-            [ngModel]="selectedServiceTypeId()"
-            (ngModelChange)="selectedServiceTypeId.set($event)"
-            [options]="serviceTypes()"
             optionLabel="name"
             optionValue="id"
             placeholder="Select service type"
-            [appendTo]="'body'"
             styleClass="w-48"
+            [ngModel]="selectedServiceTypeId()"
+            [options]="serviceTypes()"
+            [appendTo]="'body'"
+            (ngModelChange)="selectedServiceTypeId.set($event)"
           />
         </div>
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium">Owner for Bulk:</label>
           <p-select
-            [ngModel]="selectedOwnerId()"
-            (ngModelChange)="onBulkOwnerChange($event)"
-            [options]="owners()"
             optionLabel="name"
             optionValue="id"
             placeholder="Select owner"
-            [appendTo]="'body'"
             styleClass="w-48"
+            [ngModel]="selectedOwnerId()"
+            [options]="owners()"
+            [appendTo]="'body'"
+            (ngModelChange)="onBulkOwnerChange($event)"
           />
         </div>
       </div>
@@ -71,41 +71,41 @@
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">Status:</label>
         <p-select
-          [ngModel]="status()"
-          (ngModelChange)="status.set($event)"
-          [options]="statusFilterOptions"
           optionLabel="label"
           optionValue="value"
-          [appendTo]="'body'"
           styleClass="w-32"
+          [ngModel]="status()"
+          [options]="statusFilterOptions"
+          [appendTo]="'body'"
+          (ngModelChange)="status.set($event)"
         />
       </div>
 
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">Service Type:</label>
         <p-select
-          [ngModel]="serviceTypeId()"
-          (ngModelChange)="serviceTypeId.set($event)"
-          [options]="serviceTypeFilterOptions()"
           optionLabel="label"
           optionValue="value"
           placeholder="All types"
-          [appendTo]="'body'"
           styleClass="w-48"
+          [ngModel]="serviceTypeId()"
+          [options]="serviceTypeFilterOptions()"
+          [appendTo]="'body'"
+          (ngModelChange)="serviceTypeId.set($event)"
         />
       </div>
 
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">Owner:</label>
         <p-select
-          [ngModel]="ownerId()"
-          (ngModelChange)="onOwnerFilterChange($event)"
-          [options]="ownerFilterOptions()"
           optionLabel="label"
           optionValue="value"
           placeholder="All owners"
-          [appendTo]="'body'"
           styleClass="w-48"
+          [ngModel]="ownerId()"
+          [options]="ownerFilterOptions()"
+          [appendTo]="'body'"
+          (ngModelChange)="onOwnerFilterChange($event)"
         />
       </div>
 
@@ -113,43 +113,45 @@
         <label class="text-sm font-medium">Search:</label>
         <input
           pInputText
-          [ngModel]="search()"
-          (ngModelChange)="search.set($event)"
           placeholder="Name, address, or ERP ID"
           styleClass="w-64"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
         />
       </div>
 
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">From Due:</label>
-        <p-calendar
+        <p-datepicker
+          styleClass="w-40"
           [ngModel]="fromDue()"
-          (ngModelChange)="fromDue.set($event)"
           [dateFormat]="'yy-mm-dd'"
           [showIcon]="true"
           [appendTo]="'body'"
-          styleClass="w-40"
+          (ngModelChange)="fromDue.set($event)"
         />
       </div>
 
       <div class="flex items-center gap-2">
         <label class="text-sm font-medium">To Due:</label>
-        <p-calendar
+        <p-datepicker
+          styleClass="w-40"
           [ngModel]="toDue()"
-          (ngModelChange)="toDue.set($event)"
           [dateFormat]="'yy-mm-dd'"
           [showIcon]="true"
           [appendTo]="'body'"
-          styleClass="w-40"
+          (ngModelChange)="toDue.set($event)"
         />
       </div>
 
-      <p-button label="Load" icon="pi pi-search" (onClick)="loadData()" [loading]="loading()" />
+      <p-button label="Load" icon="pi pi-search" [loading]="loading()" (onClick)="loadData()" />
     </div>
   </div>
 
   <!-- Table -->
   <p-table
+    dataKey="toolId"
+    styleClass="p-datatable-striped p-datatable-sm min-w-[1100px]"
     [value]="items()"
     [loading]="loading()"
     [scrollable]="true"
@@ -158,14 +160,12 @@
     [first]="(page() - 1) * pageSize()"
     [totalRecords]="totalCount()"
     [lazy]="true"
-    (onLazyLoad)="onPageChange($event)"
     [rowsPerPageOptions]="[10, 25, 50, 100]"
     [rowHover]="true"
     [expandedRowKeys]="expandedRowKeys()"
+    (onLazyLoad)="onPageChange($event)"
     (onRowExpand)="onRowExpand($event)"
     (onRowCollapse)="onRowCollapse($event)"
-    dataKey="toolId"
-    styleClass="p-datatable-striped p-datatable-sm min-w-[1100px]"
   >
     <ng-template pTemplate="header">
       <tr>
@@ -179,7 +179,7 @@
         <th class="text-right">Actions</th>
       </tr>
     </ng-template>
-    <ng-template pTemplate="body" let-item let-rowIndex="rowIndex" let-expanded="expanded">
+    <ng-template let-item let-rowIndex="rowIndex" let-expanded="expanded" pTemplate="body">
       <tr>
         <td>
           <div class="flex items-start justify-between gap-2">
@@ -189,23 +189,23 @@
             </div>
             @if (item.driverInstruction) {
               <i
-                class="pi pi-comment text-blue-600"
                 pTooltip="{{ item.driverInstruction }}"
+                class="pi pi-comment text-blue-600"
                 tooltipPosition="top"
               ></i>
             }
           </div>
         </td>
         <td>
-          <p-tag [value]="item.serviceTypeName || '-'" severity="info"></p-tag>
+          <p-tag severity="info" [value]="item.serviceTypeName || '-'"></p-tag>
         </td>
         <td>
-          <p-tag [value]="item.ownerName || '-'" severity="secondary"></p-tag>
+          <p-tag severity="secondary" [value]="item.ownerName || '-'"></p-tag>
         </td>
         <td>
           <span
-            class="block max-w-[260px] truncate"
             pTooltip="{{ item.address || '-' }}"
+            class="block max-w-[260px] truncate"
             tooltipPosition="top"
           >
             {{ item.address || '-' }}
@@ -213,16 +213,16 @@
         </td>
         <td>
           <div class="flex items-center gap-2">
-            <p-calendar
+            <p-datepicker
+              styleClass="w-32"
               [ngModel]="getOrderDateAsDate(item)"
-              (ngModelChange)="onOrderDateChange(item, $event)"
               [dateFormat]="'yy-mm-dd'"
               [showIcon]="false"
               [appendTo]="'body'"
               [baseZIndex]="10000"
-              styleClass="w-32"
               [inputId]="'orderDate_' + rowIndex"
               [disabled]="!canEdit()"
+              (ngModelChange)="onOrderDateChange(item, $event)"
             />
             @if (item.priorityDate) {
               <span class="text-xs text-blue-600 font-semibold">(P)</span>
@@ -231,28 +231,27 @@
         </td>
         <td style="width: 110px; min-width: 110px; max-width: 110px">
           <p-inputNumber
-            [(ngModel)]="item.serviceMinutes"
+            styleClass="tp-minutes"
+            inputStyleClass="tp-minutes-input"
             [min]="1"
             [max]="240"
             [showButtons]="true"
             [useGrouping]="false"
-            (ngModelChange)="onServiceMinutesChange(item, $event)"
-            styleClass="tp-minutes"
-            inputStyleClass="tp-minutes-input"
             [disabled]="!canEdit()"
+            (ngModelChange)="onServiceMinutesChange(item, $event)"
+            [(ngModel)]="item.serviceMinutes"
           />
         </td>
         <td style="width: 190px; min-width: 190px; max-width: 190px">
           <p-select
-            [ngModel]="item.status"
-            (ngModelChange)="onStatusChange(item, $event)"
-            [options]="statusEditOptions"
             optionLabel="label"
             optionValue="value"
-            [appendTo]="'body'"
-            [baseZIndex]="10000"
             styleClass="tp-status"
+            [ngModel]="item.status"
+            [options]="statusEditOptions"
+            [appendTo]="'body'"
             [disabled]="!canEdit()"
+            (ngModelChange)="onStatusChange(item, $event)"
           />
         </td>
         <td class="text-right">
@@ -261,25 +260,24 @@
               icon="pi pi-pencil"
               size="small"
               severity="secondary"
+              pTooltip="Update"
+              tooltipPosition="top"
               [outlined]="true"
               [disabled]="!canEdit()"
               (onClick)="openEditDialog(item)"
-              pTooltip="Update"
-              tooltipPosition="top"
             />
-            <button
+            <p-button
               type="button"
-              pButton
               pRowToggler
+              class="p-button-text p-button-sm"
               [pRowToggler]="item"
               [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-              class="p-button-text p-button-sm"
-            ></button>
+            />
           </div>
         </td>
       </tr>
     </ng-template>
-    <ng-template pTemplate="expandedrow" let-item>
+    <ng-template let-item pTemplate="expandedrow">
       <tr>
         <td colspan="8" class="bg-gray-50">
           <div class="p-4 space-y-4">
@@ -302,11 +300,11 @@
                       <div class="text-gray-500">Max Visit Duration</div>
                       <div>{{ detail.constraints?.maxVisitDurationMinutes ?? '-' }}</div>
                       <div class="text-gray-500">Driver Instruction</div>
-                      <div class="truncate" pTooltip="{{ item.driverInstruction || '-' }}">
+                      <div pTooltip="{{ item.driverInstruction || '-' }}" class="truncate">
                         {{ item.driverInstruction || '-' }}
                       </div>
                       <div class="text-gray-500">Remark</div>
-                      <div class="truncate" pTooltip="{{ item.remark || '-' }}">
+                      <div pTooltip="{{ item.remark || '-' }}" class="truncate">
                         {{ item.remark || '-' }}
                       </div>
                     </div>
@@ -316,7 +314,7 @@
                     <div class="space-y-2 text-sm">
                       <div>
                         <div class="text-gray-500">Address</div>
-                        <div class="truncate" pTooltip="{{ item.address || '-' }}">
+                        <div pTooltip="{{ item.address || '-' }}" class="truncate">
                           {{ item.address || '-' }}
                         </div>
                       </div>
@@ -333,9 +331,9 @@
                       @if (getMapsLink(item); as mapsLink) {
                         <a
                           class="text-blue-600 underline text-sm inline-flex items-center gap-1"
-                          [href]="mapsLink"
                           target="_blank"
                           rel="noopener noreferrer"
+                          [href]="mapsLink"
                         >
                           <i class="pi pi-map-marker"></i>
                           Open in Maps
@@ -373,8 +371,8 @@
                             <div class="text-gray-700">{{ formatExceptionRow(ex) }}</div>
                             @if (ex.note) {
                               <div
-                                class="text-gray-500 truncate max-w-[200px]"
                                 pTooltip="{{ ex.note }}"
+                                class="text-gray-500 truncate max-w-[200px]"
                               >
                                 {{ ex.note }}
                               </div>
@@ -416,35 +414,35 @@
 
   <!-- Add/Edit Dialog -->
   <p-dialog
-    [(visible)]="showDialogValue"
     [header]="isEditMode() ? 'Edit Service Location' : 'Add Service Location'"
     [modal]="true"
     [style]="{ width: '600px' }"
     [appendTo]="'body'"
     [baseZIndex]="10000"
     (onHide)="showDialog.set(false)"
+    [(visible)]="showDialogValue"
   >
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">ErpId *</label>
-        <p-inputNumber [(ngModel)]="form().erpId" [useGrouping]="false" class="w-full" />
+        <p-inputNumber class="w-full" [useGrouping]="false" [(ngModel)]="form().erpId" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Name *</label>
-        <input pInputText [(ngModel)]="form().name" class="w-full" />
+        <input pInputText class="w-full" [(ngModel)]="form().name" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Address</label>
-        <input pInputText [(ngModel)]="form().address" (blur)="onAddressBlur()" class="w-full" />
+        <input pInputText class="w-full" (blur)="onAddressBlur()" [(ngModel)]="form().address" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Driver Instruction</label>
         <textarea
-          pInputTextarea
-          [(ngModel)]="form().driverInstruction"
+          pTextarea
           class="w-full"
           rows="3"
           placeholder="Optional note shown to the driver"
+          [(ngModel)]="form().driverInstruction"
         ></textarea>
       </div>
       <div class="border-t border-gray-200 pt-3">
@@ -465,10 +463,10 @@
               <div class="flex items-center gap-2">
                 <input
                   pInputText
-                  [ngModel]="line"
-                  (ngModelChange)="updateInstructionLine(idx, $event)"
                   placeholder="Instruction line"
                   class="w-full"
+                  [ngModel]="line"
+                  (ngModelChange)="updateInstructionLine(idx, $event)"
                 />
                 <p-button
                   icon="pi pi-trash"
@@ -486,21 +484,21 @@
         <div>
           <label class="block text-sm font-medium mb-1">Latitude</label>
           <p-inputNumber
-            [(ngModel)]="form().latitude"
+            class="w-full"
             [minFractionDigits]="6"
             [maxFractionDigits]="6"
             (onBlur)="onCoordinatesBlur()"
-            class="w-full"
+            [(ngModel)]="form().latitude"
           />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Longitude</label>
           <p-inputNumber
-            [(ngModel)]="form().longitude"
+            class="w-full"
             [minFractionDigits]="6"
             [maxFractionDigits]="6"
             (onBlur)="onCoordinatesBlur()"
-            class="w-full"
+            [(ngModel)]="form().longitude"
           />
         </div>
       </div>
@@ -512,26 +510,26 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Due Date *</label>
-          <p-calendar
-            [(ngModel)]="form().dueDate"
+          <p-datepicker
+            class="w-full"
             [dateFormat]="'yy-mm-dd'"
             [showIcon]="true"
-            class="w-full"
+            [(ngModel)]="form().dueDate"
           />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Priority Date</label>
-          <p-calendar
-            [(ngModel)]="form().priorityDate"
+          <p-datepicker
+            class="w-full"
             [dateFormat]="'yy-mm-dd'"
             [showIcon]="true"
-            class="w-full"
+            [(ngModel)]="form().priorityDate"
           />
         </div>
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Service Minutes</label>
-        <p-inputNumber [(ngModel)]="form().serviceMinutes" [min]="1" [max]="240" class="w-full" />
+        <p-inputNumber class="w-full" [min]="1" [max]="240" [(ngModel)]="form().serviceMinutes" />
       </div>
       <div class="border-t border-gray-200 pt-3">
         <div class="text-sm font-semibold mb-2">Opening Hours</div>
@@ -546,23 +544,23 @@
                 <span class="w-24 font-medium">{{ row.label }}</span>
                 <input
                   type="time"
-                  [(ngModel)]="row.openTime"
-                  [disabled]="useDefaultOpeningHours() || row.isClosed"
                   class="border rounded px-2 py-1 text-sm"
+                  [disabled]="useDefaultOpeningHours() || row.isClosed"
+                  [(ngModel)]="row.openTime"
                 />
                 <span class="text-gray-500">to</span>
                 <input
                   type="time"
-                  [(ngModel)]="row.closeTime"
-                  [disabled]="useDefaultOpeningHours() || row.isClosed"
                   class="border rounded px-2 py-1 text-sm"
+                  [disabled]="useDefaultOpeningHours() || row.isClosed"
+                  [(ngModel)]="row.closeTime"
                 />
                 <label class="flex items-center gap-2 text-xs text-gray-600">
                   <input
                     type="checkbox"
                     [ngModel]="row.isClosed"
-                    (ngModelChange)="onOpeningHoursClosedChange(row, $event)"
                     [disabled]="useDefaultOpeningHours()"
+                    (ngModelChange)="onOpeningHoursClosedChange(row, $event)"
                   />
                   Closed
                 </label>
@@ -579,16 +577,16 @@
                 <div class="flex items-center gap-2 text-sm pl-24">
                   <input
                     type="time"
-                    [(ngModel)]="row.openTime2"
-                    [disabled]="useDefaultOpeningHours() || row.isClosed"
                     class="border rounded px-2 py-1 text-sm"
+                    [disabled]="useDefaultOpeningHours() || row.isClosed"
+                    [(ngModel)]="row.openTime2"
                   />
                   <span class="text-gray-500">to</span>
                   <input
                     type="time"
-                    [(ngModel)]="row.closeTime2"
-                    [disabled]="useDefaultOpeningHours() || row.isClosed"
                     class="border rounded px-2 py-1 text-sm"
+                    [disabled]="useDefaultOpeningHours() || row.isClosed"
+                    [(ngModel)]="row.closeTime2"
                   />
                 </div>
               }
@@ -609,19 +607,19 @@
         <div class="space-y-2">
           @for (ex of exceptions(); let idx = $index; track idx) {
             <div class="flex flex-wrap items-center gap-2 text-sm">
-              <input type="date" [(ngModel)]="ex.date" class="border rounded px-2 py-1" />
+              <input type="date" class="border rounded px-2 py-1" [(ngModel)]="ex.date" />
               <input
                 type="time"
-                [(ngModel)]="ex.openTime"
-                [disabled]="ex.isClosed"
                 class="border rounded px-2 py-1"
+                [disabled]="ex.isClosed"
+                [(ngModel)]="ex.openTime"
               />
               <span class="text-gray-500">to</span>
               <input
                 type="time"
-                [(ngModel)]="ex.closeTime"
-                [disabled]="ex.isClosed"
                 class="border rounded px-2 py-1"
+                [disabled]="ex.isClosed"
+                [(ngModel)]="ex.closeTime"
               />
               <label class="flex items-center gap-1 text-xs text-gray-600">
                 <input type="checkbox" [(ngModel)]="ex.isClosed" />
@@ -629,9 +627,9 @@
               </label>
               <input
                 type="text"
-                [(ngModel)]="ex.note"
                 placeholder="Note"
                 class="border rounded px-2 py-1 flex-1 min-w-[160px]"
+                [(ngModel)]="ex.note"
               />
               <p-button
                 icon="pi pi-trash"
@@ -650,21 +648,21 @@
           <div>
             <label class="block text-sm font-medium mb-1">Min Visit Duration</label>
             <p-inputNumber
+              class="w-full"
               [ngModel]="constraints().minVisitDurationMinutes"
-              (ngModelChange)="updateMinVisitDuration($event)"
               [min]="0"
               [max]="240"
-              class="w-full"
+              (ngModelChange)="updateMinVisitDuration($event)"
             />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Max Visit Duration</label>
             <p-inputNumber
+              class="w-full"
               [ngModel]="constraints().maxVisitDurationMinutes"
-              (ngModelChange)="updateMaxVisitDuration($event)"
               [min]="0"
               [max]="240"
-              class="w-full"
+              (ngModelChange)="updateMaxVisitDuration($event)"
             />
           </div>
         </div>
@@ -672,45 +670,45 @@
       <div>
         <label class="block text-sm font-medium mb-1">Owner *</label>
         <p-select
-          [ngModel]="form().ownerId"
-          (ngModelChange)="onFormOwnerChange($event)"
-          [options]="owners()"
           optionLabel="name"
           optionValue="id"
-          [appendTo]="'body'"
           class="w-full"
+          [ngModel]="form().ownerId"
+          [options]="owners()"
+          [appendTo]="'body'"
+          (ngModelChange)="onFormOwnerChange($event)"
         />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Service Type *</label>
         <p-select
-          [ngModel]="form().serviceTypeId"
-          (ngModelChange)="updateFormServiceTypeId($event)"
-          [options]="formServiceTypes()"
           optionLabel="name"
           optionValue="id"
-          [appendTo]="'body'"
           class="w-full"
-          [disabled]="!form().ownerId"
           placeholder="Select owner first"
+          [ngModel]="form().serviceTypeId"
+          [options]="formServiceTypes()"
+          [appendTo]="'body'"
+          [disabled]="!form().ownerId"
+          (ngModelChange)="updateFormServiceTypeId($event)"
         />
       </div>
     </div>
     <ng-template pTemplate="footer">
       <p-button label="Cancel" severity="secondary" (onClick)="showDialog.set(false)" />
-      <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+      <p-button label="Save" [loading]="loading()" (onClick)="save()" />
     </ng-template>
   </p-dialog>
 
   <!-- Priority Date Dialog -->
   <p-dialog
-    [(visible)]="showPriorityDialogValue"
     [header]="'Set Priority Date'"
     [modal]="true"
     [style]="{ width: '400px' }"
     [appendTo]="'body'"
     [baseZIndex]="10000"
     (onHide)="showPriorityDialog.set(false)"
+    [(visible)]="showPriorityDialogValue"
   >
     @if (selectedItemForPriority(); as item) {
       <div class="flex flex-col gap-4">
@@ -720,11 +718,11 @@
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Priority Date</label>
-          <p-calendar
-            [(ngModel)]="priorityDate"
+          <p-datepicker
+            class="w-full"
             [dateFormat]="'yy-mm-dd'"
             [showIcon]="true"
-            class="w-full"
+            [(ngModel)]="priorityDate"
           />
           <p class="text-xs text-gray-500 mt-1">
             Leave empty to clear priority date. Priority date overrides due date for ordering.
@@ -736,11 +734,11 @@
       <p-button
         label="Clear"
         severity="secondary"
-        (onClick)="priorityDate.set(null); savePriorityDate()"
         [loading]="loading()"
+        (onClick)="priorityDate.set(null); savePriorityDate()"
       />
       <p-button label="Cancel" severity="secondary" (onClick)="showPriorityDialog.set(false)" />
-      <p-button label="Save" (onClick)="savePriorityDate()" [loading]="loading()" />
+      <p-button label="Save" [loading]="loading()" (onClick)="savePriorityDate()" />
     </ng-template>
   </p-dialog>
 
@@ -748,13 +746,13 @@
 
   <!-- Bulk Upload Result Dialog -->
   <p-dialog
-    [(visible)]="showBulkResultDialogValue"
     header="Bulk Upload Result"
     [modal]="true"
     [style]="{ width: '600px' }"
     [appendTo]="'body'"
     [baseZIndex]="10000"
     (onHide)="showBulkResultDialog.set(false)"
+    [(visible)]="showBulkResultDialogValue"
   >
     @if (bulkResult(); as result) {
       <div class="flex flex-col gap-4">

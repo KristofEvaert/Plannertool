@@ -1,5 +1,5 @@
-import { definePreset } from '@primeng/themes'
-import Aura from '@primeng/themes/aura'
+import { definePreset } from '@primeng/themes';
+import Aura from '@primeng/themes/aura';
 
 export const primePreset = definePreset(Aura, {
   semantic: {
@@ -20,7 +20,7 @@ export const primePreset = definePreset(Aura, {
       light: {
         primary: {
           color: '{primary.500}',
-          inverseColor: '#ffffff',
+          contrastColor: '#ffffff',
           hoverColor: '{primary.900}',
           activeColor: '{primary.800}',
         },
@@ -30,12 +30,11 @@ export const primePreset = definePreset(Aura, {
           color: '#ffffff',
           focusColor: '#ffffff',
         },
-        menubarbg: '{gray.200}',
       },
       dark: {
         primary: {
           color: '{primary.50}',
-          inverseColor: '{primary.950}',
+          contrastColor: '{primary.950}',
           hoverColor: '{primary.100}',
           activeColor: '{primary.200}',
         },
@@ -45,7 +44,6 @@ export const primePreset = definePreset(Aura, {
           color: 'rgba(255,255,255,.87)',
           focusColor: 'rgba(255,255,255,.87)',
         },
-        menubarbg: '{gray.950}',
       },
     },
   },
@@ -61,4 +59,4 @@ export const primePreset = definePreset(Aura, {
       },
     },
   },
-})
+});

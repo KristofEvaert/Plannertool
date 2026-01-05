@@ -1,19 +1,19 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { ButtonModule } from 'primeng/button';
-import { InputTextarea } from 'primeng/inputtextarea';
-import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
 import { FormsModule } from '@angular/forms';
-import { catchError, of } from 'rxjs';
-import { PlanApiService } from '@services/plan-api.service';
-import { RoutesApiService } from '@services/routes-api.service';
+import { Router } from '@angular/router';
 import type { DriverDayDto } from '@models/plan.model';
 import type { AddStopNoteRequest } from '@models/routes.model';
+import { PlanApiService } from '@services/plan-api.service';
+import { RoutesApiService } from '@services/routes-api.service';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { MessageModule } from 'primeng/message';
+import { TextareaModule } from 'primeng/textarea';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-driver-run',
-  imports: [ButtonModule, InputTextarea, MessageModule, FormsModule],
+  imports: [ButtonModule, TextareaModule, MessageModule, FormsModule],
   providers: [MessageService],
   templateUrl: './run.page.html',
   styleUrl: './run.page.css',
@@ -58,7 +58,7 @@ export class DriverRunPage {
             detail: err.detail || err.title || err.message || 'Failed to load driver day',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((data) => {
         this.driverDay.set(data);
@@ -88,7 +88,7 @@ export class DriverRunPage {
             detail: err.detail || err.title || err.message || 'Failed to start route',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loading.set(false);
@@ -112,7 +112,7 @@ export class DriverRunPage {
             detail: err.detail || err.title || err.message || 'Failed to mark arrival',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loadDriverDay(this.date(), this.driverId());
@@ -135,7 +135,7 @@ export class DriverRunPage {
             detail: err.detail || err.title || err.message || 'Failed to complete stop',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loadDriverDay(this.date(), this.driverId());
@@ -160,7 +160,7 @@ export class DriverRunPage {
             detail: err.detail || err.title || err.message || 'Failed to add note',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         const notes = new Map(this.stopNotes());
@@ -180,4 +180,3 @@ export class DriverRunPage {
     this.stopNotes.set(notes);
   }
 }
-
