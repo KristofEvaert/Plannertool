@@ -41,7 +41,7 @@ export class ImportPage {
             detail: err.detail || err.title || err.message || 'Failed to import poles',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -56,4 +56,3 @@ export class ImportPage {
       });
   }
 }
-

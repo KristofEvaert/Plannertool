@@ -4,7 +4,7 @@
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-bold">Service Location Owners</h1>
-          <app-help-manual [sectionId]="'owners'"></app-help-manual>
+          <app-help-manual [sectionId]="'owners'" />
         </div>
         <div class="text-sm text-gray-600">Manage owners (SuperAdmin only)</div>
       </div>
@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <p-table [value]="owners()" [loading]="loading()" responsiveLayout="scroll">
+    <p-table responsiveLayout="scroll" [value]="owners()" [loading]="loading()">
       <ng-template pTemplate="header">
         <tr>
           <th>Code</th>
@@ -30,7 +30,7 @@
           <th>Actions</th>
         </tr>
       </ng-template>
-      <ng-template pTemplate="body" let-owner>
+      <ng-template let-owner pTemplate="body">
         <tr>
           <td>{{ owner.code }}</td>
           <td>{{ owner.name }}</td>
@@ -46,13 +46,18 @@
             </span>
           </td>
           <td class="flex gap-2">
-            <p-button icon="pi pi-pencil" severity="secondary" [text]="true" (onClick)="openEdit(owner)" />
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              [text]="true"
+              (onClick)="openEdit(owner)"
+            />
             <p-button
               icon="pi pi-trash"
               severity="danger"
               [text]="true"
-              (onClick)="delete(owner)"
               [disabled]="!owner.isActive"
+              (onClick)="delete(owner)"
             />
           </td>
         </tr>
@@ -62,11 +67,11 @@
 </div>
 
 <p-dialog
-  [(visible)]="showDialogValue"
   [header]="isEdit() ? 'Edit Owner' : 'Add Owner'"
   [modal]="true"
   [style]="{ width: '480px' }"
   (onHide)="showDialog.set(false)"
+  [(visible)]="showDialogValue"
 >
   <div class="flex flex-col gap-3">
     <div>
@@ -98,7 +103,7 @@
   </div>
   <ng-template pTemplate="footer">
     <p-button label="Cancel" severity="secondary" (onClick)="showDialog.set(false)" />
-    <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+    <p-button label="Save" [loading]="loading()" (onClick)="save()" />
   </ng-template>
 </p-dialog>
 

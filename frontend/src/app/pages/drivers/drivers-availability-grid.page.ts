@@ -33,11 +33,7 @@ import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { catchError, forkJoin, of } from 'rxjs';
 
-interface AvailabilityMap {
-  [driverToolId: string]: {
-    [dateYmd: string]: DriverAvailabilityDto;
-  };
-}
+type AvailabilityMap = Record<string, Record<string, DriverAvailabilityDto>>;
 
 interface GridCell {
   driver: DriverDto;

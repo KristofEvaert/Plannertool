@@ -5,4 +5,3 @@ export interface ImportPolesResultDto {
   fromDueDate: string; // ISO date string
   toDueDate: string; // ISO date string
 }
-

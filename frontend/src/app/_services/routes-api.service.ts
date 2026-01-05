@@ -109,11 +109,7 @@ export class RoutesApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/routes`;
 
-  getRoutes(
-    date: Date,
-    driverToolId: string,
-    ownerId: number
-  ): Observable<RouteDto[]> {
+  getRoutes(date: Date, driverToolId: string, ownerId: number): Observable<RouteDto[]> {
     const params = new HttpParams()
       // IMPORTANT: use local yyyy-MM-dd (not UTC via toISOString) to avoid off-by-one-day bugs
       .set('date', toYmd(date))
@@ -126,7 +122,7 @@ export class RoutesApiService {
     date: Date,
     driverToolId: string,
     ownerId: number,
-    includeGeometry = true
+    includeGeometry = true,
   ): Observable<RouteDto | null> {
     const params = new HttpParams()
       .set('date', toYmd(date))
@@ -141,15 +137,21 @@ export class RoutesApiService {
   }
 
   arriveStop(routeStopId: number, arrivedAtUtc?: string): Observable<RouteStopDto> {
-    return this.http.post<RouteStopDto>(`${environment.apiBaseUrl}/api/routeStops/${routeStopId}/arrive`, {
-      arrivedAtUtc,
-    });
+    return this.http.post<RouteStopDto>(
+      `${environment.apiBaseUrl}/api/routeStops/${routeStopId}/arrive`,
+      {
+        arrivedAtUtc,
+      },
+    );
   }
 
   departStop(routeStopId: number, departedAtUtc?: string): Observable<RouteStopDto> {
-    return this.http.post<RouteStopDto>(`${environment.apiBaseUrl}/api/routeStops/${routeStopId}/depart`, {
-      departedAtUtc,
-    });
+    return this.http.post<RouteStopDto>(
+      `${environment.apiBaseUrl}/api/routeStops/${routeStopId}/depart`,
+      {
+        departedAtUtc,
+      },
+    );
   }
 
   upsertRoute(request: CreateRouteRequest): Observable<RouteDto> {
@@ -176,11 +178,15 @@ export class RoutesApiService {
     return this.http.delete<void>(`${this.baseUrl}/driver-day`, { params });
   }
 
-  deleteDayRoutes(date: Date, ownerId: number): Observable<{ deletedRoutes: number; skippedFixed: number }> {
-    const params = new HttpParams()
-      .set('date', toYmd(date))
-      .set('ownerId', ownerId.toString());
-    return this.http.delete<{ deletedRoutes: number; skippedFixed: number }>(`${this.baseUrl}/day`, { params });
+  deleteDayRoutes(
+    date: Date,
+    ownerId: number,
+  ): Observable<{ deletedRoutes: number; skippedFixed: number }> {
+    const params = new HttpParams().set('date', toYmd(date)).set('ownerId', ownerId.toString());
+    return this.http.delete<{ deletedRoutes: number; skippedFixed: number }>(
+      `${this.baseUrl}/day`,
+      { params },
+    );
   }
 
   autoGenerateRoute(
@@ -197,7 +203,7 @@ export class RoutesApiService {
     },
     requireServiceTypeMatch?: boolean,
     normalizeWeights?: boolean,
-    weightTemplateId?: number
+    weightTemplateId?: number,
   ): Observable<RouteDto> {
     const body = {
       date: toYmd(date),
@@ -233,7 +239,7 @@ export class RoutesApiService {
     },
     requireServiceTypeMatch?: boolean,
     normalizeWeights?: boolean,
-    weightTemplateId?: number
+    weightTemplateId?: number,
   ): Observable<AutoGenerateAllResponse> {
     const body = {
       date: toYmd(date),

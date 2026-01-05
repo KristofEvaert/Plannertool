@@ -4,12 +4,12 @@
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <h1 class="text-3xl font-bold text-gray-900">Service Types</h1>
-        <app-help-manual [sectionId]="'service-types'"></app-help-manual>
+        <app-help-manual [sectionId]="'service-types'" />
       </div>
       <p-button
-        *ngIf="isSuperAdmin()"
         label="Add Service Type"
         icon="pi pi-plus"
+        *ngIf="isSuperAdmin()"
         (onClick)="openAddDialog()"
       />
     </div>
@@ -18,22 +18,22 @@
   <div class="mb-4" *ngIf="isSuperAdmin()">
     <label class="block text-sm font-medium mb-1">Owner</label>
     <p-select
-      [options]="ownerFilterOptions()"
       optionLabel="label"
       optionValue="value"
-      [ngModel]="ownerFilterId()"
-      (ngModelChange)="ownerFilterId.set($event); loadData()"
       placeholder="All owners"
       class="w-80"
+      [options]="ownerFilterOptions()"
+      [ngModel]="ownerFilterId()"
+      (ngModelChange)="ownerFilterId.set($event); loadData()"
     />
   </div>
 
   <!-- Table -->
   <p-table
+    styleClass="p-datatable-striped"
     [value]="items()"
     [loading]="loading()"
     [paginator]="false"
-    styleClass="p-datatable-striped"
   >
     <ng-template pTemplate="header">
       <tr>
@@ -46,7 +46,7 @@
         <th>Actions</th>
       </tr>
     </ng-template>
-    <ng-template pTemplate="body" let-item>
+    <ng-template let-item pTemplate="body">
       <tr>
         <td class="font-mono text-sm">{{ item.id }}</td>
         <td class="font-mono font-semibold">{{ item.code }}</td>
@@ -66,13 +66,13 @@
         </td>
         <td>
           <p-button
-            *ngIf="isSuperAdmin()"
             icon="pi pi-pencil"
+            *ngIf="isSuperAdmin()"
             [text]="true"
             [rounded]="true"
             (onClick)="openEditDialog(item)"
           />
-          <span *ngIf="!isSuperAdmin()" class="text-gray-400 text-sm">Read-only</span>
+          <span class="text-gray-400 text-sm" *ngIf="!isSuperAdmin()">Read-only</span>
         </td>
       </tr>
     </ng-template>
@@ -85,34 +85,34 @@
 
   <!-- Add/Edit Dialog -->
   <p-dialog
-    [(visible)]="showDialogValue"
     [header]="isEditMode() ? 'Edit Service Type' : 'Add Service Type'"
     [modal]="true"
     [style]="{ width: '500px' }"
     [appendTo]="'body'"
     [baseZIndex]="10000"
     (onHide)="showDialog.set(false)"
+    [(visible)]="showDialogValue"
   >
     <div class="flex flex-col gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">Owner *</label>
         <p-select
-          [options]="owners()"
           optionLabel="name"
           optionValue="id"
-          [ngModel]="form().ownerId"
-          (ngModelChange)="updateForm({ ownerId: $event })"
           placeholder="Select owner"
           class="w-full"
+          [options]="owners()"
+          [ngModel]="form().ownerId"
+          (ngModelChange)="updateForm({ ownerId: $event })"
         />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Code *</label>
         <input
           pInputText
-          [(ngModel)]="form().code"
           placeholder="e.g., CHARGING_POST"
           class="w-full"
+          [(ngModel)]="form().code"
         />
         <p class="text-xs text-gray-500 mt-1">Uppercase, alphanumeric, underscores only</p>
       </div>
@@ -120,33 +120,33 @@
         <label class="block text-sm font-medium mb-1">Name *</label>
         <input
           pInputText
-          [(ngModel)]="form().name"
           placeholder="e.g., Charging Posts"
           class="w-full"
+          [(ngModel)]="form().name"
         />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Description</label>
         <input
           pInputText
-          [(ngModel)]="form().description"
           placeholder="Optional description"
           class="w-full"
+          [(ngModel)]="form().description"
         />
       </div>
       <div class="flex items-center gap-2">
         <p-checkbox
+          inputId="serviceTypeActive"
           [binary]="true"
           [ngModel]="form().isActive"
           (ngModelChange)="updateForm({ isActive: $event })"
-          inputId="serviceTypeActive"
-        ></p-checkbox>
+        />
         <label for="serviceTypeActive" class="text-sm">Active</label>
       </div>
     </div>
     <ng-template pTemplate="footer">
       <p-button label="Cancel" severity="secondary" (onClick)="showDialog.set(false)" />
-      <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+      <p-button label="Save" [loading]="loading()" (onClick)="save()" />
     </ng-template>
   </p-dialog>
 

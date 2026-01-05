@@ -2,7 +2,10 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-import type { TravelTimeModelLearnedStatDto, TravelTimeModelStatus } from '@models/travel-time-model-admin.model';
+import type {
+  TravelTimeModelLearnedStatDto,
+  TravelTimeModelStatus,
+} from '@models/travel-time-model-admin.model';
 
 @Injectable({ providedIn: 'root' })
 export class TravelTimeModelAdminApiService {

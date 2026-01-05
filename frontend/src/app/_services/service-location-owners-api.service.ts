@@ -30,7 +30,10 @@ export class ServiceLocationOwnersApiService {
     return this.http.post<ServiceLocationOwnerDto>(this.baseUrl, request);
   }
 
-  update(id: number, request: UpsertServiceLocationOwnerRequest): Observable<ServiceLocationOwnerDto> {
+  update(
+    id: number,
+    request: UpsertServiceLocationOwnerRequest,
+  ): Observable<ServiceLocationOwnerDto> {
     return this.http.put<ServiceLocationOwnerDto>(`${this.baseUrl}/${id}`, request);
   }
 

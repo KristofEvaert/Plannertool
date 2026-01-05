@@ -1,6 +1,6 @@
 <div class="container mx-auto px-4 py-6">
   @if (error()) {
-    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+    <p-message severity="error" class="mb-4" [text]="error() || ''" />
   }
 
   @if (loading() && !driverDay()) {
@@ -62,11 +62,11 @@
             <div class="flex gap-2">
               <textarea
                 pTextarea
-                [value]="getNote(stop.poleId)"
-                (input)="setNote(stop.poleId, $any($event.target).value)"
                 placeholder="Add note..."
                 rows="2"
                 class="flex-1"
+                [value]="getNote(stop.poleId)"
+                (input)="setNote(stop.poleId, $any($event.target).value)"
               ></textarea>
               <p-button label="Add Note" size="small" (onClick)="addNote(stop.poleId)" />
             </div>

@@ -54,4 +54,3 @@ export class PolesApiService {
     return this.http.post<void>(`${this.baseUrl}/${poleId}/unfixdate`, {});
   }
 }
-

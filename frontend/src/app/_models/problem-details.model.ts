@@ -13,4 +13,3 @@ export interface ApiError extends Error {
   detail?: string;
   originalError?: unknown;
 }
-

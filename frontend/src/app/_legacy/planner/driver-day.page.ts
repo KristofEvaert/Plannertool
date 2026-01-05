@@ -8,7 +8,11 @@ import { MessageService } from 'primeng/api';
 import { catchError, of } from 'rxjs';
 import { PlanApiService } from '@services/plan-api.service';
 import type { DriverDayDto } from '@models/plan.model';
-import { LeafletMapComponent, type MapMarker, type PolylinePoint } from '@components/map/leaflet-map.component';
+import {
+  LeafletMapComponent,
+  type MapMarker,
+  type PolylinePoint,
+} from '@components/map/leaflet-map.component';
 
 @Component({
   selector: 'app-driver-day',
@@ -57,7 +61,7 @@ export class DriverDayPage {
             detail: err.detail || err.title || err.message || 'Failed to load driver day',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((data) => {
         this.driverDay.set(data);
@@ -128,9 +132,14 @@ export class DriverDayPage {
     const points: PolylinePoint[] = [];
 
     // Add start position as first point if valid
-    if (day.startLatitude && day.startLongitude && 
-        !isNaN(day.startLatitude) && !isNaN(day.startLongitude) &&
-        day.startLatitude !== 0 && day.startLongitude !== 0) {
+    if (
+      day.startLatitude &&
+      day.startLongitude &&
+      !isNaN(day.startLatitude) &&
+      !isNaN(day.startLongitude) &&
+      day.startLatitude !== 0 &&
+      day.startLongitude !== 0
+    ) {
       points.push({
         lat: day.startLatitude,
         lon: day.startLongitude,
@@ -140,9 +149,14 @@ export class DriverDayPage {
     // Add all stops with valid coordinates
     if (day.stops) {
       for (const stop of day.stops) {
-        if (stop.latitude && stop.longitude && 
-            !isNaN(stop.latitude) && !isNaN(stop.longitude) &&
-            stop.latitude !== 0 && stop.longitude !== 0) {
+        if (
+          stop.latitude &&
+          stop.longitude &&
+          !isNaN(stop.latitude) &&
+          !isNaN(stop.longitude) &&
+          stop.latitude !== 0 &&
+          stop.longitude !== 0
+        ) {
           points.push({
             lat: stop.latitude,
             lon: stop.longitude,
@@ -152,10 +166,16 @@ export class DriverDayPage {
     }
 
     // Add return to start position if we have stops and valid start coordinates
-    if (day.stops && day.stops.length > 0 && 
-        day.startLatitude && day.startLongitude && 
-        !isNaN(day.startLatitude) && !isNaN(day.startLongitude) &&
-        day.startLatitude !== 0 && day.startLongitude !== 0) {
+    if (
+      day.stops &&
+      day.stops.length > 0 &&
+      day.startLatitude &&
+      day.startLongitude &&
+      !isNaN(day.startLatitude) &&
+      !isNaN(day.startLongitude) &&
+      day.startLatitude !== 0 &&
+      day.startLongitude !== 0
+    ) {
       points.push({
         lat: day.startLatitude,
         lon: day.startLongitude,

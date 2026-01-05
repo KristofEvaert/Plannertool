@@ -2,7 +2,7 @@
   <div class="map-page-header">
     <div class="flex items-center gap-2">
       <h1 class="page-title">Service Locations Map</h1>
-      <app-help-manual [sectionId]="'map'"></app-help-manual>
+      <app-help-manual [sectionId]="'map'" />
     </div>
 
     <div class="controls-section">
@@ -12,16 +12,16 @@
         >
         <p-multiSelect
           id="serviceType"
-          [options]="serviceTypes()"
-          [(ngModel)]="selectedServiceTypeIds"
-          (ngModelChange)="onServiceTypeOrOwnerChange()"
           optionLabel="name"
           optionValue="id"
           placeholder="Select up to 5 service types"
+          [options]="serviceTypes()"
           [selectionLimit]="5"
           [showToggleAll]="false"
           [filter]="true"
           [style]="{ width: '100%' }"
+          (ngModelChange)="onServiceTypeOrOwnerChange()"
+          [(ngModel)]="selectedServiceTypeIds"
         />
       </div>
 
@@ -29,13 +29,13 @@
         <label for="owner" class="control-label">Owner <span class="required">*</span></label>
         <p-select
           id="owner"
-          [options]="owners()"
-          [(ngModel)]="selectedOwnerId"
-          (ngModelChange)="onServiceTypeOrOwnerChange()"
           optionLabel="name"
           optionValue="id"
           placeholder="Select owner"
+          [options]="owners()"
           [style]="{ width: '100%' }"
+          (ngModelChange)="onServiceTypeOrOwnerChange()"
+          [(ngModel)]="selectedOwnerId"
         />
       </div>
 
@@ -43,13 +43,13 @@
         <label for="fromDate" class="control-label">From Date</label>
         <p-datepicker
           id="fromDate"
-          [(ngModel)]="fromDate"
-          (ngModelChange)="onDateRangeChange()"
-          [showIcon]="true"
           dateFormat="yy-mm-dd"
+          [showIcon]="true"
           [style]="{ width: '100%' }"
           [appendTo]="'body'"
           [baseZIndex]="1000"
+          (ngModelChange)="onDateRangeChange()"
+          [(ngModel)]="fromDate"
         />
       </div>
 
@@ -57,13 +57,13 @@
         <label for="toDate" class="control-label">To Date</label>
         <p-datepicker
           id="toDate"
-          [(ngModel)]="toDate"
-          (ngModelChange)="onDateRangeChange()"
-          [showIcon]="true"
           dateFormat="yy-mm-dd"
+          [showIcon]="true"
           [style]="{ width: '100%' }"
           [appendTo]="'body'"
           [baseZIndex]="1000"
+          (ngModelChange)="onDateRangeChange()"
+          [(ngModel)]="toDate"
         />
       </div>
 
@@ -72,16 +72,16 @@
           <p-button
             label="Load"
             icon="pi pi-search"
-            (onClick)="onLoad()"
             [loading]="loading()"
             [disabled]="selectedServiceTypeIds().length === 0 || !selectedOwnerId() || loading()"
+            (onClick)="onLoad()"
           />
           <p-button
             label="Export schedule"
             icon="pi pi-download"
             severity="secondary"
-            (onClick)="exportRoutes()"
             [disabled]="loading()"
+            (onClick)="exportRoutes()"
           />
         </div>
       </div>
@@ -144,18 +144,18 @@
             icon="pi pi-bolt"
             size="small"
             severity="secondary"
-            (onClick)="autoGenerateForAllDrivers()"
             [loading]="autoGenerateLoading()"
             [disabled]="!selectedOwnerId() || !mapData()?.items?.length"
-          ></p-button>
+            (onClick)="autoGenerateForAllDrivers()"
+          />
           <p-button
             label="Clear day routes"
             icon="pi pi-trash"
             size="small"
             severity="secondary"
-            (onClick)="clearAllRoutesForDay()"
             [disabled]="driverRoutes().size === 0"
-          ></p-button>
+            (onClick)="clearAllRoutesForDay()"
+          />
         </div>
 
         <div class="date-picker-container">
@@ -167,17 +167,17 @@
               severity="secondary"
               styleClass="date-nav-button"
               (onClick)="shiftSelectedDate(-1)"
-            ></p-button>
+            />
             <div class="date-picker-input">
               <p-datepicker
                 id="driverDate"
-                [(ngModel)]="selectedDate"
-                (onSelect)="onDateChange()"
-                [showIcon]="true"
                 dateFormat="yy-mm-dd"
+                [showIcon]="true"
                 [style]="{ width: '100%' }"
                 [appendTo]="'body'"
                 [baseZIndex]="1000"
+                (onSelect)="onDateChange()"
+                [(ngModel)]="selectedDate"
               />
             </div>
             <p-button
@@ -186,7 +186,7 @@
               severity="secondary"
               styleClass="date-nav-button"
               (onClick)="shiftSelectedDate(1)"
-            ></p-button>
+            />
           </div>
         </div>
 
@@ -195,15 +195,15 @@
           <div class="weight-row">
             <label class="weight-label">Template</label>
             <p-select
-              [options]="weightTemplateOptions()"
-              [ngModel]="selectedWeightTemplateId()"
-              (ngModelChange)="onWeightTemplateChange($event)"
               optionLabel="label"
               optionValue="value"
               placeholder="Manual weights"
+              styleClass="w-full"
+              [options]="weightTemplateOptions()"
+              [ngModel]="selectedWeightTemplateId()"
               [showClear]="true"
               [appendTo]="'body'"
-              styleClass="w-full"
+              (ngModelChange)="onWeightTemplateChange($event)"
             />
           </div>
           <div class="weight-actions" *ngIf="canManageTemplates()">
@@ -213,15 +213,15 @@
               size="small"
               severity="secondary"
               (onClick)="openNewTemplateDialog()"
-            ></p-button>
+            />
             <p-button
               label="Update template"
               icon="pi pi-refresh"
               size="small"
               severity="secondary"
-              (onClick)="openRenameTemplateDialog()"
               [disabled]="!canUpdateSelectedTemplate()"
-            ></p-button>
+              (onClick)="openRenameTemplateDialog()"
+            />
           </div>
           <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
             <label class="weight-label">
@@ -291,8 +291,8 @@
 
         <div class="drivers-list" *ngIf="!loadingDrivers()">
           <div
-            *ngFor="let item of driversWithAvailability(); trackBy: trackByDriverId"
             class="driver-item"
+            *ngFor="let item of driversWithAvailability(); trackBy: trackByDriverId"
             [class.driver-item-selected]="isDriverExpanded(item)"
             [class.driver-item-unavailable]="!item.availability"
             [class.driver-item-overbooked]="isDriverOverbooked(item)"
@@ -302,9 +302,9 @@
           >
             <div
               class="driver-header"
-              (click)="toggleDriverCard(item, $event)"
               role="button"
               tabindex="0"
+              (click)="toggleDriverCard(item, $event)"
               (keydown.enter)="toggleDriverCard(item, $event)"
               (keydown.space)="toggleDriverCard(item, $event)"
             >
@@ -343,9 +343,7 @@
                   <i class="pi pi-clock mr-1"></i>
                   {{ formatRouteTime(getCurrentRouteForDisplay()!.totalTimeMinutes) }}
                   <span style="opacity: 0.75">
-                    ({{
-                      formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!))
-                    }}
+                    ({{ formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!)) }}
                     service +
                     {{ formatRouteTime(getDriveMinutes(getCurrentRouteForDisplay()!)) }} driving)
                   </span>
@@ -387,23 +385,23 @@
                       type="text"
                       class="route-override-input"
                       placeholder="Start address (optional)"
-                      [(ngModel)]="startOverrideAddress"
                       (click)="$event.stopPropagation()"
+                      [(ngModel)]="startOverrideAddress"
                     />
                     <div class="route-override-coords">
                       <input
                         type="number"
                         class="route-override-input"
                         placeholder="Lat"
-                        [(ngModel)]="startOverrideLatitude"
                         (click)="$event.stopPropagation()"
+                        [(ngModel)]="startOverrideLatitude"
                       />
                       <input
                         type="number"
                         class="route-override-input"
                         placeholder="Lng"
-                        [(ngModel)]="startOverrideLongitude"
                         (click)="$event.stopPropagation()"
+                        [(ngModel)]="startOverrideLongitude"
                       />
                     </div>
                     <div class="route-override-actions">
@@ -427,17 +425,17 @@
 
                 <div *ngIf="getStopSchedule(getCurrentRouteForDisplay()) as stopSchedule">
                   <div
+                    class="route-location-item"
                     *ngFor="
                       let waypoint of getLocationWaypoints(getCurrentRouteForDisplay()!);
                       let i = index
                     "
-                    class="route-location-item"
                   >
                     <button
                       type="button"
                       class="route-location-number route-location-number-btn"
-                      (click)="$event.stopPropagation(); toggleSelectedRouteStop(i)"
                       title="Select stop to reorder"
+                      (click)="$event.stopPropagation(); toggleSelectedRouteStop(i)"
                     >
                       {{ i + 1 }}
                     </button>
@@ -446,20 +444,20 @@
                       <button
                         type="button"
                         class="route-reorder-btn"
+                        title="Move up"
                         [disabled]="i === 0"
                         (click)="$event.stopPropagation(); moveSelectedStop('up')"
-                        title="Move up"
                       >
                         <i class="pi pi-arrow-up"></i>
                       </button>
                       <button
                         type="button"
                         class="route-reorder-btn"
+                        title="Move down"
                         [disabled]="
                           i === getLocationWaypoints(getCurrentRouteForDisplay()!).length - 1
                         "
                         (click)="$event.stopPropagation(); moveSelectedStop('down')"
-                        title="Move down"
                       >
                         <i class="pi pi-arrow-down"></i>
                       </button>
@@ -505,23 +503,23 @@
                       type="text"
                       class="route-override-input"
                       placeholder="End address (optional)"
-                      [(ngModel)]="endOverrideAddress"
                       (click)="$event.stopPropagation()"
+                      [(ngModel)]="endOverrideAddress"
                     />
                     <div class="route-override-coords">
                       <input
                         type="number"
                         class="route-override-input"
                         placeholder="Lat"
-                        [(ngModel)]="endOverrideLatitude"
                         (click)="$event.stopPropagation()"
+                        [(ngModel)]="endOverrideLatitude"
                       />
                       <input
                         type="number"
                         class="route-override-input"
                         placeholder="Lng"
-                        [(ngModel)]="endOverrideLongitude"
                         (click)="$event.stopPropagation()"
+                        [(ngModel)]="endOverrideLongitude"
                       />
                     </div>
                     <div class="route-override-actions">
@@ -555,14 +553,14 @@
                   icon="pi pi-times"
                   severity="secondary"
                   size="small"
-                  (onClick)="clearRoute()"
                   [style]="{ width: '100%', marginTop: '0.5rem' }"
+                  (onClick)="clearRoute()"
                 />
               </div>
             </div>
           </div>
 
-          <div *ngIf="driversWithAvailability().length === 0" class="no-drivers">
+          <div class="no-drivers" *ngIf="driversWithAvailability().length === 0">
             <i class="pi pi-info-circle mr-2"></i>
             No drivers found
           </div>
@@ -580,16 +578,16 @@
 <p-toast />
 
 <p-dialog
-  [(visible)]="showTemplateNameDialogValue"
   [modal]="true"
   [closable]="true"
   [style]="{ width: '420px' }"
   [header]="templateDialogMode() === 'update' ? 'Update weight template' : 'Save weight template'"
+  [(visible)]="showTemplateNameDialogValue"
 >
   <div class="flex flex-col gap-4">
     <div>
       <label class="block text-sm font-semibold mb-1">Template name</label>
-      <input pInputText class="w-full" [(ngModel)]="newTemplateName" placeholder="Enter a name" />
+      <input pInputText class="w-full" placeholder="Enter a name" [(ngModel)]="newTemplateName" />
     </div>
   </div>
   <ng-template pTemplate="footer">
@@ -602,19 +600,19 @@
       />
       <p-button
         label="Save"
-        (onClick)="saveTemplateFromDialog()"
         [loading]="templateSaveLoading()"
+        (onClick)="saveTemplateFromDialog()"
       />
     </div>
   </ng-template>
 </p-dialog>
 
 <p-dialog
-  [(visible)]="showBulkAddDialogValue"
+  header="Some locations were not added"
   [modal]="true"
   [closable]="true"
   [style]="{ width: '520px' }"
-  header="Some locations were not added"
+  [(visible)]="showBulkAddDialogValue"
 >
   <div class="bulk-add-dialog">
     <div class="bulk-add-subtitle">These locations were skipped during the bulk add.</div>

@@ -5,7 +5,7 @@ import type { ApiError, ProblemDetails } from '@models/problem-details.model';
 
 export function authInterceptor(
   req: HttpRequest<unknown>,
-  next: HttpHandlerFn
+  next: HttpHandlerFn,
 ): Observable<HttpEvent<unknown>> {
   const token = localStorage.getItem('tp_token');
   const authReq = token
@@ -38,6 +38,6 @@ export function authInterceptor(
 
       // For other errors, rethrow as-is
       return throwError(() => error);
-    })
+    }),
   );
 }

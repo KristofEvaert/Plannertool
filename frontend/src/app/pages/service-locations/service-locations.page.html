@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <h1 class="text-3xl font-bold text-gray-900">Service Locations</h1>
-        <app-help-manual [sectionId]="'service-locations'"></app-help-manual>
+        <app-help-manual [sectionId]="'service-locations'" />
       </div>
       <div class="flex gap-2">
         <p-button
@@ -197,10 +197,10 @@
           </div>
         </td>
         <td>
-          <p-tag severity="info" [value]="item.serviceTypeName || '-'"></p-tag>
+          <p-tag severity="info" [value]="item.serviceTypeName || '-'" />
         </td>
         <td>
-          <p-tag severity="secondary" [value]="item.ownerName || '-'"></p-tag>
+          <p-tag severity="secondary" [value]="item.ownerName || '-'" />
         </td>
         <td>
           <span

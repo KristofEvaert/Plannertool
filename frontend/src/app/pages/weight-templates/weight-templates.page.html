@@ -1,10 +1,10 @@
-<p-toast></p-toast>
+<p-toast />
 <div class="pt-20 px-6 pb-6">
   <div class="max-w-6xl mx-auto space-y-4">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <h1 class="text-2xl font-bold text-gray-900">Weight Templates</h1>
-        <app-help-manual [sectionId]="'weight-templates'"></app-help-manual>
+        <app-help-manual [sectionId]="'weight-templates'" />
       </div>
     </div>
     <div class="flex flex-wrap items-end justify-between gap-4">
@@ -13,28 +13,28 @@
           <div class="w-64">
             <label class="block text-sm font-semibold mb-1">Owner</label>
             <p-select
-              [options]="ownerFilterOptions()"
-              [ngModel]="selectedOwnerId()"
-              (ngModelChange)="selectedOwnerId.set($event)"
               optionLabel="label"
               optionValue="value"
               placeholder="All owners"
+              [options]="ownerFilterOptions()"
+              [ngModel]="selectedOwnerId()"
               [filter]="true"
+              (ngModelChange)="selectedOwnerId.set($event)"
             />
           </div>
         }
         <div class="w-64">
           <label class="block text-sm font-semibold mb-1">Service type</label>
           <p-select
-            [options]="serviceTypeOptions()"
-            [ngModel]="selectedServiceTypeId()"
-            (ngModelChange)="selectedServiceTypeId.set($event)"
             optionLabel="label"
             optionValue="value"
             placeholder="Select owner first"
+            [options]="serviceTypeOptions()"
+            [ngModel]="selectedServiceTypeId()"
             [showClear]="true"
             [filter]="true"
             [disabled]="isSuperAdmin() && isOwnerFilterUnscoped()"
+            (ngModelChange)="selectedServiceTypeId.set($event)"
           />
         </div>
       </div>
@@ -54,7 +54,7 @@
             <th class="text-right">Actions</th>
           </tr>
         </ng-template>
-        <ng-template pTemplate="body" let-template>
+        <ng-template let-template pTemplate="body">
           <tr>
             <td class="font-medium">{{ template.name }}</td>
             <td>{{ template.scopeType }}</td>
@@ -62,10 +62,12 @@
             <td>{{ serviceTypeName(template.serviceTypeId) }}</td>
             <td class="text-xs text-gray-600">
               @if (template.weightCost > 0) {
-                Date {{ template.weightDate }}% / Cost {{ template.weightCost }}% / OT {{ template.weightOvertime }}%
+                Date {{ template.weightDate }}% / Cost {{ template.weightCost }}% / OT
+                {{ template.weightOvertime }}%
               } @else {
                 D {{ template.weightDistance }}% / T {{ template.weightTravelTime }}% / Date
-                {{ template.weightDate }}% / Cost {{ template.weightCost }}% / OT {{ template.weightOvertime }}%
+                {{ template.weightDate }}% / Cost {{ template.weightCost }}% / OT
+                {{ template.weightOvertime }}%
               }
             </td>
             <td>
@@ -99,11 +101,11 @@
 </div>
 
 <p-dialog
-  [(visible)]="showDialogValue"
   [modal]="true"
   [closable]="true"
   [style]="{ width: '640px' }"
   [header]="isEdit() ? 'Edit weight template' : 'Add weight template'"
+  [(visible)]="showDialogValue"
 >
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
     <div class="md:col-span-2">
@@ -120,11 +122,11 @@
       <div>
         <label class="block text-sm font-semibold mb-1">Scope</label>
         <p-select
+          optionLabel="label"
+          optionValue="value"
           [options]="scopeOptions()"
           [ngModel]="form().scopeType"
           (ngModelChange)="onFormChange('scopeType', $event)"
-          optionLabel="label"
-          optionValue="value"
         />
       </div>
     }
@@ -133,13 +135,13 @@
       <div>
         <label class="block text-sm font-semibold mb-1">Owner</label>
         <p-select
-          [options]="ownerOptions()"
-          [ngModel]="form().ownerId"
-          (ngModelChange)="onFormChange('ownerId', $event)"
           optionLabel="label"
           optionValue="value"
           placeholder="Select owner"
+          [options]="ownerOptions()"
+          [ngModel]="form().ownerId"
           [filter]="true"
+          (ngModelChange)="onFormChange('ownerId', $event)"
         />
       </div>
     }
@@ -148,14 +150,14 @@
       <div>
         <label class="block text-sm font-semibold mb-1">Service type</label>
         <p-select
-          [options]="serviceTypeOptions()"
-          [ngModel]="form().serviceTypeId"
-          (ngModelChange)="onFormChange('serviceTypeId', $event)"
           optionLabel="label"
           optionValue="value"
           placeholder="Select owner first"
+          [options]="serviceTypeOptions()"
+          [ngModel]="form().serviceTypeId"
           [filter]="true"
           [disabled]="isSuperAdmin() && !form().ownerId"
+          (ngModelChange)="onFormChange('serviceTypeId', $event)"
         />
       </div>
     }
@@ -276,7 +278,9 @@
           [ngModel]="form().detourCostCapPercent"
           (ngModelChange)="onFormChange('detourCostCapPercent', $event)"
         />
-        <span class="text-sm font-semibold w-12 text-right">{{ form().detourCostCapPercent }}%</span>
+        <span class="text-sm font-semibold w-12 text-right"
+          >{{ form().detourCostCapPercent }}%</span
+        >
       </div>
     </div>
 
@@ -308,14 +312,16 @@
           [ngModel]="form().lateRefMinutesPercent"
           (ngModelChange)="onFormChange('lateRefMinutesPercent', $event)"
         />
-        <span class="text-sm font-semibold w-12 text-right">{{ form().lateRefMinutesPercent }}%</span>
+        <span class="text-sm font-semibold w-12 text-right"
+          >{{ form().lateRefMinutesPercent }}%</span
+        >
       </div>
     </div>
 
     <div class="md:col-span-2 text-xs text-gray-600 flex flex-col gap-2">
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-semibold text-gray-700">Active:</span>
-        <span *ngIf="activeWeightSummary().length > 0; else noActive" class="flex flex-wrap gap-2">
+        <span class="flex flex-wrap gap-2" *ngIf="activeWeightSummary().length > 0; else noActive">
           <span
             class="bg-gray-200 text-gray-700 rounded-full px-2 py-0.5"
             *ngFor="let item of activeWeightSummary()"
@@ -353,9 +359,7 @@
       </button>
     </div>
 
-    <div class="md:col-span-2 text-xs text-gray-500">
-      1% is almost ignored. 100% is decisive.
-    </div>
+    <div class="md:col-span-2 text-xs text-gray-500">1% is almost ignored. 100% is decisive.</div>
     <div class="md:col-span-2 text-xs text-gray-400">
       Cost replaces Distance + Travel time when Cost &gt; 0. Overtime only affects late finishes.
     </div>
@@ -365,10 +369,10 @@
 
     <div class="flex items-center gap-2 mt-6">
       <p-checkbox
+        inputId="template-active"
         [binary]="true"
         [ngModel]="form().isActive"
         (ngModelChange)="onFormChange('isActive', $event)"
-        inputId="template-active"
       />
       <label for="template-active" class="text-sm">Active</label>
     </div>
@@ -382,7 +386,7 @@
         [outlined]="true"
         (onClick)="showDialog.set(false)"
       />
-      <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+      <p-button label="Save" [loading]="loading()" (onClick)="save()" />
     </div>
   </ng-template>
 </p-dialog>

@@ -2,7 +2,10 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-import type { SystemCostSettingsDto, SystemCostSettingsOverviewDto } from '@models/system-cost-settings.model';
+import type {
+  SystemCostSettingsDto,
+  SystemCostSettingsOverviewDto,
+} from '@models/system-cost-settings.model';
 
 @Injectable({ providedIn: 'root' })
 export class SystemCostSettingsApiService {
@@ -17,7 +20,10 @@ export class SystemCostSettingsApiService {
     return this.http.get<SystemCostSettingsDto>(this.baseUrl, { params });
   }
 
-  update(request: SystemCostSettingsDto, ownerId?: number | null): Observable<SystemCostSettingsDto> {
+  update(
+    request: SystemCostSettingsDto,
+    ownerId?: number | null,
+  ): Observable<SystemCostSettingsDto> {
     let params = new HttpParams();
     if (ownerId !== null && ownerId !== undefined) {
       params = params.set('ownerId', ownerId.toString());
@@ -28,5 +34,4 @@ export class SystemCostSettingsApiService {
     const params = new HttpParams().set('includeInactive', includeInactive.toString());
     return this.http.get<SystemCostSettingsOverviewDto[]>(`${this.baseUrl}/overview`, { params });
   }
-
 }

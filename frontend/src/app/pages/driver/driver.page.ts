@@ -37,8 +37,14 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { ToastModule } from 'primeng/toast';
 
-type DriverOption = { label: string; value: string };
-type OwnerOption = { label: string; value: number };
+interface DriverOption {
+  label: string;
+  value: string;
+}
+interface OwnerOption {
+  label: string;
+  value: number;
+}
 
 @Component({
   selector: 'app-driver-page',

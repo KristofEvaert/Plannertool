@@ -10,13 +10,13 @@
     <div class="audit-filter">
       <label>Date range</label>
       <p-datepicker
+        styleClass="w-64"
+        placeholder="Select range"
         [ngModel]="dateRange()"
-        (ngModelChange)="onDateRangeChange($event)"
         [selectionMode]="'range'"
         [showIcon]="true"
         [appendTo]="'body'"
-        styleClass="w-64"
-        placeholder="Select range"
+        (ngModelChange)="onDateRangeChange($event)"
       />
     </div>
 
@@ -24,72 +24,72 @@
       <label>Search</label>
       <input
         pInputText
-        [ngModel]="search()"
-        (ngModelChange)="onSearchChange($event)"
         placeholder="Path, user, body, trace"
         class="w-64"
+        [ngModel]="search()"
+        (ngModelChange)="onSearchChange($event)"
       />
     </div>
 
     <div class="audit-filter">
       <label>HTTP method</label>
       <p-multiSelect
-        [options]="methodOptions"
-        [ngModel]="methods()"
-        (ngModelChange)="methods.set($event)"
         optionLabel="label"
         optionValue="value"
         placeholder="All methods"
+        styleClass="w-56"
+        [options]="methodOptions"
+        [ngModel]="methods()"
         [display]="'chip'"
         [showClear]="true"
         [filter]="true"
         [appendTo]="'body'"
-        styleClass="w-56"
+        (ngModelChange)="methods.set($event)"
       />
     </div>
 
     <div class="audit-filter">
       <label>Status</label>
       <p-select
-        [options]="statusOptions"
-        [ngModel]="statusFilter()"
-        (ngModelChange)="statusFilter.set($event)"
         optionLabel="label"
         optionValue="value"
         placeholder="All statuses"
-        [appendTo]="'body'"
         styleClass="w-44"
+        [options]="statusOptions"
+        [ngModel]="statusFilter()"
+        [appendTo]="'body'"
+        (ngModelChange)="statusFilter.set($event)"
       />
     </div>
 
     <div class="audit-filter">
       <label>User</label>
       <p-autoComplete
-        [ngModel]="selectedUser()"
-        (ngModelChange)="selectedUser.set($event)"
-        [suggestions]="userSuggestions()"
-        (completeMethod)="onUserSearch($event)"
-        [dropdown]="true"
         placeholder="User email or name"
-        [appendTo]="'body'"
         styleClass="w-56"
+        [ngModel]="selectedUser()"
+        [suggestions]="userSuggestions()"
+        [dropdown]="true"
+        [appendTo]="'body'"
+        (ngModelChange)="selectedUser.set($event)"
+        (completeMethod)="onUserSearch($event)"
       />
     </div>
 
     <div class="audit-filter">
       <label>Role</label>
       <p-multiSelect
-        [options]="roleOptions()"
-        [ngModel]="roleFilters()"
-        (ngModelChange)="roleFilters.set($event)"
         optionLabel="label"
         optionValue="value"
         placeholder="All roles"
+        styleClass="w-56"
+        [options]="roleOptions()"
+        [ngModel]="roleFilters()"
         [display]="'chip'"
         [showClear]="true"
         [filter]="true"
         [appendTo]="'body'"
-        styleClass="w-56"
+        (ngModelChange)="roleFilters.set($event)"
       />
     </div>
 
@@ -97,16 +97,16 @@
       <p-button
         label="Apply filters"
         icon="pi pi-filter"
-        (onClick)="applyFilters()"
         [loading]="loading()"
+        (onClick)="applyFilters()"
       />
       <p-button label="Clear" severity="secondary" (onClick)="clearFilters()" />
       <p-button
         label="Refresh"
         icon="pi pi-refresh"
         [outlined]="true"
-        (onClick)="refresh()"
         [loading]="loading()"
+        (onClick)="refresh()"
       />
     </div>
   </div>
@@ -133,6 +133,9 @@
   </div>
 
   <p-table
+    sortMode="single"
+    dataKey="rowId"
+    styleClass="p-datatable-striped p-datatable-sm audit-table"
     [value]="displayedItems()"
     [loading]="loading()"
     [paginator]="true"
@@ -140,21 +143,18 @@
     [first]="(page() - 1) * pageSize()"
     [totalRecords]="totalCount()"
     [lazy]="true"
-    (onLazyLoad)="onPageChange($event)"
     [rowsPerPageOptions]="[25, 50, 100, 200]"
     [scrollable]="true"
     [scrollHeight]="'calc(100vh - 360px)'"
     [rowHover]="true"
     [expandedRowKeys]="expandedRowKeys()"
-    (onRowExpand)="onRowExpand($event)"
-    (onRowCollapse)="onRowCollapse($event)"
     [customSort]="true"
-    (sortFunction)="onSort($event)"
     [sortField]="sortField()"
     [sortOrder]="sortOrder()"
-    sortMode="single"
-    dataKey="rowId"
-    styleClass="p-datatable-striped p-datatable-sm audit-table"
+    (onLazyLoad)="onPageChange($event)"
+    (onRowExpand)="onRowExpand($event)"
+    (onRowCollapse)="onRowCollapse($event)"
+    (sortFunction)="onSort($event)"
   >
     <ng-template pTemplate="header">
       <tr>
@@ -176,7 +176,7 @@
       </tr>
     </ng-template>
 
-    <ng-template pTemplate="body" let-item let-expanded="expanded">
+    <ng-template let-item let-expanded="expanded" pTemplate="body">
       <tr>
         <td class="audit-cell">
           <div class="audit-timestamp">{{ formatTimestamp(item.timestampUtc) }}</div>
@@ -193,8 +193,8 @@
         </td>
         <td class="audit-cell">
           <span
-            class="audit-endpoint"
             pTooltip="{{ getEndpointTooltip(item) }}"
+            class="audit-endpoint"
             tooltipPosition="top"
           >
             {{ getEndpointLabel(item) }}
@@ -202,7 +202,7 @@
         </td>
         <td class="audit-cell">
           <div class="audit-user">{{ item.userName || item.userEmail || '-' }}</div>
-          <p-tag class="audit-role" [value]="getPrimaryRole(item)" severity="info" />
+          <p-tag class="audit-role" severity="info" [value]="getPrimaryRole(item)" />
         </td>
         <td class="audit-cell text-right">
           <span [class.audit-duration-slow]="isSlow(item)">{{ item.durationMs }} ms</span>
@@ -212,15 +212,15 @@
             type="button"
             pButton
             pRowToggler
+            class="p-button-text p-button-sm"
             [pRowToggler]="item"
             [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-            class="p-button-text p-button-sm"
           ></button>
         </td>
       </tr>
     </ng-template>
 
-    <ng-template pTemplate="expandedrow" let-item>
+    <ng-template let-item pTemplate="expandedrow">
       <tr>
         <td colspan="6" class="audit-detail-cell">
           <div class="audit-detail">
@@ -233,8 +233,8 @@
                     [severity]="getMethodSeverity(item.method)"
                   />
                   <span
-                    class="audit-detail-path"
                     pTooltip="{{ item.path || '-' }}"
+                    class="audit-detail-path"
                     tooltipPosition="top"
                   >
                     {{ item.path || '-' }}
@@ -282,21 +282,21 @@
                   <div class="audit-meta-value-wrapper">
                     <div
                       class="audit-meta-value"
+                      tooltipPosition="top"
                       [class.clamp-2]="clamp"
                       [pTooltip]="tooltip || value"
-                      tooltipPosition="top"
                     >
                       {{ value || '-' }}
                     </div>
                     <button
-                      *ngIf="copy && value"
                       type="button"
                       pButton
                       icon="pi pi-copy"
                       class="p-button-text p-button-sm audit-copy-button"
-                      (click)="copyText(value)"
                       pTooltip="Copy"
                       tooltipPosition="top"
+                      *ngIf="copy && value"
+                      (click)="copyText(value)"
                     ></button>
                   </div>
                 </div>
@@ -313,13 +313,13 @@
                         tooltip: getUserWithRole(item),
                       }
                     "
-                  ></ng-container>
+                  />
                   <ng-container
                     *ngTemplateOutlet="
                       metaItem;
                       context: { label: 'IP address', value: item.ipAddress || '-' }
                     "
-                  ></ng-container>
+                  />
                   <ng-container
                     *ngTemplateOutlet="
                       metaItem;
@@ -330,7 +330,7 @@
                         copy: true,
                       }
                     "
-                  ></ng-container>
+                  />
                 </div>
                 <div class="audit-detail-col">
                   <ng-container
@@ -344,7 +344,7 @@
                         clamp: true,
                       }
                     "
-                  ></ng-container>
+                  />
                   <ng-container
                     *ngTemplateOutlet="
                       metaItem;
@@ -356,39 +356,30 @@
                         clamp: true,
                       }
                     "
-                  ></ng-container>
+                  />
                 </div>
               </div>
             </div>
 
             <p-tabs>
               <p-tabpanel header="Response">
-                <app-json-viewer
-                  [value]="item.responseBody"
-                  emptyMessage="No response body"
-                ></app-json-viewer>
+                <app-json-viewer emptyMessage="No response body" [value]="item.responseBody" />
                 @if (item.responseBodyTruncated) {
                   <div class="audit-truncated">Response truncated.</div>
                 }
               </p-tabpanel>
               <p-tabpanel header="Request / Payload">
-                <app-json-viewer [value]="item.body" emptyMessage="No payload"></app-json-viewer>
+                <app-json-viewer emptyMessage="No payload" [value]="item.body" />
                 @if (item.bodyTruncated) {
                   <div class="audit-truncated">Request body truncated.</div>
                 }
               </p-tabpanel>
               <p-tabpanel header="Headers">
-                <app-json-viewer
-                  [value]="item.requestHeaders"
-                  emptyMessage="No headers"
-                ></app-json-viewer>
+                <app-json-viewer emptyMessage="No headers" [value]="item.requestHeaders" />
               </p-tabpanel>
               @if (hasTraceData(item)) {
                 <p-tabpanel header="Trace / Exception">
-                  <app-json-viewer
-                    [value]="getTraceDetails(item)"
-                    emptyMessage="No trace data"
-                  ></app-json-viewer>
+                  <app-json-viewer emptyMessage="No trace data" [value]="getTraceDetails(item)" />
                 </p-tabpanel>
               }
             </p-tabs>

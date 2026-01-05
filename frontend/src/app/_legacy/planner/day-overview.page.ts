@@ -79,7 +79,7 @@ export class DayOverviewPage {
             });
           }
           return of(null);
-        })
+        }),
       )
       .subscribe((data) => {
         // Only update if this is still the current date we're loading
@@ -108,7 +108,7 @@ export class DayOverviewPage {
             detail: err.detail || err.title || err.message || 'Failed to import poles',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -149,7 +149,7 @@ export class DayOverviewPage {
             detail: err.detail || err.title || err.message || 'Failed to generate plan',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe((result) => {
         this.loading.set(false);
@@ -186,7 +186,7 @@ export class DayOverviewPage {
             detail: err.detail || err.title || err.message || 'Failed to lock day',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loading.set(false);
@@ -212,7 +212,7 @@ export class DayOverviewPage {
             detail: err.detail || err.title || err.message || 'Failed to unlock day',
           });
           return of(null);
-        })
+        }),
       )
       .subscribe(() => {
         this.loading.set(false);
@@ -310,31 +310,46 @@ export class DayOverviewPage {
         // Include start position as first point, then all stops
         // Validate coordinates before adding
         const points: { lat: number; lon: number }[] = [];
-        
+
         // Add start position if valid
-        if (driver.startLatitude && driver.startLongitude && 
-            !isNaN(driver.startLatitude) && !isNaN(driver.startLongitude) &&
-            driver.startLatitude !== 0 && driver.startLongitude !== 0) {
+        if (
+          driver.startLatitude &&
+          driver.startLongitude &&
+          !isNaN(driver.startLatitude) &&
+          !isNaN(driver.startLongitude) &&
+          driver.startLatitude !== 0 &&
+          driver.startLongitude !== 0
+        ) {
           points.push({ lat: driver.startLatitude, lon: driver.startLongitude });
         }
-        
+
         // Add all stops with valid coordinates
         for (const stop of driver.stops) {
-          if (stop.latitude && stop.longitude && 
-              !isNaN(stop.latitude) && !isNaN(stop.longitude) &&
-              stop.latitude !== 0 && stop.longitude !== 0) {
+          if (
+            stop.latitude &&
+            stop.longitude &&
+            !isNaN(stop.latitude) &&
+            !isNaN(stop.longitude) &&
+            stop.latitude !== 0 &&
+            stop.longitude !== 0
+          ) {
             points.push({ lat: stop.latitude, lon: stop.longitude });
           }
         }
-        
+
         // Add return to start position if we have stops
-        if (driver.stops.length > 0 && 
-            driver.startLatitude && driver.startLongitude && 
-            !isNaN(driver.startLatitude) && !isNaN(driver.startLongitude) &&
-            driver.startLatitude !== 0 && driver.startLongitude !== 0) {
+        if (
+          driver.stops.length > 0 &&
+          driver.startLatitude &&
+          driver.startLongitude &&
+          !isNaN(driver.startLatitude) &&
+          !isNaN(driver.startLongitude) &&
+          driver.startLatitude !== 0 &&
+          driver.startLongitude !== 0
+        ) {
           points.push({ lat: driver.startLatitude, lon: driver.startLongitude });
         }
-        
+
         // Only add route if we have at least 2 points (to draw a line)
         if (points.length >= 2) {
           routes.push({
@@ -357,4 +372,3 @@ export class DayOverviewPage {
     this.selectedPoleId.set(`pole-${poleId}`);
   }
 }
-

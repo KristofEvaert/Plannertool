@@ -1,11 +1,11 @@
-export type ManualSection = {
+export interface ManualSection {
   id: string;
   title: string;
   route?: string;
   summary: string;
   functions: string[];
   options: string[];
-};
+}
 
 export const MANUAL_SECTIONS: ManualSection[] = [
   {
@@ -18,9 +18,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Review the planning workflow at a glance.',
       'Open the full manual from the info icon.',
     ],
-    options: [
-      'Quick actions open Drivers and Service Locations.',
-    ],
+    options: ['Quick actions open Drivers and Service Locations.'],
   },
   {
     id: 'map',
@@ -110,9 +108,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Review stop status and timing on the map and list.',
       'Read driver messages and mark them read or resolved.',
     ],
-    options: [
-      'Reload to refresh the current selection.',
-    ],
+    options: ['Reload to refresh the current selection.'],
   },
   {
     id: 'driver',
@@ -126,9 +122,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Send messages to the planner for a route or stop.',
       'Acknowledge route change notifications.',
     ],
-    options: [
-      'Owner, driver, and date selectors load the active route.',
-    ],
+    options: ['Owner, driver, and date selectors load the active route.'],
   },
   {
     id: 'users',
@@ -141,9 +135,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Link staff accounts to owners.',
       'Set driver start address and coordinates for driver users.',
     ],
-    options: [
-      'Role controls are limited by current user permissions.',
-    ],
+    options: ['Role controls are limited by current user permissions.'],
   },
   {
     id: 'weight-templates',
@@ -184,13 +176,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Owners',
     route: '/owners',
     summary: 'Manage service location owners (super admin).',
-    functions: [
-      'Create, edit, and deactivate owners.',
-      'Toggle the include inactive filter.',
-    ],
-    options: [
-      'Inactive owners can be shown or hidden.',
-    ],
+    functions: ['Create, edit, and deactivate owners.', 'Toggle the include inactive filter.'],
+    options: ['Inactive owners can be shown or hidden.'],
   },
   {
     id: 'audit-trail',

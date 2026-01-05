@@ -9,9 +9,8 @@ export class ImportApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/import`;
 
-  importPoles(days: number = 14): Observable<ImportPolesResultDto> {
+  importPoles(days = 14): Observable<ImportPolesResultDto> {
     const params = new HttpParams().set('days', days.toString());
     return this.http.post<ImportPolesResultDto>(`${this.baseUrl}/poles`, {}, { params });
   }
 }
-

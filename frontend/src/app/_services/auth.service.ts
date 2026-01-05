@@ -55,7 +55,9 @@ export class AuthService {
   }
 
   async login(request: LoginRequest): Promise<void> {
-    const response = await this.http.post<LoginResponse>(`${this.baseUrl}/login`, request).toPromise();
+    const response = await this.http
+      .post<LoginResponse>(`${this.baseUrl}/login`, request)
+      .toPromise();
     if (!response) throw new Error('Login failed');
     const expires = new Date(response.expiresAtUtc).getTime();
     localStorage.setItem(TOKEN_KEY, response.token);

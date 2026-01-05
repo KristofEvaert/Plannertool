@@ -2,19 +2,19 @@
   <h2 class="text-2xl font-bold mb-6">Driver Today</h2>
 
   @if (error()) {
-    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+    <p-message severity="error" class="mb-4" [text]="error() || ''" />
   }
 
   <div class="mb-6">
     <label class="block text-sm font-medium mb-2">Select Driver</label>
     <p-select
-      [options]="drivers()"
-      [(ngModel)]="selectedDriver"
       optionLabel="name"
-      [showClear]="true"
       placeholder="Choose a driver"
-      (onChange)="onDriverSelect($event.value)"
       class="w-full md:w-80"
+      [options]="drivers()"
+      [showClear]="true"
+      (onChange)="onDriverSelect($event.value)"
+      [(ngModel)]="selectedDriver"
     />
   </div>
 

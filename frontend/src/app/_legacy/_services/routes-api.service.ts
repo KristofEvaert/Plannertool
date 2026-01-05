@@ -20,26 +20,25 @@ export class RoutesApiService {
   arriveStop(routeId: number, stopId: number): Observable<StopActionResultDto> {
     return this.http.post<StopActionResultDto>(
       `${this.baseUrl}/${routeId}/stops/${stopId}/arrive`,
-      {}
+      {},
     );
   }
 
   completeStop(routeId: number, stopId: number): Observable<StopActionResultDto> {
     return this.http.post<StopActionResultDto>(
       `${this.baseUrl}/${routeId}/stops/${stopId}/complete`,
-      {}
+      {},
     );
   }
 
   addStopNote(
     routeId: number,
     stopId: number,
-    req: AddStopNoteRequest
+    req: AddStopNoteRequest,
   ): Observable<StopActionResultDto> {
     return this.http.post<StopActionResultDto>(
       `${this.baseUrl}/${routeId}/stops/${stopId}/note`,
-      req
+      req,
     );
   }
 }
-

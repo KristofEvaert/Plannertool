@@ -26,4 +26,3 @@ export class UsersApiService {
     return this.http.post<UserDto>(`${this.baseUrl}/assign-roles`, request);
   }
 }
-

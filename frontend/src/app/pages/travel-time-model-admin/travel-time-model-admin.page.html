@@ -1,13 +1,13 @@
-<p-toast></p-toast>
+<p-toast />
 <div class="pt-20 px-6 pb-6">
   <div class="max-w-7xl mx-auto space-y-4">
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-2">
         <h1 class="text-2xl font-bold text-gray-900">Travel Time Model (Admin)</h1>
-        <app-help-manual [sectionId]="'travel-time-model'"></app-help-manual>
+        <app-help-manual [sectionId]="'travel-time-model'" />
         <span class="text-xs text-gray-500">SuperAdmin only</span>
       </div>
-      <p-button label="Refresh" icon="pi pi-refresh" (onClick)="load()" [loading]="loading()" />
+      <p-button label="Refresh" icon="pi pi-refresh" [loading]="loading()" (onClick)="load()" />
     </div>
 
     <div class="card p-3">
@@ -15,58 +15,58 @@
         <div class="filter">
           <label class="block text-sm font-semibold mb-1">Region</label>
           <p-select
-            [options]="regionOptions()"
-            [ngModel]="selectedRegionId()"
-            (ngModelChange)="selectedRegionId.set($event)"
             optionLabel="label"
             optionValue="value"
             placeholder="All regions"
+            [options]="regionOptions()"
+            [ngModel]="selectedRegionId()"
             [showClear]="true"
             [filter]="true"
+            (ngModelChange)="selectedRegionId.set($event)"
           />
         </div>
         <div class="filter">
           <label class="block text-sm font-semibold mb-1">Status</label>
           <p-select
-            [options]="statusOptions()"
-            [ngModel]="selectedStatus()"
-            (ngModelChange)="selectedStatus.set($event)"
             optionLabel="label"
             optionValue="value"
             placeholder="All statuses"
+            [options]="statusOptions()"
+            [ngModel]="selectedStatus()"
             [showClear]="true"
+            (ngModelChange)="selectedStatus.set($event)"
           />
         </div>
         <div class="filter">
           <label class="block text-sm font-semibold mb-1">Day type</label>
           <p-select
-            [options]="dayTypeOptions()"
-            [ngModel]="selectedDayType()"
-            (ngModelChange)="selectedDayType.set($event)"
             optionLabel="label"
             optionValue="value"
             placeholder="All day types"
+            [options]="dayTypeOptions()"
+            [ngModel]="selectedDayType()"
             [showClear]="true"
+            (ngModelChange)="selectedDayType.set($event)"
           />
         </div>
         <div class="filter">
           <label class="block text-sm font-semibold mb-1">Distance band</label>
           <p-select
-            [options]="distanceBandOptions()"
-            [ngModel]="selectedDistanceBand()"
-            (ngModelChange)="selectedDistanceBand.set($event)"
             optionLabel="label"
             optionValue="value"
             placeholder="All bands"
+            [options]="distanceBandOptions()"
+            [ngModel]="selectedDistanceBand()"
             [showClear]="true"
+            (ngModelChange)="selectedDistanceBand.set($event)"
           />
         </div>
         <div class="filter flagged-only">
           <p-checkbox
+            inputId="flagged-only"
             [binary]="true"
             [ngModel]="showFlaggedOnly()"
             (ngModelChange)="showFlaggedOnly.set($event)"
-            inputId="flagged-only"
           />
           <label for="flagged-only" class="text-sm font-semibold">Show flagged only</label>
         </div>
@@ -75,9 +75,9 @@
 
     <div class="card p-3">
       <p-table
+        dataKey="id"
         [value]="filteredRows()"
         [loading]="loading()"
-        dataKey="id"
         [expandedRowKeys]="expandedRows()"
         (onRowExpand)="onRowExpand($event)"
         (onRowCollapse)="onRowCollapse($event)"
@@ -101,16 +101,16 @@
             <th class="text-right">Actions</th>
           </tr>
         </ng-template>
-        <ng-template pTemplate="body" let-row let-expanded="expanded">
+        <ng-template let-row let-expanded="expanded" pTemplate="body">
           <tr>
             <td>
               <button
                 type="button"
                 pButton
                 pRowToggler
+                class="p-button-text p-button-sm"
                 [pRowToggler]="row"
                 [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-                class="p-button-text p-button-sm"
               ></button>
             </td>
             <td class="font-medium">{{ row.regionName }}</td>
@@ -119,30 +119,45 @@
             <td>{{ formatDistanceBand(row) }}</td>
             <td><p-tag [value]="row.status" [severity]="statusSeverity(row.status)" /></td>
             <td>{{ row.totalSampleCount }}</td>
-            <td>{{ row.avgMinutesPerKm != null ? (row.avgMinutesPerKm | number: '1.2-2') : '—' }}</td>
+            <td>
+              {{ row.avgMinutesPerKm != null ? (row.avgMinutesPerKm | number: '1.2-2') : '—' }}
+            </td>
             <td>
               {{ row.minMinutesPerKm != null ? (row.minMinutesPerKm | number: '1.2-2') : '—' }} /
               {{ row.maxMinutesPerKm != null ? (row.maxMinutesPerKm | number: '1.2-2') : '—' }}
             </td>
             <td>{{ row.baselineMinutesPerKm | number: '1.2-2' }}</td>
-            <td>{{ row.expectedRangeMin | number: '1.2-2' }} - {{ row.expectedRangeMax | number: '1.2-2' }}</td>
+            <td>
+              {{ row.expectedRangeMin | number: '1.2-2' }} -
+              {{ row.expectedRangeMax | number: '1.2-2' }}
+            </td>
             <td>{{ formatDeviation(row) }}</td>
-            <td>{{ row.lastSampleAtUtc ? (row.lastSampleAtUtc | date: 'yyyy-MM-dd HH:mm') : '—' }}</td>
+            <td>
+              {{ row.lastSampleAtUtc ? (row.lastSampleAtUtc | date: 'yyyy-MM-dd HH:mm') : '—' }}
+            </td>
             <td>
               <div class="flags">
                 <i
-                  *ngIf="row.isOutOfRange"
                   class="pi pi-exclamation-circle text-red-600"
                   pTooltip="Out of plausible range"
+                  *ngIf="row.isOutOfRange"
                 ></i>
-                <i *ngIf="row.isStale" class="pi pi-clock text-orange-600" pTooltip="Stale"></i>
-                <i *ngIf="row.isLowSample" class="pi pi-database text-yellow-600" pTooltip="Low sample count"></i>
+                <i class="pi pi-clock text-orange-600" pTooltip="Stale" *ngIf="row.isStale"></i>
                 <i
-                  *ngIf="row.isHighDeviation"
+                  class="pi pi-database text-yellow-600"
+                  pTooltip="Low sample count"
+                  *ngIf="row.isLowSample"
+                ></i>
+                <i
                   class="pi pi-chart-line text-purple-600"
                   pTooltip="High deviation vs baseline"
+                  *ngIf="row.isHighDeviation"
                 ></i>
-                <span *ngIf="row.suspiciousRatio > 0" class="text-xs text-gray-600" pTooltip="Suspicious ratio">
+                <span
+                  class="text-xs text-gray-600"
+                  pTooltip="Suspicious ratio"
+                  *ngIf="row.suspiciousRatio > 0"
+                >
                   S {{ formatRatio(row) }}
                 </span>
               </div>
@@ -180,7 +195,7 @@
             </td>
           </tr>
         </ng-template>
-        <ng-template pTemplate="rowexpansion" let-row>
+        <ng-template let-row pTemplate="rowexpansion">
           <tr>
             <td colspan="15">
               <div class="expansion">
@@ -188,7 +203,7 @@
                   <span class="font-semibold">Contributing Drivers</span>
                   <span class="text-xs text-gray-500">Top contributors</span>
                 </div>
-                <div *ngIf="!row.contributors?.length" class="text-sm text-gray-500">
+                <div class="text-sm text-gray-500" *ngIf="!row.contributors?.length">
                   No contributors recorded yet.
                 </div>
                 <p-table *ngIf="row.contributors?.length" [value]="row.contributors">
@@ -199,12 +214,16 @@
                       <th>Last Contribution</th>
                     </tr>
                   </ng-template>
-                  <ng-template pTemplate="body" let-contrib>
+                  <ng-template let-contrib pTemplate="body">
                     <tr>
-                      <td>{{ contrib.driverName || ('Driver #' + contrib.driverId) }}</td>
+                      <td>{{ contrib.driverName || 'Driver #' + contrib.driverId }}</td>
                       <td>{{ contrib.sampleCount }}</td>
                       <td>
-                        {{ contrib.lastContributionUtc ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm') : '—' }}
+                        {{
+                          contrib.lastContributionUtc
+                            ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm')
+                            : '—'
+                        }}
                       </td>
                     </tr>
                   </ng-template>

@@ -41,4 +41,3 @@ export function addDaysYmd(ymd: string, delta: number): string {
   date.setDate(date.getDate() + delta);
   return toYmd(date);
 }
-

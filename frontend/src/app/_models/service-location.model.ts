@@ -145,4 +145,3 @@ export interface ResolveServiceLocationGeoResponse {
   latitude: number;
   longitude: number;
 }
-

@@ -16,9 +16,9 @@ export class PlanApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/plan`;
 
-  getDay(date: string, horizonDays: number = 14): Observable<DayOverviewDto> {
+  getDay(date: string, horizonDays = 14): Observable<DayOverviewDto> {
     return this.http.get<DayOverviewDto>(`${this.baseUrl}/day/${date}`, {
-      params: { horizonDays: horizonDays.toString() }
+      params: { horizonDays: horizonDays.toString() },
     });
   }
 
@@ -50,4 +50,3 @@ export class PlanApiService {
     return this.http.post<PlanDaySettingsDto>(`${this.baseUrl}/day/${date}/settings`, req);
   }
 }
-

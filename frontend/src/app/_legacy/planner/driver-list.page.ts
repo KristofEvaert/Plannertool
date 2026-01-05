@@ -45,7 +45,7 @@ export class DriverListPage {
             detail: err.detail || err.title || err.message || 'Failed to load drivers',
           });
           return of([]);
-        })
+        }),
       )
       .subscribe((data) => {
         this.drivers.set(data);
@@ -53,4 +53,3 @@ export class DriverListPage {
       });
   }
 }
-

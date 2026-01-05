@@ -19,4 +19,3 @@ export class AppShellComponent {
     return 'prod';
   });
 }
-

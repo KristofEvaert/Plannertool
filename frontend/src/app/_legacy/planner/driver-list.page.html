@@ -2,13 +2,13 @@
   <h2 class="text-2xl font-bold mb-6">Drivers</h2>
 
   @if (error()) {
-    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+    <p-message severity="error" class="mb-4" [text]="error() || ''" />
   }
 
   @if (loading() && drivers().length === 0) {
     <div class="text-center py-8">Loading...</div>
   } @else {
-    <p-table [value]="drivers()" [loading]="loading()" styleClass="p-datatable-striped">
+    <p-table styleClass="p-datatable-striped" [value]="drivers()" [loading]="loading()">
       <ng-template pTemplate="header">
         <tr>
           <th>Name</th>
@@ -17,18 +17,13 @@
           <th>Actions</th>
         </tr>
       </ng-template>
-      <ng-template pTemplate="body" let-driver>
+      <ng-template let-driver pTemplate="body">
         <tr>
           <td>{{ driver.name }}</td>
-          <td>
-            {{ driver.startLatitude.toFixed(4) }}, {{ driver.startLongitude.toFixed(4) }}
-          </td>
+          <td>{{ driver.startLatitude.toFixed(4) }}, {{ driver.startLongitude.toFixed(4) }}</td>
           <td>{{ driver.maxWorkMinutesPerDay }}</td>
           <td>
-            <a
-              [routerLink]="['/planner/day', today, 'driver', driver.id]"
-              class="inline-block"
-            >
+            <a class="inline-block" [routerLink]="['/planner/day', today, 'driver', driver.id]">
               <p-button label="View Today" size="small" />
             </a>
           </td>
@@ -42,4 +37,3 @@
     </p-table>
   }
 </div>
-

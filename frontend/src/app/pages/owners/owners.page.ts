@@ -1,19 +1,19 @@
-import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TableModule } from 'primeng/table';
-import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { CheckboxModule } from 'primeng/checkbox';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import {
-  ServiceLocationOwnersApiService,
   ServiceLocationOwnerDto,
+  ServiceLocationOwnersApiService,
   UpsertServiceLocationOwnerRequest,
 } from '@services/service-location-owners-api.service';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { TableModule } from 'primeng/table';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-owners-page',
@@ -61,7 +61,10 @@ export class OwnersPage {
     this.loadOwners();
   }
 
-  onFormChange<K extends keyof UpsertServiceLocationOwnerRequest>(key: K, value: UpsertServiceLocationOwnerRequest[K]) {
+  onFormChange<K extends keyof UpsertServiceLocationOwnerRequest>(
+    key: K,
+    value: UpsertServiceLocationOwnerRequest[K],
+  ) {
     this.form.update((f) => ({ ...f, [key]: value }));
   }
 

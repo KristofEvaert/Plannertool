@@ -148,7 +148,10 @@ interface MapPagePreferences {
   lateRefMinutesPercent?: number;
 }
 
-type WeightTemplateOption = { label: string; value: number };
+interface WeightTemplateOption {
+  label: string;
+  value: number;
+}
 type MarkerColorKey = 'green' | 'yellow' | 'orange' | 'red' | 'white' | 'black';
 
 @Component({
@@ -674,8 +677,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private map: L.Map | null = null;
   private markers: L.Layer[] = [];
   private driverMarker: L.Marker | null = null;
-  private routePolylines: Map<string, L.Polyline> = new Map();
-  private routeMarkers: Map<string, L.Marker[]> = new Map();
+  private routePolylines = new Map<string, L.Polyline>();
+  private routeMarkers = new Map<string, L.Marker[]>();
   private locationWindowCache = new Map<string, CacheEntry<LocationWindowInfo | null>>();
   private locationHoursCache = new Map<string, CacheEntry<LocationHoursDisplay>>();
   private locationHoursRequests = new Map<string, Promise<LocationHoursDisplay>>();

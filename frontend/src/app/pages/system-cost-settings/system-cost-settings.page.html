@@ -1,23 +1,23 @@
-<p-toast></p-toast>
+<p-toast />
 <div class="pt-20 px-6 pb-6">
   <div class="max-w-5xl mx-auto">
     <div class="card p-4 space-y-4">
       <div class="flex items-center gap-2">
         <div class="font-semibold text-lg">System Cost Settings</div>
-        <app-help-manual [sectionId]="'cost-settings'"></app-help-manual>
+        <app-help-manual [sectionId]="'cost-settings'" />
       </div>
 
       @if (isSuperAdmin()) {
         <div>
           <label class="block text-sm font-semibold mb-1">Owner</label>
           <p-select
-            [options]="ownerOptions()"
-            [ngModel]="selectedOwnerId()"
-            (ngModelChange)="selectedOwnerId.set($event)"
             optionLabel="label"
             optionValue="value"
             placeholder="Select owner"
+            [options]="ownerOptions()"
+            [ngModel]="selectedOwnerId()"
             [filter]="true"
+            (ngModelChange)="selectedOwnerId.set($event)"
           />
         </div>
       }
@@ -25,28 +25,28 @@
       <div>
         <label class="block text-sm font-semibold mb-1">Fuel cost per km</label>
         <p-inputNumber
+          locale="nl-BE"
+          mode="decimal"
           [ngModel]="form().fuelCostPerKm"
-          (ngModelChange)="onFormChange('fuelCostPerKm', $event)"
           [min]="0"
           [step]="0.01"
           [minFractionDigits]="0"
           [maxFractionDigits]="4"
-          locale="nl-BE"
-          mode="decimal"
+          (ngModelChange)="onFormChange('fuelCostPerKm', $event)"
         />
       </div>
 
       <div>
         <label class="block text-sm font-semibold mb-1">Personnel cost per hour</label>
         <p-inputNumber
+          locale="nl-BE"
+          mode="decimal"
           [ngModel]="form().personnelCostPerHour"
-          (ngModelChange)="onFormChange('personnelCostPerHour', $event)"
           [min]="0"
           [step]="0.01"
           [minFractionDigits]="0"
           [maxFractionDigits]="4"
-          locale="nl-BE"
-          mode="decimal"
+          (ngModelChange)="onFormChange('personnelCostPerHour', $event)"
         />
       </div>
 
@@ -61,12 +61,18 @@
       </div>
 
       <div class="flex justify-start">
-        <p-button label="Save" (onClick)="save()" [loading]="loading()" />
+        <p-button label="Save" [loading]="loading()" (onClick)="save()" />
       </div>
       @if (isSuperAdmin()) {
         <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
           <div class="font-semibold mb-2">Owner cost overview</div>
-          <p-table class="w-full" [value]="overview()" [loading]="overviewLoading()" [paginator]="overview().length > 10" [rows]="10">
+          <p-table
+            class="w-full"
+            [value]="overview()"
+            [loading]="overviewLoading()"
+            [paginator]="overview().length > 10"
+            [rows]="10"
+          >
             <ng-template pTemplate="header">
               <tr>
                 <th>Owner</th>
@@ -79,15 +85,17 @@
                 <th></th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-row>
+            <ng-template let-row pTemplate="body">
               <tr>
                 <td>{{ row.ownerName }}</td>
                 <td>{{ row.ownerCode }}</td>
-                <td>{{ row.ownerIsActive ? "Active" : "Inactive" }}</td>
+                <td>{{ row.ownerIsActive ? 'Active' : 'Inactive' }}</td>
                 <td>{{ row.fuelCostPerKm }}</td>
                 <td>{{ row.personnelCostPerHour }}</td>
                 <td>{{ row.currencyCode }}</td>
-                <td>{{ row.updatedAtUtc ? (row.updatedAtUtc | date: "yyyy-MM-dd HH:mm") : "-" }}</td>
+                <td>
+                  {{ row.updatedAtUtc ? (row.updatedAtUtc | date: 'yyyy-MM-dd HH:mm') : '-' }}
+                </td>
                 <td>
                   <p-button label="Edit" size="small" (onClick)="selectOwnerForEdit(row.ownerId)" />
                 </td>
@@ -96,7 +104,6 @@
           </p-table>
         </div>
       }
-
     </div>
   </div>
 </div>

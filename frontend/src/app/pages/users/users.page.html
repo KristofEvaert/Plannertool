@@ -1,7 +1,7 @@
 <div class="container mx-auto p-6 space-y-6">
   <div class="flex items-center gap-2">
     <h1 class="text-3xl font-bold text-gray-900">User & Role Management</h1>
-    <app-help-manual [sectionId]="'users'"></app-help-manual>
+    <app-help-manual [sectionId]="'users'" />
   </div>
 
   <div class="card p-4 space-y-4">
@@ -9,10 +9,10 @@
       <label class="text-sm font-medium">Filter by email</label>
       <input
         pInputText
-        [ngModel]="emailFilter()"
-        (ngModelChange)="emailFilter.set($event)"
         placeholder="Search email..."
         class="w-64"
+        [ngModel]="emailFilter()"
+        (ngModelChange)="emailFilter.set($event)"
       />
     </div>
     <p-table [value]="filteredUsers()" [loading]="loading()">
@@ -26,15 +26,15 @@
           <th>Actions</th>
         </tr>
       </ng-template>
-      <ng-template pTemplate="body" let-user>
+      <ng-template let-user pTemplate="body">
         <tr>
           <td>{{ user.email }}</td>
           <td>
             <input
               pInputText
-              [(ngModel)]="user.displayName"
               class="w-48"
               placeholder="Display name"
+              [(ngModel)]="user.displayName"
             />
           </td>
           <td>
@@ -54,52 +54,52 @@
           </td>
           <td>
             <p-select
-              [options]="owners()"
               optionLabel="label"
               optionValue="value"
               placeholder="Owner for admin/planner"
+              styleClass="w-52 mb-2"
+              [options]="owners()"
               [disabled]="
                 rolesFor(user.id).includes('SuperAdmin') ||
                 !(rolesFor(user.id).includes('Admin') || rolesFor(user.id).includes('Planner'))
               "
-              [(ngModel)]="staffOwnerSelection[user.id]"
               (onChange)="staffOwnerSelection[user.id] = $event.value"
-              styleClass="w-52 mb-2"
-            ></p-select>
+              [(ngModel)]="staffOwnerSelection[user.id]"
+            />
             <p-select
-              [options]="owners()"
               optionLabel="label"
               optionValue="value"
               placeholder="Owner for driver"
-              [disabled]="!rolesFor(user.id).includes('Driver')"
-              [(ngModel)]="driverOwnerSelection[user.id]"
-              (onChange)="driverOwnerSelection[user.id] = $event.value"
               styleClass="w-52"
-            ></p-select>
+              [options]="owners()"
+              [disabled]="!rolesFor(user.id).includes('Driver')"
+              (onChange)="driverOwnerSelection[user.id] = $event.value"
+              [(ngModel)]="driverOwnerSelection[user.id]"
+            />
             <div class="mt-2 space-y-2">
               <input
                 pInputText
-                [(ngModel)]="driverStartAddressSelection[user.id]"
                 placeholder="Driver start address"
                 class="w-52"
                 [disabled]="!rolesFor(user.id).includes('Driver')"
+                [(ngModel)]="driverStartAddressSelection[user.id]"
               />
               <div class="flex gap-2">
                 <input
                   type="number"
                   pInputText
-                  [(ngModel)]="driverStartLatitudeSelection[user.id]"
                   placeholder="Lat"
                   class="w-24"
                   [disabled]="!rolesFor(user.id).includes('Driver')"
+                  [(ngModel)]="driverStartLatitudeSelection[user.id]"
                 />
                 <input
                   type="number"
                   pInputText
-                  [(ngModel)]="driverStartLongitudeSelection[user.id]"
                   placeholder="Lon"
                   class="w-24"
                   [disabled]="!rolesFor(user.id).includes('Driver')"
+                  [(ngModel)]="driverStartLongitudeSelection[user.id]"
                 />
               </div>
               <div class="text-xs text-gray-500">
@@ -113,8 +113,8 @@
             <p-button
               label="Save"
               size="small"
-              (onClick)="assignRoles(user)"
               [loading]="loading()"
+              (onClick)="assignRoles(user)"
             />
           </td>
         </tr>

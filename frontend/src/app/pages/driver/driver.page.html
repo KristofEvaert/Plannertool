@@ -1,36 +1,36 @@
-<p-toast></p-toast>
+<p-toast />
 <div class="pt-20 px-6 pb-6">
   <div class="max-w-7xl mx-auto">
     <div class="flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-bold text-gray-900">Driver Route</h1>
-          <app-help-manual [sectionId]="'driver'"></app-help-manual>
+          <app-help-manual [sectionId]="'driver'" />
         </div>
       </div>
       <div class="flex flex-wrap items-end gap-4">
         <div class="w-72">
           <label class="block text-sm font-semibold mb-1">Driver</label>
           <p-select
-            [options]="driverOptions()"
-            [ngModel]="selectedDriverToolId()"
-            (ngModelChange)="selectedDriverToolId.set($event)"
             placeholder="Select driver"
             optionLabel="label"
             optionValue="value"
+            [options]="driverOptions()"
+            [ngModel]="selectedDriverToolId()"
             [filter]="true"
+            (ngModelChange)="selectedDriverToolId.set($event)"
           />
         </div>
 
         <div class="w-72">
           <label class="block text-sm font-semibold mb-1">Owner</label>
           <p-select
-            [options]="ownerOptions()"
-            [ngModel]="selectedOwnerId()"
-            (ngModelChange)="selectedOwnerId.set($event)"
             placeholder="Select owner"
             optionLabel="label"
             optionValue="value"
+            [options]="ownerOptions()"
+            [ngModel]="selectedOwnerId()"
+            (ngModelChange)="selectedOwnerId.set($event)"
           />
         </div>
 
@@ -38,8 +38,8 @@
           <label class="block text-sm font-semibold mb-1">Date</label>
           <p-datepicker
             [ngModel]="selectedDate()"
-            (ngModelChange)="selectedDate.set($event)"
             [showIcon]="true"
+            (ngModelChange)="selectedDate.set($event)"
           />
         </div>
       </div>
@@ -98,31 +98,33 @@
 
               <div class="max-h-[420px] overflow-auto pr-1">
                 @for (stop of r.stops; track stop.id) {
-                <button
-                  type="button"
-                  class="w-full text-left p-2 rounded border mb-2 hover:bg-gray-50 transition-colors"
-                  [class.border-blue-500]="selectedStopId() === stop.id"
-                  [class.bg-orange-50]="stop.status === 'NotVisited'"
-                  [class.border-orange-400]="stop.status === 'NotVisited'"
-                  (click)="onStopClick(stop)"
-                >
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                      <div class="font-medium truncate">{{ stop.sequence }}. {{ stop.name }}</div>
-                      <div class="text-xs text-gray-500">
-                        Planned: {{ stop.serviceMinutes }}m · Actual:
-                        {{ stopDurationMinutes(stop) ?? '—' }}m
+                  <button
+                    type="button"
+                    class="w-full text-left p-2 rounded border mb-2 hover:bg-gray-50 transition-colors"
+                    [class.border-blue-500]="selectedStopId() === stop.id"
+                    [class.bg-orange-50]="stop.status === 'NotVisited'"
+                    [class.border-orange-400]="stop.status === 'NotVisited'"
+                    (click)="onStopClick(stop)"
+                  >
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="min-w-0">
+                        <div class="font-medium truncate">{{ stop.sequence }}. {{ stop.name }}</div>
+                        <div class="text-xs text-gray-500">
+                          Planned: {{ stop.serviceMinutes }}m · Actual:
+                          {{ stopDurationMinutes(stop) ?? '—' }}m
+                        </div>
+                        @if (stop.driverInstruction) {
+                          <div class="text-xs text-gray-600 truncate">
+                            Note: {{ stop.driverInstruction }}
+                          </div>
+                        }
                       </div>
-                      @if (stop.driverInstruction) {
-                        <div class="text-xs text-gray-600 truncate">Note: {{ stop.driverInstruction }}</div>
-                      }
+                      <p-tag
+                        [value]="stop.status ?? 'Pending'"
+                        [severity]="severityForStopStatus(stop.status)"
+                      />
                     </div>
-                    <p-tag
-                      [value]="stop.status ?? 'Pending'"
-                      [severity]="severityForStopStatus(stop.status)"
-                    />
-                  </div>
-                </button>
+                  </button>
                 }
               </div>
 
@@ -132,22 +134,22 @@
                   <div>
                     <label class="block text-sm font-semibold mb-1">Category</label>
                     <p-select
+                      optionLabel="label"
+                      optionValue="value"
                       [options]="messageCategoryOptions"
                       [ngModel]="routeMessageCategory()"
                       (ngModelChange)="routeMessageCategory.set($event)"
-                      optionLabel="label"
-                      optionValue="value"
                     />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-sm font-semibold mb-1">Message</label>
                     <textarea
-                      pTextarea 
+                      pTextarea
                       class="w-full"
-                      [ngModel]="routeMessageText()"
-                      (ngModelChange)="routeMessageText.set($event)"
                       rows="2"
                       placeholder="Share an update with the planner..."
+                      [ngModel]="routeMessageText()"
+                      (ngModelChange)="routeMessageText.set($event)"
                     ></textarea>
                   </div>
                   <div class="md:col-span-2">
@@ -155,195 +157,198 @@
                       label="Send message"
                       icon="pi pi-send"
                       size="small"
-                      (onClick)="sendRouteMessage()"
                       [loading]="sendingMessage()"
+                      (onClick)="sendRouteMessage()"
                     />
                   </div>
                 </div>
               </div>
 
-            @if (selectedStop(); as s) {
-              <div class="mt-3 pt-3 border-t">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <div class="font-semibold truncate">Stop {{ s.sequence }} · {{ s.name }}</div>
-                    <div class="text-xs text-gray-500">
-                      {{ s.latitude | number: '1.4-4' }}, {{ s.longitude | number: '1.4-4' }}
-                    </div>
-                    @if (s.driverInstruction) {
-                      <div class="text-xs text-gray-700 mt-1">Driver note: {{ s.driverInstruction }}</div>
-                    }
-                  </div>
-                  <p-tag [value]="s.status ?? 'Pending'" [severity]="severityForStopStatus(s.status)" />
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                  <div class="flex flex-col gap-2">
-                    <div class="flex gap-2">
-                      <p-button
-                        label="Arrive"
-                        icon="pi pi-play"
-                        size="small"
-                        (onClick)="arriveStop(s)"
-                        [disabled]="s.status === 'Completed' || s.status === 'Arrived'"
-                      />
-                      <p-button
-                        label="Depart"
-                        icon="pi pi-stop"
-                        size="small"
-                        severity="success"
-                        (onClick)="departStop(s)"
-                        [disabled]="s.status === 'Completed'"
-                      />
-                      <p-button
-                        label="Maps"
-                        icon="pi pi-directions"
-                        size="small"
-                        severity="secondary"
-                        [outlined]="true"
-                        (onClick)="openInGoogleMaps(s)"
-                      />
-                    </div>
-                    <div>
-                      <p-button
-                        label="Not visited"
-                        icon="pi pi-ban"
-                        size="small"
-                        severity="warn"
-                        (onClick)="markNotVisited()"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="flex items-center gap-2">
-                    <p-inputNumber
-                      class="w-32"
-                      [ngModel]="stopDurationMinutes(s)"
-                      (ngModelChange)="saveDuration(s, $event)"
-                      [min]="0"
-                      [max]="1440"
-                      placeholder="Actual (min)"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-semibold mb-1">Arrived at (manual)</label>
-                    <p-datepicker
-                      [ngModel]="editingArrivedAt()"
-                      (ngModelChange)="onArrivedAtEditChange($event)"
-                      [showIcon]="true"
-                      [showTime]="true"
-                      hourFormat="24"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-semibold mb-1">Completed at (manual)</label>
-                    <p-datepicker
-                      [ngModel]="editingCompletedAt()"
-                      (ngModelChange)="onCompletedAtEditChange($event)"
-                      [showIcon]="true"
-                      [showTime]="true"
-                      hourFormat="24"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-semibold mb-1">Issue</label>
-                    <p-select
-                      [options]="issueOptions"
-                      [ngModel]="s.issueCode ?? ''"
-                      (ngModelChange)="saveIssueCode(s, $event)"
-                      optionLabel="label"
-                      optionValue="value"
-                    />
-                  </div>
-
-                  <div class="flex items-center gap-2 mt-6">
-                    <p-checkbox
-                      [binary]="true"
-                      [ngModel]="s.followUpRequired"
-                      (ngModelChange)="saveFollowUpRequired(s, $event)"
-                      [inputId]="'follow-up-' + s.id"
-                    />
-                    <label [for]="'follow-up-' + s.id" class="text-sm">Follow-up required</label>
-                  </div>
-
-                  <div class="md:col-span-2 space-y-2">
-                    <div>
-                      <label class="block text-sm font-semibold mb-1">Remark</label>
-                      <textarea
-                        pTextarea 
-                        class="w-full"
-                        [ngModel]="s.note"
-                        (ngModelChange)="saveNote(s, $event)"
-                        rows="3"
-                        placeholder="Optional remark…"
-                      ></textarea>
-                    </div>
-                    <div class="flex flex-col gap-2">
+              @if (selectedStop(); as s) {
+                <div class="mt-3 pt-3 border-t">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="font-semibold truncate">Stop {{ s.sequence }} · {{ s.name }}</div>
                       <div class="text-xs text-gray-500">
-                        Remark is required when marking Not visited.
+                        {{ s.latitude | number: '1.4-4' }}, {{ s.longitude | number: '1.4-4' }}
+                      </div>
+                      @if (s.driverInstruction) {
+                        <div class="text-xs text-gray-700 mt-1">
+                          Driver note: {{ s.driverInstruction }}
+                        </div>
+                      }
+                    </div>
+                    <p-tag
+                      [value]="s.status ?? 'Pending'"
+                      [severity]="severityForStopStatus(s.status)"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <div class="flex flex-col gap-2">
+                      <div class="flex gap-2">
+                        <p-button
+                          label="Arrive"
+                          icon="pi pi-play"
+                          size="small"
+                          [disabled]="s.status === 'Completed' || s.status === 'Arrived'"
+                          (onClick)="arriveStop(s)"
+                        />
+                        <p-button
+                          label="Depart"
+                          icon="pi pi-stop"
+                          size="small"
+                          severity="success"
+                          [disabled]="s.status === 'Completed'"
+                          (onClick)="departStop(s)"
+                        />
+                        <p-button
+                          label="Maps"
+                          icon="pi pi-directions"
+                          size="small"
+                          severity="secondary"
+                          [outlined]="true"
+                          (onClick)="openInGoogleMaps(s)"
+                        />
+                      </div>
+                      <div>
+                        <p-button
+                          label="Not visited"
+                          icon="pi pi-ban"
+                          size="small"
+                          severity="warn"
+                          (onClick)="markNotVisited()"
+                        />
                       </div>
                     </div>
-                  </div>
-                  <div class="md:col-span-2 space-y-3">
-                    <div>
-                      <label class="block text-sm font-semibold mb-1">Driver note</label>
-                      <textarea
-                        pTextarea 
-                        class="w-full"
-                        [ngModel]="s.driverNote"
-                        (ngModelChange)="saveDriverNote(s, $event)"
-                        rows="2"
-                        placeholder="Optional note for the planner..."
-                      ></textarea>
+
+                    <div class="flex items-center gap-2">
+                      <p-inputNumber
+                        class="w-32"
+                        placeholder="Actual (min)"
+                        [ngModel]="stopDurationMinutes(s)"
+                        [min]="0"
+                        [max]="1440"
+                        (ngModelChange)="saveDuration(s, $event)"
+                      />
                     </div>
-                    <div class="border-t pt-2">
-                      <div class="font-semibold mb-2">Message planner (stop)</div>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-sm font-semibold mb-1">Category</label>
-                          <p-select
-                            [options]="messageCategoryOptions"
-                            [ngModel]="stopMessageCategory()"
-                            (ngModelChange)="stopMessageCategory.set($event)"
-                            optionLabel="label"
-                            optionValue="value"
-                          />
+
+                    <div>
+                      <label class="block text-sm font-semibold mb-1">Arrived at (manual)</label>
+                      <p-datepicker
+                        hourFormat="24"
+                        [ngModel]="editingArrivedAt()"
+                        [showIcon]="true"
+                        [showTime]="true"
+                        (ngModelChange)="onArrivedAtEditChange($event)"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-semibold mb-1">Completed at (manual)</label>
+                      <p-datepicker
+                        hourFormat="24"
+                        [ngModel]="editingCompletedAt()"
+                        [showIcon]="true"
+                        [showTime]="true"
+                        (ngModelChange)="onCompletedAtEditChange($event)"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-semibold mb-1">Issue</label>
+                      <p-select
+                        optionLabel="label"
+                        optionValue="value"
+                        [options]="issueOptions"
+                        [ngModel]="s.issueCode ?? ''"
+                        (ngModelChange)="saveIssueCode(s, $event)"
+                      />
+                    </div>
+
+                    <div class="flex items-center gap-2 mt-6">
+                      <p-checkbox
+                        [binary]="true"
+                        [ngModel]="s.followUpRequired"
+                        [inputId]="'follow-up-' + s.id"
+                        (ngModelChange)="saveFollowUpRequired(s, $event)"
+                      />
+                      <label class="text-sm" [for]="'follow-up-' + s.id">Follow-up required</label>
+                    </div>
+
+                    <div class="md:col-span-2 space-y-2">
+                      <div>
+                        <label class="block text-sm font-semibold mb-1">Remark</label>
+                        <textarea
+                          pTextarea
+                          class="w-full"
+                          rows="3"
+                          placeholder="Optional remark…"
+                          [ngModel]="s.note"
+                          (ngModelChange)="saveNote(s, $event)"
+                        ></textarea>
+                      </div>
+                      <div class="flex flex-col gap-2">
+                        <div class="text-xs text-gray-500">
+                          Remark is required when marking Not visited.
                         </div>
-                        <div class="md:col-span-2">
-                          <label class="block text-sm font-semibold mb-1">Message</label>
-                          <textarea
-                            pTextarea 
-                            class="w-full"
-                            [ngModel]="stopMessageText()"
-                            (ngModelChange)="stopMessageText.set($event)"
-                            rows="2"
-                            placeholder="Send a note about this stop..."
-                          ></textarea>
-                        </div>
-                        <div class="md:col-span-2">
-                          <p-button
-                            label="Send message"
-                            icon="pi pi-send"
-                            size="small"
-                            (onClick)="sendStopMessage(s)"
-                            [loading]="sendingMessage()"
-                          />
+                      </div>
+                    </div>
+                    <div class="md:col-span-2 space-y-3">
+                      <div>
+                        <label class="block text-sm font-semibold mb-1">Driver note</label>
+                        <textarea
+                          pTextarea
+                          class="w-full"
+                          rows="2"
+                          placeholder="Optional note for the planner..."
+                          [ngModel]="s.driverNote"
+                          (ngModelChange)="saveDriverNote(s, $event)"
+                        ></textarea>
+                      </div>
+                      <div class="border-t pt-2">
+                        <div class="font-semibold mb-2">Message planner (stop)</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label class="block text-sm font-semibold mb-1">Category</label>
+                            <p-select
+                              optionLabel="label"
+                              optionValue="value"
+                              [options]="messageCategoryOptions"
+                              [ngModel]="stopMessageCategory()"
+                              (ngModelChange)="stopMessageCategory.set($event)"
+                            />
+                          </div>
+                          <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold mb-1">Message</label>
+                            <textarea
+                              pTextarea
+                              class="w-full"
+                              rows="2"
+                              placeholder="Send a note about this stop..."
+                              [ngModel]="stopMessageText()"
+                              (ngModelChange)="stopMessageText.set($event)"
+                            ></textarea>
+                          </div>
+                          <div class="md:col-span-2">
+                            <p-button
+                              label="Send message"
+                              icon="pi pi-send"
+                              size="small"
+                              [loading]="sendingMessage()"
+                              (onClick)="sendStopMessage(s)"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              }
             }
-          }
           }
         </div>
       </div>
     </div>
   </div>
 </div>
-
-

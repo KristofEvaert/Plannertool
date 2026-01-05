@@ -17,4 +17,3 @@ export interface StopActionResultDto {
 export interface AddStopNoteRequest {
   note: string;
 }
-

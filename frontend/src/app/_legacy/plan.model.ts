@@ -111,4 +111,3 @@ export interface PlanDaySettingsDto {
 export interface SetExtraWorkMinutesRequest {
   extraWorkMinutes: number;
 }
-

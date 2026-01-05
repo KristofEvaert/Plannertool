@@ -9,12 +9,7 @@ export class ExportsApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/exports`;
 
-  exportRoutes(
-    from: Date,
-    to: Date,
-    ownerId: number,
-    serviceTypeIds?: number[]
-  ): Observable<Blob> {
+  exportRoutes(from: Date, to: Date, ownerId: number, serviceTypeIds?: number[]): Observable<Blob> {
     let params = new HttpParams()
       .set('from', toYmd(from))
       .set('to', toYmd(to))

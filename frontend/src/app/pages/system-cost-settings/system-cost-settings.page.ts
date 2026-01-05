@@ -9,12 +9,21 @@ import { ToastModule } from 'primeng/toast';
 import { TableModule } from 'primeng/table';
 import { MessageService } from 'primeng/api';
 import { SystemCostSettingsApiService } from '@services/system-cost-settings-api.service';
-import type { SystemCostSettingsDto, SystemCostSettingsOverviewDto } from '@models/system-cost-settings.model';
+import type {
+  SystemCostSettingsDto,
+  SystemCostSettingsOverviewDto,
+} from '@models/system-cost-settings.model';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import { ServiceLocationOwnersApiService, type ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
+import {
+  ServiceLocationOwnersApiService,
+  type ServiceLocationOwnerDto,
+} from '@services/service-location-owners-api.service';
 import { AuthService } from '@services/auth.service';
 
-type OwnerOption = { label: string; value: number };
+interface OwnerOption {
+  label: string;
+  value: number;
+}
 
 @Component({
   selector: 'app-system-cost-settings',
@@ -79,7 +88,10 @@ export class SystemCostSettingsPage {
     });
   }
 
-  onFormChange<K extends keyof SystemCostSettingsDto>(key: K, value: SystemCostSettingsDto[K]): void {
+  onFormChange<K extends keyof SystemCostSettingsDto>(
+    key: K,
+    value: SystemCostSettingsDto[K],
+  ): void {
     this.form.update((f) => ({ ...f, [key]: value }));
   }
 
@@ -103,7 +115,6 @@ export class SystemCostSettingsPage {
       },
     });
   }
-
 
   selectOwnerForEdit(ownerId: number): void {
     this.selectedOwnerId.set(ownerId);
@@ -129,31 +140,35 @@ export class SystemCostSettingsPage {
     }
 
     this.loading.set(true);
-    this.api.update({
-      ownerId: form.ownerId,
-      fuelCostPerKm: form.fuelCostPerKm,
-      personnelCostPerHour: form.personnelCostPerHour,
-      currencyCode: form.currencyCode.trim().toUpperCase(),
-    }, this.isSuperAdmin() ? this.selectedOwnerId() : null).subscribe({
-      next: (settings) => {
-        this.loading.set(false);
-        this.form.set(settings);
-        this.messageService.add({ severity: 'success', summary: 'Settings updated' });
-        if (this.isSuperAdmin()) {
-          this.loadOverview();
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: err?.error?.message || err.message || 'Failed to update settings',
-        });
-      },
-    });
+    this.api
+      .update(
+        {
+          ownerId: form.ownerId,
+          fuelCostPerKm: form.fuelCostPerKm,
+          personnelCostPerHour: form.personnelCostPerHour,
+          currencyCode: form.currencyCode.trim().toUpperCase(),
+        },
+        this.isSuperAdmin() ? this.selectedOwnerId() : null,
+      )
+      .subscribe({
+        next: (settings) => {
+          this.loading.set(false);
+          this.form.set(settings);
+          this.messageService.add({ severity: 'success', summary: 'Settings updated' });
+          if (this.isSuperAdmin()) {
+            this.loadOverview();
+          }
+        },
+        error: (err) => {
+          this.loading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err?.error?.message || err.message || 'Failed to update settings',
+          });
+        },
+      });
   }
-
 
   private loadOverview(): void {
     this.overviewLoading.set(true);

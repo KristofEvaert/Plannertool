@@ -5,7 +5,6 @@ export interface SystemCostSettingsDto {
   currencyCode: string;
 }
 
-
 export interface SystemCostSettingsOverviewDto {
   ownerId: number;
   ownerCode: string;

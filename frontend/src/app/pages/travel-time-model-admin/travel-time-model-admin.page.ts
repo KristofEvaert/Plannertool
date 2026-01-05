@@ -16,7 +16,10 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
-type SelectOption<T> = { label: string; value: T };
+interface SelectOption<T> {
+  label: string;
+  value: T;
+}
 
 @Component({
   selector: 'app-travel-time-model-admin-page',

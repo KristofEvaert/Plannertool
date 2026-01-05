@@ -1,4 +1,4 @@
-export type TechnicalSection = {
+export interface TechnicalSection {
   id: string;
   title: string;
   summary: string;
@@ -6,13 +6,13 @@ export type TechnicalSection = {
   database: string[];
   api: string[];
   notes: string[];
-};
+}
 
-export type TechnicalDiagram = {
+export interface TechnicalDiagram {
   id: string;
   title: string;
   keywords: string[];
-};
+}
 
 export const TECHNICAL_SECTIONS: TechnicalSection[] = [
   {
@@ -76,9 +76,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'RegionSpeedProfiles reference TravelTimeRegions by RegionId.',
       'No seeding occurs for ServiceTypes, ServiceLocationOwners, Drivers, or ServiceLocations.',
     ],
-    api: [
-      'No API endpoints; seeding runs during application startup in Program.cs.',
-    ],
+    api: ['No API endpoints; seeding runs during application startup in Program.cs.'],
     notes: [
       'InitialSuperAdmin credentials are read from configuration; missing values skip the seed.',
       'To reseed travel time data, clear TravelTimeRegions, RegionSpeedProfiles, and LearnedTravelStats and restart.',
@@ -142,7 +140,8 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
   {
     id: 'travel-model',
     title: 'Travel time and cost model',
-    summary: 'Uses regional speed profiles and learned travel stats for ETA with SuperAdmin approval.',
+    summary:
+      'Uses regional speed profiles and learned travel stats for ETA with SuperAdmin approval.',
     businessLogic: [
       'Learning updates LearnedTravelStats continuously, regardless of status.',
       'Learned stats are used only when Approved, above sample threshold, and not stale.',
@@ -186,9 +185,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'RouteStopsController: /api/routeStops/{id}/arrive and /depart.',
       'RouteStopsController: PATCH /api/routeStops/{id} for manual edits.',
     ],
-    notes: [
-      'Driver page is restricted to Driver role or admins.',
-    ],
+    notes: ['Driver page is restricted to Driver role or admins.'],
   },
   {
     id: 'messaging',
@@ -208,9 +205,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'RouteMessagesController: create and resolve messages.',
       'RouteMessagesHub: SignalR updates for planners.',
     ],
-    notes: [
-      'Planner follow-up page shows messages and status.',
-    ],
+    notes: ['Planner follow-up page shows messages and status.'],
   },
   {
     id: 'bulk',
@@ -252,12 +247,8 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'Routes and RouteStops supply planned order and timing.',
       'ServiceLocations provide name and address.',
     ],
-    api: [
-      'ExportsController: /api/exports/routes?from=...&to=...&ownerId=...&serviceTypeId=...',
-    ],
-    notes: [
-      'Excel format is used for exports.',
-    ],
+    api: ['ExportsController: /api/exports/routes?from=...&to=...&ownerId=...&serviceTypeId=...'],
+    notes: ['Excel format is used for exports.'],
   },
   {
     id: 'security',

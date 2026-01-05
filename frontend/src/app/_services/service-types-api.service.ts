@@ -41,4 +41,3 @@ export class ServiceTypesApiService {
     return this.http.post<ServiceTypeDto>(`${this.baseUrl}/${id}/deactivate`, {});
   }
 }
-

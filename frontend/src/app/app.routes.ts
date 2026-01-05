@@ -21,19 +21,24 @@ export const routes: Routes = [
     path: 'drivers',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin', 'Planner'] },
-    loadComponent: () => import('@pages/drivers/drivers-availability-grid.page').then((m) => m.DriversAvailabilityGridPage),
+    loadComponent: () =>
+      import('@pages/drivers/drivers-availability-grid.page').then(
+        (m) => m.DriversAvailabilityGridPage,
+      ),
   },
   {
     path: 'service-locations',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin', 'Planner'] },
-    loadComponent: () => import('@pages/service-locations/service-locations.page').then((m) => m.ServiceLocationsPage),
+    loadComponent: () =>
+      import('@pages/service-locations/service-locations.page').then((m) => m.ServiceLocationsPage),
   },
   {
     path: 'service-types',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin', 'Planner'] },
-    loadComponent: () => import('@pages/service-types/service-types.page').then((m) => m.ServiceTypesPage),
+    loadComponent: () =>
+      import('@pages/service-types/service-types.page').then((m) => m.ServiceTypesPage),
   },
   {
     path: 'weight-templates',
@@ -59,15 +64,16 @@ export const routes: Routes = [
     path: 'users',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin'] },
-    loadComponent: () =>
-      import('@pages/users/users.page').then((m) => m.UsersPage),
+    loadComponent: () => import('@pages/users/users.page').then((m) => m.UsersPage),
   },
   {
     path: 'system-cost-settings',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin', 'Admin'] },
     loadComponent: () =>
-      import('@pages/system-cost-settings/system-cost-settings.page').then((m) => m.SystemCostSettingsPage),
+      import('@pages/system-cost-settings/system-cost-settings.page').then(
+        (m) => m.SystemCostSettingsPage,
+      ),
   },
   {
     path: 'owners',
@@ -79,14 +85,17 @@ export const routes: Routes = [
     path: 'audit-trail',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin'] },
-    loadComponent: () => import('@pages/audit-trail/audit-trail.page').then((m) => m.AuditTrailPage),
+    loadComponent: () =>
+      import('@pages/audit-trail/audit-trail.page').then((m) => m.AuditTrailPage),
   },
   {
     path: 'travel-time-model',
     canMatch: [authGuard],
     data: { roles: ['SuperAdmin'] },
     loadComponent: () =>
-      import('@pages/travel-time-model-admin/travel-time-model-admin.page').then((m) => m.TravelTimeModelAdminPage),
+      import('@pages/travel-time-model-admin/travel-time-model-admin.page').then(
+        (m) => m.TravelTimeModelAdminPage,
+      ),
   },
   {
     path: 'start',

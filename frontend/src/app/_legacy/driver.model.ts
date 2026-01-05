@@ -19,4 +19,3 @@ export interface DriverAvailabilityDto {
 export interface UpdateDriverMaxWorkMinutesRequest {
   maxWorkMinutesPerDay: number;
 }
-

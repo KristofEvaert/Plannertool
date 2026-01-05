@@ -94,7 +94,9 @@ export class DriversBulkApiService {
   }
 
   downloadServiceTypesTemplateJson(): Observable<DriverServiceTypesBulkExportResponse> {
-    return this.http.get<DriverServiceTypesBulkExportResponse>(`${this.baseUrl}/service-types/bulk/json`);
+    return this.http.get<DriverServiceTypesBulkExportResponse>(
+      `${this.baseUrl}/service-types/bulk/json`,
+    );
   }
 
   downloadServiceTypesTemplateExcel(): Observable<Blob> {
@@ -103,14 +105,22 @@ export class DriversBulkApiService {
     });
   }
 
-  bulkUpsertServiceTypes(request: DriverServiceTypesBulkRequest): Observable<DriverServiceTypesBulkResult> {
-    return this.http.post<DriverServiceTypesBulkResult>(`${this.baseUrl}/service-types/bulk/json`, request);
+  bulkUpsertServiceTypes(
+    request: DriverServiceTypesBulkRequest,
+  ): Observable<DriverServiceTypesBulkResult> {
+    return this.http.post<DriverServiceTypesBulkResult>(
+      `${this.baseUrl}/service-types/bulk/json`,
+      request,
+    );
   }
 
   uploadServiceTypesExcel(file: File): Observable<DriverServiceTypesBulkResult> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<DriverServiceTypesBulkResult>(`${this.baseUrl}/service-types/bulk/excel`, formData);
+    return this.http.post<DriverServiceTypesBulkResult>(
+      `${this.baseUrl}/service-types/bulk/excel`,
+      formData,
+    );
   }
 
   uploadAvailabilityExcel(file: File): Observable<AvailabilityBulkUpsertResultDto> {
@@ -119,4 +129,3 @@ export class DriversBulkApiService {
     return this.http.post<AvailabilityBulkUpsertResultDto>(`${this.baseUrl}/bulk/excel`, formData);
   }
 }
-

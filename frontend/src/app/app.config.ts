@@ -1,13 +1,13 @@
-import { ApplicationConfig } from '@angular/core'
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async'
-import { provideRouter, withComponentInputBinding } from '@angular/router'
-import { providePrimeNG } from 'primeng/config'
+import { ApplicationConfig } from '@angular/core';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { providePrimeNG } from 'primeng/config';
 
-import { provideHttpClient, withInterceptors } from '@angular/common/http'
-import { authInterceptor } from '@utils/auth-interceptor'
-import { MessageService } from 'primeng/api'
-import { routes } from './app.routes'
-import { primePreset } from './primePreset'
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from '@utils/auth-interceptor';
+import { MessageService } from 'primeng/api';
+import { routes } from './app.routes';
+import { primePreset } from './primePreset';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -33,4 +33,4 @@ export const appConfig: ApplicationConfig = {
     }),
     MessageService,
   ],
-}
+};

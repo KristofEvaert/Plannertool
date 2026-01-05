@@ -15,43 +15,46 @@ import { MANUAL_SECTIONS, type ManualSection } from '@app/_data/manual.data';
     <p-button
       type="button"
       icon="pi pi-info-circle"
-      [text]="true"
-      [rounded]="true"
       size="small"
       severity="secondary"
       ariaLabel="Open manual"
+      [text]="true"
+      [rounded]="true"
       (onClick)="open()"
     />
 
     <p-dialog
-      [(visible)]="visible"
       [modal]="true"
       [style]="{ width: '720px' }"
       [appendTo]="'body'"
       [baseZIndex]="10000"
       [header]="dialogTitle"
       (onHide)="searchTerm = ''"
+      [(visible)]="visible"
     >
       <div class="mb-4">
         <div class="flex items-center gap-2">
           <i class="pi pi-search text-gray-500"></i>
           <input
             pInputText
-            [(ngModel)]="searchTerm"
             placeholder="Search this manual..."
             class="w-full"
+            [(ngModel)]="searchTerm"
           />
         </div>
       </div>
 
       <div *ngIf="filteredSections.length > 0; else emptyState">
-        <div *ngFor="let section of filteredSections" class="mb-6 border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
+        <div
+          class="mb-6 border-b border-gray-200 pb-4 last:border-b-0 last:pb-0"
+          *ngFor="let section of filteredSections"
+        >
           <div class="flex items-center justify-between gap-2">
             <h3 class="text-lg font-semibold text-gray-900">{{ section.title }}</h3>
             <a
+              class="text-sm text-blue-600 hover:underline"
               *ngIf="showLinks && section.route"
               [routerLink]="section.route"
-              class="text-sm text-blue-600 hover:underline"
               (click)="visible = false"
             >
               Open tab
@@ -59,15 +62,19 @@ import { MANUAL_SECTIONS, type ManualSection } from '@app/_data/manual.data';
           </div>
           <p class="text-sm text-gray-600 mb-2">{{ section.summary }}</p>
 
-          <div *ngIf="section.functions.length > 0" class="mb-3">
-            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Functions</div>
+          <div class="mb-3" *ngIf="section.functions.length > 0">
+            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+              Functions
+            </div>
             <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
               <li *ngFor="let item of section.functions">{{ item }}</li>
             </ul>
           </div>
 
           <div *ngIf="section.options.length > 0">
-            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Options</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+              Options
+            </div>
             <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
               <li *ngFor="let item of section.options">{{ item }}</li>
             </ul>
@@ -133,7 +140,8 @@ export class HelpManualComponent {
           return null;
         }
 
-        const resolvedFunctions = functions.length > 0 ? functions : matchesHeader ? section.functions : [];
+        const resolvedFunctions =
+          functions.length > 0 ? functions : matchesHeader ? section.functions : [];
         const resolvedOptions = options.length > 0 ? options : matchesHeader ? section.options : [];
 
         return {

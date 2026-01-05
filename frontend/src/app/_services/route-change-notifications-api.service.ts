@@ -9,7 +9,10 @@ export class RouteChangeNotificationsApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/route-change-notifications`;
 
-  getNotifications(routeId?: number, includeAcknowledged = false): Observable<RouteChangeNotificationDto[]> {
+  getNotifications(
+    routeId?: number,
+    includeAcknowledged = false,
+  ): Observable<RouteChangeNotificationDto[]> {
     let params = new HttpParams().set('includeAcknowledged', includeAcknowledged.toString());
     if (routeId) {
       params = params.set('routeId', routeId.toString());

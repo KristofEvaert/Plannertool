@@ -31,8 +31,15 @@ import {
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
 
-type DriverOption = { label: string; value: string; ownerId: number };
-type OwnerOption = { label: string; value: number };
+interface DriverOption {
+  label: string;
+  value: string;
+  ownerId: number;
+}
+interface OwnerOption {
+  label: string;
+  value: number;
+}
 
 type DriverPosition = {
   lat: number;

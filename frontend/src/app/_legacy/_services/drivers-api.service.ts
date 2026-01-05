@@ -20,7 +20,7 @@ export class DriversApiService {
   getAvailability(
     driverId: number,
     from?: string,
-    to?: string
+    to?: string,
   ): Observable<DriverAvailabilityDto[]> {
     let params = new HttpParams();
 
@@ -41,4 +41,3 @@ export class DriversApiService {
     return this.http.put<DriverDto>(`${this.baseUrl}/${driverId}/max-work-minutes`, request);
   }
 }
-

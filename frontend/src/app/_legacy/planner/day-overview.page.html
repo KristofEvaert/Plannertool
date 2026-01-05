@@ -42,12 +42,7 @@
         [loading]="loading()"
         (onClick)="importPoles()"
       />
-      <p-button
-        label="Generate"
-        icon="pi pi-cog"
-        [loading]="loading()"
-        (onClick)="generate()"
-      />
+      <p-button label="Generate" icon="pi pi-cog" [loading]="loading()" (onClick)="generate()" />
       @if (overview(); as overview) {
         @if (overview.isLocked) {
           <p-button
@@ -70,13 +65,15 @@
     </div>
 
     @if (error()) {
-      <p-message severity="error" [text]="error() || ''" class="mb-4" />
+      <p-message severity="error" class="mb-4" [text]="error() || ''" />
     }
 
     <!-- Backlog summary -->
     @if (overview(); as overview) {
       <div class="bg-surface border border-surface-border rounded-lg p-4 mb-4">
-        <h3 class="text-lg font-semibold mb-3">Backlog Summary ({{ overview.horizonDays }} day horizon)</h3>
+        <h3 class="text-lg font-semibold mb-3">
+          Backlog Summary ({{ overview.horizonDays }} day horizon)
+        </h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <div class="text-sm text-gray-600">Total to Plan</div>
@@ -85,17 +82,23 @@
           </div>
           <div>
             <div class="text-sm text-gray-600">Planned in Horizon</div>
-            <div class="text-2xl font-bold text-green-600">{{ overview.plannedInHorizonCount || 0 }}</div>
+            <div class="text-2xl font-bold text-green-600">
+              {{ overview.plannedInHorizonCount || 0 }}
+            </div>
             <div class="text-xs text-gray-500">Within {{ overview.horizonDays }} days</div>
           </div>
           <div>
             <div class="text-sm text-gray-600">Remaining in Horizon</div>
-            <div class="text-2xl font-bold text-orange-600">{{ overview.remainingInHorizonCount || 0 }}</div>
+            <div class="text-2xl font-bold text-orange-600">
+              {{ overview.remainingInHorizonCount || 0 }}
+            </div>
             <div class="text-xs text-gray-500">Still to plan</div>
           </div>
           <div>
             <div class="text-sm text-gray-600">Planned Today</div>
-            <div class="text-2xl font-bold text-blue-600">{{ overview.plannedTodayCount || 0 }}</div>
+            <div class="text-2xl font-bold text-blue-600">
+              {{ overview.plannedTodayCount || 0 }}
+            </div>
             <div class="text-xs text-gray-500">Route stops today</div>
           </div>
         </div>
@@ -166,10 +169,10 @@
                   <div class="flex items-center gap-3 mb-2">
                     @if (driver.imageUrl) {
                       <img
+                        class="w-12 h-12 rounded-full object-cover"
+                        onerror="this.style.display = 'none'"
                         [src]="driver.imageUrl"
                         [alt]="driver.driverName"
-                        class="w-12 h-12 rounded-full object-cover"
-                        onerror="this.style.display='none'"
                       />
                     }
                     <div class="font-semibold">{{ driver.driverName }}</div>
@@ -190,8 +193,8 @@
                     }
                   </div>
                   <a
-                    [routerLink]="['/planner/day', date(), 'driver', driver.driverId]"
                     class="inline-block"
+                    [routerLink]="['/planner/day', date(), 'driver', driver.driverId]"
                   >
                     <p-button label="Open" size="small" />
                   </a>

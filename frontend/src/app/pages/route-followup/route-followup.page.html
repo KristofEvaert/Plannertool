@@ -1,37 +1,37 @@
-<p-toast></p-toast>
+<p-toast />
 <div class="pt-20 px-6 pb-6">
   <div class="max-w-7xl mx-auto">
     <div class="flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-bold text-gray-900">Route Follow-up</h1>
-          <app-help-manual [sectionId]="'route-followup'"></app-help-manual>
+          <app-help-manual [sectionId]="'route-followup'" />
         </div>
       </div>
       <div class="flex flex-wrap items-end gap-4">
         <div class="w-72">
           <label class="block text-sm font-semibold mb-1">Owner</label>
           <p-select
-            [options]="ownerOptions()"
-            [ngModel]="selectedOwnerId()"
-            (ngModelChange)="selectedOwnerId.set($event)"
             placeholder="Select owner"
             optionLabel="label"
             optionValue="value"
+            [options]="ownerOptions()"
+            [ngModel]="selectedOwnerId()"
             [filter]="true"
+            (ngModelChange)="selectedOwnerId.set($event)"
           />
         </div>
 
         <div class="w-72">
           <label class="block text-sm font-semibold mb-1">Driver</label>
           <p-select
-            [options]="driversForSelectedOwner()"
-            [ngModel]="selectedDriverToolId()"
-            (ngModelChange)="selectedDriverToolId.set($event)"
             placeholder="Select driver"
             optionLabel="label"
             optionValue="value"
+            [options]="driversForSelectedOwner()"
+            [ngModel]="selectedDriverToolId()"
             [filter]="true"
+            (ngModelChange)="selectedDriverToolId.set($event)"
           />
         </div>
 
@@ -39,18 +39,18 @@
           <label class="block text-sm font-semibold mb-1">Date</label>
           <p-datepicker
             [ngModel]="selectedDate()"
-            (ngModelChange)="selectedDate.set($event)"
             [showIcon]="true"
             [maxDate]="maxDate"
+            (ngModelChange)="selectedDate.set($event)"
           />
         </div>
 
         <p-button
           label="Reload"
           icon="pi pi-refresh"
-          (onClick)="manualReload()"
           [loading]="loading()"
           [disabled]="!selectedOwnerId() || !selectedDriverToolId()"
+          (onClick)="manualReload()"
         />
       </div>
 
@@ -150,10 +150,10 @@
               <td colspan="7" class="text-center text-sm text-gray-500">No messages.</td>
             </tr>
           </ng-template>
-          <ng-template pTemplate="body" let-message>
+          <ng-template let-message pTemplate="body">
             <tr>
               <td class="whitespace-nowrap">{{ messageTimeLabel(message.createdUtc) }}</td>
-              <td>{{ message.driverName || ('Driver #' + message.driverId) }}</td>
+              <td>{{ message.driverName || 'Driver #' + message.driverId }}</td>
               <td>
                 <div class="text-sm font-medium">Route {{ message.routeId }}</div>
                 @if (message.routeStopId) {
@@ -161,13 +161,16 @@
                 }
               </td>
               <td>
-                <p-tag [value]="message.category" severity="info" />
+                <p-tag severity="info" [value]="message.category" />
               </td>
               <td class="max-w-xs">
                 <div class="truncate">{{ message.messageText }}</div>
               </td>
               <td>
-                <p-tag [value]="message.status" [severity]="messageStatusSeverity(message.status)" />
+                <p-tag
+                  [value]="message.status"
+                  [severity]="messageStatusSeverity(message.status)"
+                />
               </td>
               <td class="whitespace-nowrap">
                 <div class="flex gap-1">
@@ -176,15 +179,15 @@
                     size="small"
                     severity="secondary"
                     [outlined]="true"
-                    (onClick)="markMessageRead(message)"
                     [disabled]="message.status !== 'New'"
+                    (onClick)="markMessageRead(message)"
                   />
                   <p-button
                     label="Resolve"
                     size="small"
                     severity="success"
-                    (onClick)="markMessageResolved(message)"
                     [disabled]="message.status === 'Resolved'"
+                    (onClick)="markMessageResolved(message)"
                   />
                 </div>
               </td>

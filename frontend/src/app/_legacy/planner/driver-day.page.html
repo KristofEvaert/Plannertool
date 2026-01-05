@@ -10,10 +10,10 @@
           <div class="flex items-center gap-3">
             @if (day.imageUrl) {
               <img
+                class="w-10 h-10 rounded-full object-cover"
+                onerror="this.style.display = 'none'"
                 [src]="day.imageUrl"
                 [alt]="day.driverName"
-                class="w-10 h-10 rounded-full object-cover"
-                onerror="this.style.display='none'"
               />
             }
             <h2 class="text-2xl font-bold">{{ day.driverName }} — {{ day.date }}</h2>
@@ -25,34 +25,34 @@
     </div>
 
     @if (error()) {
-      <p-message severity="error" [text]="error() || ''" class="mb-4" />
+      <p-message severity="error" class="mb-4" [text]="error() || ''" />
     }
 
-      @if (driverDay(); as day) {
-        <div class="flex items-center gap-4 mb-4">
+    @if (driverDay(); as day) {
+      <div class="flex items-center gap-4 mb-4">
+        <p-tag
+          [value]="day.dayIsLocked ? 'Day Locked' : 'Day Unlocked'"
+          [severity]="day.dayIsLocked ? 'danger' : 'success'"
+        />
+        @if (day.routeId) {
           <p-tag
-            [value]="day.dayIsLocked ? 'Day Locked' : 'Day Unlocked'"
-            [severity]="day.dayIsLocked ? 'danger' : 'success'"
+            [value]="day.routeIsLocked ? 'Route Locked' : 'Route Unlocked'"
+            [severity]="day.routeIsLocked ? 'danger' : 'success'"
           />
-          @if (day.routeId) {
-            <p-tag
-              [value]="day.routeIsLocked ? 'Route Locked' : 'Route Unlocked'"
-              [severity]="day.routeIsLocked ? 'danger' : 'success'"
-            />
-          }
-          @if (day.startLatitude && day.startLongitude) {
-            <div class="text-xs text-gray-500">
-              Start: {{ day.startLatitude.toFixed(6) }}, {{ day.startLongitude.toFixed(6) }}
-            </div>
-            <p-button
-              label="Navigate to Start"
-              icon="pi pi-map-marker"
-              size="small"
-              [outlined]="true"
-              (onClick)="navigateToStart()"
-            />
-          }
-        </div>
+        }
+        @if (day.startLatitude && day.startLongitude) {
+          <div class="text-xs text-gray-500">
+            Start: {{ day.startLatitude.toFixed(6) }}, {{ day.startLongitude.toFixed(6) }}
+          </div>
+          <p-button
+            label="Navigate to Start"
+            icon="pi pi-map-marker"
+            size="small"
+            [outlined]="true"
+            (onClick)="navigateToStart()"
+          />
+        }
+      </div>
 
       @if (!day.routeId) {
         <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -113,8 +113,10 @@
                       }
                       @if (stop.sequence > 1) {
                         <div>
-                          Travel: {{ stop.travelMinutesFromPrev }} min
-                          ({{ stop.travelKmFromPrev.toFixed(1) }} km)
+                          Travel: {{ stop.travelMinutesFromPrev }} min ({{
+                            stop.travelKmFromPrev.toFixed(1)
+                          }}
+                          km)
                         </div>
                       }
                       <div>Due: {{ stop.dueDate }}</div>
@@ -129,7 +131,9 @@
                         icon="pi pi-map-marker"
                         size="small"
                         [outlined]="true"
-                        (onClick)="navigateToPole(stop.latitude, stop.longitude); $event.stopPropagation()"
+                        (onClick)="
+                          navigateToPole(stop.latitude, stop.longitude); $event.stopPropagation()
+                        "
                       />
                     </div>
                   </div>

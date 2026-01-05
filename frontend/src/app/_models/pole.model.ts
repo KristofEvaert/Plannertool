@@ -12,4 +12,3 @@ export interface PoleListItemDto {
 export interface SetFixedDateRequest {
   fixedDate: string; // ISO date string
 }
-

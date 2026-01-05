@@ -25,7 +25,7 @@ export class ServiceLocationsApiService {
 
   getList(params: ServiceLocationListParams = {}): Observable<PagedResult<ServiceLocationDto>> {
     let httpParams = new HttpParams();
-    
+
     if (params.status) {
       httpParams = httpParams.set('status', params.status);
     }
@@ -73,7 +73,10 @@ export class ServiceLocationsApiService {
     const request: SetPriorityDateRequest = {
       priorityDate: priorityDate || undefined,
     };
-    return this.http.post<ServiceLocationDto>(`${this.baseUrl}/${toolId}/set-priority-date`, request);
+    return this.http.post<ServiceLocationDto>(
+      `${this.baseUrl}/${toolId}/set-priority-date`,
+      request,
+    );
   }
 
   markDone(toolId: string): Observable<ServiceLocationDto> {
@@ -85,7 +88,9 @@ export class ServiceLocationsApiService {
   }
 
   markCancelled(toolId: string, remark: string): Observable<ServiceLocationDto> {
-    return this.http.post<ServiceLocationDto>(`${this.baseUrl}/${toolId}/mark-cancelled`, { remark });
+    return this.http.post<ServiceLocationDto>(`${this.baseUrl}/${toolId}/mark-cancelled`, {
+      remark,
+    });
   }
 
   markPlanned(toolId: string): Observable<ServiceLocationDto> {
@@ -121,20 +126,31 @@ export class ServiceLocationsApiService {
   }
 
   getOpeningHours(toolId: string): Observable<ServiceLocationOpeningHoursDto[]> {
-    return this.http.get<ServiceLocationOpeningHoursDto[]>(`${this.baseUrl}/${toolId}/opening-hours`);
+    return this.http.get<ServiceLocationOpeningHoursDto[]>(
+      `${this.baseUrl}/${toolId}/opening-hours`,
+    );
   }
 
-  saveOpeningHours(toolId: string, items: ServiceLocationOpeningHoursDto[]): Observable<ServiceLocationOpeningHoursDto[]> {
-    return this.http.put<ServiceLocationOpeningHoursDto[]>(`${this.baseUrl}/${toolId}/opening-hours`, {
-      items,
-    });
+  saveOpeningHours(
+    toolId: string,
+    items: ServiceLocationOpeningHoursDto[],
+  ): Observable<ServiceLocationOpeningHoursDto[]> {
+    return this.http.put<ServiceLocationOpeningHoursDto[]>(
+      `${this.baseUrl}/${toolId}/opening-hours`,
+      {
+        items,
+      },
+    );
   }
 
   getExceptions(toolId: string): Observable<ServiceLocationExceptionDto[]> {
     return this.http.get<ServiceLocationExceptionDto[]>(`${this.baseUrl}/${toolId}/exceptions`);
   }
 
-  saveExceptions(toolId: string, items: ServiceLocationExceptionDto[]): Observable<ServiceLocationExceptionDto[]> {
+  saveExceptions(
+    toolId: string,
+    items: ServiceLocationExceptionDto[],
+  ): Observable<ServiceLocationExceptionDto[]> {
     return this.http.put<ServiceLocationExceptionDto[]>(`${this.baseUrl}/${toolId}/exceptions`, {
       items,
     });
@@ -144,12 +160,22 @@ export class ServiceLocationsApiService {
     return this.http.get<ServiceLocationConstraintDto>(`${this.baseUrl}/${toolId}/constraints`);
   }
 
-  saveConstraints(toolId: string, request: ServiceLocationConstraintDto): Observable<ServiceLocationConstraintDto> {
-    return this.http.put<ServiceLocationConstraintDto>(`${this.baseUrl}/${toolId}/constraints`, request);
+  saveConstraints(
+    toolId: string,
+    request: ServiceLocationConstraintDto,
+  ): Observable<ServiceLocationConstraintDto> {
+    return this.http.put<ServiceLocationConstraintDto>(
+      `${this.baseUrl}/${toolId}/constraints`,
+      request,
+    );
   }
 
-  resolveGeo(request: ResolveServiceLocationGeoRequest): Observable<ResolveServiceLocationGeoResponse> {
-    return this.http.post<ResolveServiceLocationGeoResponse>(`${this.baseUrl}/resolve-geo`, request);
+  resolveGeo(
+    request: ResolveServiceLocationGeoRequest,
+  ): Observable<ResolveServiceLocationGeoResponse> {
+    return this.http.post<ResolveServiceLocationGeoResponse>(
+      `${this.baseUrl}/resolve-geo`,
+      request,
+    );
   }
 }
-

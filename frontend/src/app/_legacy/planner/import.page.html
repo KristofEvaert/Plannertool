@@ -2,16 +2,14 @@
   <h2 class="text-2xl font-bold mb-6">Import Poles</h2>
 
   @if (error()) {
-    <p-message severity="error" [text]="error() || ''" class="mb-4" />
+    <p-message severity="error" class="mb-4" [text]="error() || ''" />
   }
 
   <p-card>
     <div class="mb-4">
       <label class="block text-sm font-medium mb-2">Days to Import</label>
-      <p-inputNumber [(ngModel)]="days" [min]="1" [max]="31" class="w-full" />
-      <p class="text-sm text-gray-500 mt-1">
-        Import poles with DueDate within the next N days
-      </p>
+      <p-inputNumber class="w-full" [min]="1" [max]="31" [(ngModel)]="days" />
+      <p class="text-sm text-gray-500 mt-1">Import poles with DueDate within the next N days</p>
     </div>
     <p-button
       label="Import Poles"
@@ -39,12 +37,9 @@
         </div>
         <div>
           <dt class="text-sm text-gray-500">Date Range</dt>
-          <dd class="text-lg font-semibold">
-            {{ result.fromDueDate }} to {{ result.toDueDate }}
-          </dd>
+          <dd class="text-lg font-semibold">{{ result.fromDueDate }} to {{ result.toDueDate }}</dd>
         </div>
       </dl>
     </p-card>
   }
 </div>
-

@@ -171,7 +171,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
     // Clear existing markers completely
     this.markerLayer.clearLayers();
     this.markerInstances.clear();
-    
+
     // Force map to invalidate size to ensure proper rendering
     this.map.invalidateSize();
 
@@ -193,9 +193,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
       // Check if this is a start marker
       if (marker.id === 'start' || marker.id.endsWith('-start')) {
         // Use a special icon for start position (home icon or green marker)
-        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
+        iconUrl =
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
       } else if (marker.kind === 'unplanned') {
-        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
+        iconUrl =
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
       } else if (marker.driverId !== undefined) {
         // Use different colored markers for different drivers
         const driverColors = [
@@ -212,7 +214,8 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
         const color = driverColors[colorIndex];
         iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`;
       } else {
-        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png';
+        iconUrl =
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png';
       }
 
       const icon = L.icon({
@@ -304,7 +307,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
       this.map!.removeLayer(layer);
     });
     this.routeLayers.clear();
-    
+
     // Force map to invalidate size to ensure proper rendering
     this.map.invalidateSize();
 
@@ -401,9 +404,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
       // Check if this is a start marker
       if (id === 'start' || id.endsWith('-start')) {
         // Use a special icon for start position (green marker)
-        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
+        iconUrl =
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
       } else if (kind === 'unplanned') {
-        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
+        iconUrl =
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
       } else if (driverId !== undefined) {
         const driverColors = [
           'blue',
@@ -419,7 +424,8 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
         const color = driverColors[colorIndex];
         iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`;
       } else {
-        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png';
+        iconUrl =
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png';
       }
 
       const icon = L.icon({
@@ -438,8 +444,10 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
       const selectedMarker = this.markerInstances.get(selectedId);
       if (selectedMarker) {
         const icon = L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconUrl:
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
           iconSize: [35, 51],
           iconAnchor: [17, 51],
           popupAnchor: [1, -34],
@@ -452,4 +460,3 @@ export class LeafletMapComponent implements OnInit, OnDestroy {
     }
   }
 }
-

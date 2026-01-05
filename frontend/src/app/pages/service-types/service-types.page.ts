@@ -23,14 +23,17 @@ import { TableModule } from 'primeng/table';
 import { ToastModule } from 'primeng/toast';
 import { catchError, of } from 'rxjs';
 
-type ServiceTypeForm = {
+interface ServiceTypeForm {
   code: string;
   name: string;
   description?: string;
   ownerId: number | null;
   isActive: boolean;
-};
-type OwnerFilterOption = { label: string; value: number | null };
+}
+interface OwnerFilterOption {
+  label: string;
+  value: number | null;
+}
 
 @Component({
   selector: 'app-service-types',

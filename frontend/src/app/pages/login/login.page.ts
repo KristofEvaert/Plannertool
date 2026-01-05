@@ -28,7 +28,11 @@ export class LoginPage {
 
   async login(): Promise<void> {
     if (!this.email || !this.password) {
-      this.messageService.add({ severity: 'warn', summary: 'Validation', detail: 'Email and password are required' });
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Email and password are required',
+      });
       return;
     }
 
@@ -39,7 +43,8 @@ export class LoginPage {
       const user = this.auth.currentUser();
       const roles = user?.roles ?? [];
       const isDriverOnly =
-        roles.includes('Driver') && !roles.some((r) => r === 'SuperAdmin' || r === 'Admin' || r === 'Planner');
+        roles.includes('Driver') &&
+        !roles.some((r) => r === 'SuperAdmin' || r === 'Admin' || r === 'Planner');
       this.router.navigate([isDriverOnly ? '/driver' : '/start']);
     } catch (err: any) {
       this.messageService.add({

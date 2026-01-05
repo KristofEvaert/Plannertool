@@ -19,8 +19,14 @@ import type { WeightTemplateDto, SaveWeightTemplateRequest } from '@models/weigh
 import type { ServiceTypeDto } from '@models/service-type.model';
 import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 
-type Option = { label: string; value: number };
-type OwnerFilterOption = { label: string; value: number | null };
+interface Option {
+  label: string;
+  value: number;
+}
+interface OwnerFilterOption {
+  label: string;
+  value: number | null;
+}
 
 @Component({
   selector: 'app-weight-templates',
@@ -91,7 +97,7 @@ export class WeightTemplatesPage {
           { label: 'Global', value: 'Global' },
           { label: 'Service type', value: 'ServiceType' },
         ]
-      : [{ label: 'Service type', value: 'ServiceType' }]
+      : [{ label: 'Service type', value: 'ServiceType' }],
   );
   ownerFilterOptions = computed<OwnerFilterOption[]>(() => [
     { label: 'All owners', value: null },
@@ -132,7 +138,10 @@ export class WeightTemplatesPage {
     });
   }
 
-  onFormChange<K extends keyof SaveWeightTemplateRequest>(key: K, value: SaveWeightTemplateRequest[K]): void {
+  onFormChange<K extends keyof SaveWeightTemplateRequest>(
+    key: K,
+    value: SaveWeightTemplateRequest[K],
+  ): void {
     this.form.update((f) => ({ ...f, [key]: value }));
     if (key === 'ownerId' && typeof value === 'number') {
       this.selectedOwnerId.set(value);
@@ -140,7 +149,12 @@ export class WeightTemplatesPage {
       this.form.update((f) => ({ ...f, serviceTypeId: null }));
     }
     if (key === 'scopeType' && value === 'Global') {
-      this.form.update((f) => ({ ...f, ownerId: null, serviceTypeId: null, serviceLocationIds: [] }));
+      this.form.update((f) => ({
+        ...f,
+        ownerId: null,
+        serviceTypeId: null,
+        serviceLocationIds: [],
+      }));
     }
   }
 
@@ -197,7 +211,8 @@ export class WeightTemplatesPage {
       return;
     }
 
-    const resolvedOwnerId = ownerId ?? (this.isSuperAdmin() ? null : this.auth.currentUser()?.ownerId ?? null);
+    const resolvedOwnerId =
+      ownerId ?? (this.isSuperAdmin() ? null : (this.auth.currentUser()?.ownerId ?? null));
     this.serviceTypesApi.getAll(true, resolvedOwnerId ?? undefined).subscribe({
       next: (types: ServiceTypeDto[]) => {
         const opts = types.map((t) => ({ label: t.name, value: t.id }));
@@ -249,21 +264,28 @@ export class WeightTemplatesPage {
     const effectiveOwnerId = ownerId != null && ownerId > 0 ? ownerId : null;
     const effectiveServiceTypeId = effectiveOwnerId ? serviceTypeId : null;
     const includeGlobal = effectiveOwnerId == null && effectiveServiceTypeId == null;
-    this.api.getAll(effectiveOwnerId ?? undefined, effectiveServiceTypeId ?? undefined, true, includeGlobal).subscribe({
-      next: (items) => {
-        this.loading.set(false);
-        const filtered = isGlobalOnly ? items.filter((t) => t.scopeType === 'Global') : items;
-        this.templates.set(filtered);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: err?.error?.message || err.message || 'Failed to load weight templates',
-        });
-      },
-    });
+    this.api
+      .getAll(
+        effectiveOwnerId ?? undefined,
+        effectiveServiceTypeId ?? undefined,
+        true,
+        includeGlobal,
+      )
+      .subscribe({
+        next: (items) => {
+          this.loading.set(false);
+          const filtered = isGlobalOnly ? items.filter((t) => t.scopeType === 'Global') : items;
+          this.templates.set(filtered);
+        },
+        error: (err) => {
+          this.loading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err?.error?.message || err.message || 'Failed to load weight templates',
+          });
+        },
+      });
   }
 
   openCreate(): void {
@@ -299,7 +321,9 @@ export class WeightTemplatesPage {
     this.form.set({
       name: template.name,
       scopeType: template.scopeType === 'Global' ? 'Global' : 'ServiceType',
-      ownerId: template.ownerId ?? (selectedOwnerId != null && selectedOwnerId > 0 ? selectedOwnerId : null),
+      ownerId:
+        template.ownerId ??
+        (selectedOwnerId != null && selectedOwnerId > 0 ? selectedOwnerId : null),
       serviceTypeId: template.serviceTypeId ?? null,
       isActive: template.isActive,
       weightDistance: template.weightDistance,
