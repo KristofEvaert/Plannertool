@@ -74,24 +74,25 @@
               <p-tag [value]="template.isActive ? 'Active' : 'Inactive'" />
             </td>
             <td class="text-right">
-              <div class="flex justify-end gap-2" *ngIf="canEditTemplate(template); else readOnly">
-                <p-button
-                  label="Edit"
-                  size="small"
-                  severity="secondary"
-                  [outlined]="true"
-                  (onClick)="openEdit(template)"
-                />
-                <p-button
-                  label="Delete"
-                  size="small"
-                  severity="danger"
-                  (onClick)="delete(template)"
-                />
-              </div>
-              <ng-template #readOnly>
+              @if (canEditTemplate(template)) {
+                <div class="flex justify-end gap-2">
+                  <p-button
+                    label="Edit"
+                    size="small"
+                    severity="secondary"
+                    [outlined]="true"
+                    (onClick)="openEdit(template)"
+                  />
+                  <p-button
+                    label="Delete"
+                    size="small"
+                    severity="danger"
+                    (onClick)="delete(template)"
+                  />
+                </div>
+              } @else {
                 <span class="text-sm text-gray-400">Read-only</span>
-              </ng-template>
+              }
             </td>
           </tr>
         </ng-template>
@@ -162,43 +163,51 @@
       </div>
     }
 
-    <div *ngIf="form().weightCost === 0 || showInactiveWeights()">
-      <label class="block text-sm font-semibold mb-1">
-        Distance %
-        <span class="text-gray-400 text-xs ml-1" *ngIf="form().weightCost > 0">(suppressed)</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          class="w-full"
-          [ngModel]="form().weightDistance"
-          (ngModelChange)="onFormChange('weightDistance', $event)"
-        />
-        <span class="text-sm font-semibold w-12 text-right">{{ form().weightDistance }}%</span>
+    @if (form().weightCost === 0 || showInactiveWeights()) {
+      <div>
+        <label class="block text-sm font-semibold mb-1">
+          Distance %
+          @if (form().weightCost > 0) {
+            <span class="text-gray-400 text-xs ml-1">(suppressed)</span>
+          }
+        </label>
+        <div class="flex items-center gap-3">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            class="w-full"
+            [ngModel]="form().weightDistance"
+            (ngModelChange)="onFormChange('weightDistance', $event)"
+          />
+          <span class="text-sm font-semibold w-12 text-right">{{ form().weightDistance }}%</span>
+        </div>
       </div>
-    </div>
+    }
 
-    <div *ngIf="form().weightCost === 0 || showInactiveWeights()">
-      <label class="block text-sm font-semibold mb-1">
-        Travel time %
-        <span class="text-gray-400 text-xs ml-1" *ngIf="form().weightCost > 0">(suppressed)</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          class="w-full"
-          [ngModel]="form().weightTravelTime"
-          (ngModelChange)="onFormChange('weightTravelTime', $event)"
-        />
-        <span class="text-sm font-semibold w-12 text-right">{{ form().weightTravelTime }}%</span>
+    @if (form().weightCost === 0 || showInactiveWeights()) {
+      <div>
+        <label class="block text-sm font-semibold mb-1">
+          Travel time %
+          @if (form().weightCost > 0) {
+            <span class="text-gray-400 text-xs ml-1">(suppressed)</span>
+          }
+        </label>
+        <div class="flex items-center gap-3">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            class="w-full"
+            [ngModel]="form().weightTravelTime"
+            (ngModelChange)="onFormChange('weightTravelTime', $event)"
+          />
+          <span class="text-sm font-semibold w-12 text-right">{{ form().weightTravelTime }}%</span>
+        </div>
       </div>
-    </div>
+    }
 
     <div>
       <label class="block text-sm font-semibold mb-1">Due urgency %</label>
@@ -321,42 +330,57 @@
     <div class="md:col-span-2 text-xs text-gray-600 flex flex-col gap-2">
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-semibold text-gray-700">Active:</span>
-        <span class="flex flex-wrap gap-2" *ngIf="activeWeightSummary().length > 0; else noActive">
-          <span
-            class="bg-gray-200 text-gray-700 rounded-full px-2 py-0.5"
-            *ngFor="let item of activeWeightSummary()"
-          >
-            {{ item }}
+        @if (activeWeightSummary().length > 0) {
+          <span class="flex flex-wrap gap-2">
+            @for (item of activeWeightSummary(); track item) {
+              <span class="bg-gray-200 text-gray-700 rounded-full px-2 py-0.5">
+                {{ item }}
+              </span>
+            }
           </span>
-        </span>
-        <ng-template #noActive>
+        } @else {
           <span class="text-gray-400">None</span>
-        </ng-template>
+        }
       </div>
-      <div class="flex flex-wrap items-center gap-2" *ngIf="suppressedWeightSummary().length > 0">
-        <span class="font-semibold text-gray-700">Suppressed:</span>
-        <span class="text-gray-500">
-          <span *ngFor="let item of suppressedWeightSummary(); let last = last">
-            {{ item }}<span *ngIf="!last">, </span>
+      @if (suppressedWeightSummary().length > 0) {
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-semibold text-gray-700">Suppressed:</span>
+          <span class="text-gray-500">
+            @for (item of suppressedWeightSummary(); track item; let last = $last) {
+              <span>
+                {{ item }}
+                @if (!last) {
+                  <span>, </span>
+                }
+              </span>
+            }
           </span>
-        </span>
-      </div>
-      <div class="flex flex-wrap items-center gap-2" *ngIf="inactiveWeightSummary().length > 0">
-        <span class="font-semibold text-gray-700">Inactive:</span>
-        <span class="text-gray-500">
-          <span *ngFor="let item of inactiveWeightSummary(); let last = last">
-            {{ item }}<span *ngIf="!last">, </span>
+        </div>
+      }
+      @if (inactiveWeightSummary().length > 0) {
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-semibold text-gray-700">Inactive:</span>
+          <span class="text-gray-500">
+            @for (item of inactiveWeightSummary(); track item; let last = $last) {
+              <span>
+                {{ item }}
+                @if (!last) {
+                  <span>, </span>
+                }
+              </span>
+            }
           </span>
-        </span>
-      </div>
-      <button
-        type="button"
-        class="text-xs text-blue-600 underline w-fit"
-        *ngIf="hasInactiveWeights()"
-        (click)="showInactiveWeights.set(!showInactiveWeights())"
-      >
-        {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
-      </button>
+        </div>
+      }
+      @if (hasInactiveWeights()) {
+        <button
+          type="button"
+          class="text-xs text-blue-600 underline w-fit"
+          (click)="showInactiveWeights.set(!showInactiveWeights())"
+        >
+          {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
+        </button>
+      }
     </div>
 
     <div class="md:col-span-2 text-xs text-gray-500">1% is almost ignored. 100% is decisive.</div>

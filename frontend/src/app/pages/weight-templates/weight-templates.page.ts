@@ -1,23 +1,23 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
-import { TableModule } from 'primeng/table';
+import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import type { ServiceTypeDto } from '@models/service-type.model';
+import type { SaveWeightTemplateRequest, WeightTemplateDto } from '@models/weight-template.model';
+import { AuthService } from '@services/auth.service';
+import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
+import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
+import { ServiceTypesApiService } from '@services/service-types-api.service';
+import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
+import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { CheckboxModule } from 'primeng/checkbox';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
-import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import { AuthService } from '@services/auth.service';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { WeightTemplateDto, SaveWeightTemplateRequest } from '@models/weight-template.model';
-import type { ServiceTypeDto } from '@models/service-type.model';
-import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
+import { ToastModule } from 'primeng/toast';
 
 interface Option {
   label: string;
@@ -32,7 +32,6 @@ interface OwnerFilterOption {
   selector: 'app-weight-templates',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     TableModule,
     ButtonModule,

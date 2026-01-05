@@ -1,16 +1,15 @@
-import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { MANUAL_SECTIONS, type ManualSection } from '@app/_data/manual.data';
+import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
-import { ButtonModule } from 'primeng/button';
-import { MANUAL_SECTIONS, type ManualSection } from '@app/_data/manual.data';
 
 @Component({
   selector: 'app-help-manual',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DialogModule, InputTextModule, ButtonModule],
+  imports: [FormsModule, RouterLink, DialogModule, InputTextModule, ButtonModule],
   template: `
     <p-button
       type="button"
@@ -44,55 +43,61 @@ import { MANUAL_SECTIONS, type ManualSection } from '@app/_data/manual.data';
         </div>
       </div>
 
-      <div *ngIf="filteredSections.length > 0; else emptyState">
-        <div
-          class="mb-6 border-b border-gray-200 pb-4 last:border-b-0 last:pb-0"
-          *ngFor="let section of filteredSections"
-        >
-          <div class="flex items-center justify-between gap-2">
-            <h3 class="text-lg font-semibold text-gray-900">{{ section.title }}</h3>
-            <a
-              class="text-sm text-blue-600 hover:underline"
-              *ngIf="showLinks && section.route"
-              [routerLink]="section.route"
-              (click)="visible = false"
-            >
-              Open tab
-            </a>
-          </div>
-          <p class="text-sm text-gray-600 mb-2">{{ section.summary }}</p>
-
-          <div class="mb-3" *ngIf="section.functions.length > 0">
-            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
-              Functions
+      @if (filteredSections.length > 0) {
+        <div>
+          @for (section of filteredSections; track section) {
+            <div class="mb-6 border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-lg font-semibold text-gray-900">{{ section.title }}</h3>
+                @if (showLinks() && section.route) {
+                  <a
+                    class="text-sm text-blue-600 hover:underline"
+                    [routerLink]="section.route"
+                    (click)="visible = false"
+                  >
+                    Open tab
+                  </a>
+                }
+              </div>
+              <p class="text-sm text-gray-600 mb-2">{{ section.summary }}</p>
+              @if (section.functions.length > 0) {
+                <div class="mb-3">
+                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Functions
+                  </div>
+                  <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                    @for (item of section.functions; track item) {
+                      <li>{{ item }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+              @if (section.options.length > 0) {
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Options
+                  </div>
+                  <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                    @for (item of section.options; track item) {
+                      <li>{{ item }}</li>
+                    }
+                  </ul>
+                </div>
+              }
             </div>
-            <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
-              <li *ngFor="let item of section.functions">{{ item }}</li>
-            </ul>
-          </div>
-
-          <div *ngIf="section.options.length > 0">
-            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
-              Options
-            </div>
-            <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
-              <li *ngFor="let item of section.options">{{ item }}</li>
-            </ul>
-          </div>
+          }
         </div>
-      </div>
-
-      <ng-template #emptyState>
+      } @else {
         <div class="text-sm text-gray-500">No matching manual entries.</div>
-      </ng-template>
+      }
     </p-dialog>
   `,
 })
 export class HelpManualComponent {
-  @Input() sectionId?: string;
-  @Input() sections?: ManualSection[];
-  @Input() title?: string;
-  @Input() showLinks = false;
+  readonly sectionId = input<string>();
+  readonly sections = input<ManualSection[]>();
+  readonly title = input<string>();
+  readonly showLinks = input(false);
 
   visible = false;
   searchTerm = '';
@@ -102,8 +107,9 @@ export class HelpManualComponent {
   }
 
   get dialogTitle(): string {
-    if (this.title) {
-      return this.title;
+    const title = this.title();
+    if (title) {
+      return title;
     }
     const sections = this.resolvedSections;
     if (sections.length === 1) {
@@ -113,11 +119,12 @@ export class HelpManualComponent {
   }
 
   get resolvedSections(): ManualSection[] {
-    if (this.sections && this.sections.length > 0) {
-      return this.sections;
+    const sections = this.sections();
+    if (sections && sections.length > 0) {
+      return sections;
     }
-    if (this.sectionId) {
-      return MANUAL_SECTIONS.filter((section) => section.id === this.sectionId);
+    if (this.sectionId()) {
+      return MANUAL_SECTIONS.filter((section) => section.id === this.sectionId());
     }
     return MANUAL_SECTIONS;
   }

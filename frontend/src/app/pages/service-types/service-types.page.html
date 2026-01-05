@@ -6,27 +6,26 @@
         <h1 class="text-3xl font-bold text-gray-900">Service Types</h1>
         <app-help-manual [sectionId]="'service-types'" />
       </div>
-      <p-button
-        label="Add Service Type"
-        icon="pi pi-plus"
-        *ngIf="isSuperAdmin()"
-        (onClick)="openAddDialog()"
-      />
+      @if (isSuperAdmin()) {
+        <p-button label="Add Service Type" icon="pi pi-plus" (onClick)="openAddDialog()" />
+      }
     </div>
   </div>
 
-  <div class="mb-4" *ngIf="isSuperAdmin()">
-    <label class="block text-sm font-medium mb-1">Owner</label>
-    <p-select
-      optionLabel="label"
-      optionValue="value"
-      placeholder="All owners"
-      class="w-80"
-      [options]="ownerFilterOptions()"
-      [ngModel]="ownerFilterId()"
-      (ngModelChange)="ownerFilterId.set($event); loadData()"
-    />
-  </div>
+  @if (isSuperAdmin()) {
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-1">Owner</label>
+      <p-select
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All owners"
+        class="w-80"
+        [options]="ownerFilterOptions()"
+        [ngModel]="ownerFilterId()"
+        (ngModelChange)="ownerFilterId.set($event); loadData()"
+      />
+    </div>
+  }
 
   <!-- Table -->
   <p-table
@@ -65,14 +64,17 @@
           </span>
         </td>
         <td>
-          <p-button
-            icon="pi pi-pencil"
-            *ngIf="isSuperAdmin()"
-            [text]="true"
-            [rounded]="true"
-            (onClick)="openEditDialog(item)"
-          />
-          <span class="text-gray-400 text-sm" *ngIf="!isSuperAdmin()">Read-only</span>
+          @if (isSuperAdmin()) {
+            <p-button
+              icon="pi pi-pencil"
+              [text]="true"
+              [rounded]="true"
+              (onClick)="openEditDialog(item)"
+            />
+          }
+          @if (!isSuperAdmin()) {
+            <span class="text-gray-400 text-sm">Read-only</span>
+          }
         </td>
       </tr>
     </ng-template>

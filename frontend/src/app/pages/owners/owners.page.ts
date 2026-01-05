@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
@@ -19,7 +18,6 @@ import { ToastModule } from 'primeng/toast';
   selector: 'app-owners-page',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     TableModule,
     ButtonModule,

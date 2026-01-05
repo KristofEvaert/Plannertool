@@ -1,18 +1,18 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '@services/auth.service';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
-import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-import { AuthService } from '@services/auth.service';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputTextModule, PasswordModule, ButtonModule, ToastModule],
+  imports: [FormsModule, InputTextModule, PasswordModule, ButtonModule, ToastModule],
   providers: [MessageService],
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.css'],

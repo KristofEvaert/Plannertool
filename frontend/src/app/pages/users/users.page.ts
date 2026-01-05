@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
@@ -20,15 +20,14 @@ type Role = (typeof ALL_ROLES)[number];
   selector: 'app-users-page',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     TableModule,
     ButtonModule,
     InputTextModule,
     SelectModule,
     ToastModule,
-    HelpManualComponent,
-  ],
+    HelpManualComponent
+],
   providers: [MessageService],
   templateUrl: './users.page.html',
 })

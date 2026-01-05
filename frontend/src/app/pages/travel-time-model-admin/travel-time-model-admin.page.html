@@ -104,14 +104,13 @@
         <ng-template let-row let-expanded="expanded" pTemplate="body">
           <tr>
             <td>
-              <button
-                type="button"
+              <p-button
                 pButton
                 pRowToggler
                 class="p-button-text p-button-sm"
                 [pRowToggler]="row"
                 [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-              ></button>
+              />
             </td>
             <td class="font-medium">{{ row.regionName }}</td>
             <td>{{ row.dayType }}</td>
@@ -120,11 +119,11 @@
             <td><p-tag [value]="row.status" [severity]="statusSeverity(row.status)" /></td>
             <td>{{ row.totalSampleCount }}</td>
             <td>
-              {{ row.avgMinutesPerKm != null ? (row.avgMinutesPerKm | number: '1.2-2') : '—' }}
+              {{ row.avgMinutesPerKm !== null ? (row.avgMinutesPerKm | number: '1.2-2') : '—' }}
             </td>
             <td>
-              {{ row.minMinutesPerKm != null ? (row.minMinutesPerKm | number: '1.2-2') : '—' }} /
-              {{ row.maxMinutesPerKm != null ? (row.maxMinutesPerKm | number: '1.2-2') : '—' }}
+              {{ row.minMinutesPerKm !== null ? (row.minMinutesPerKm | number: '1.2-2') : '—' }} /
+              {{ row.maxMinutesPerKm !== null ? (row.maxMinutesPerKm | number: '1.2-2') : '—' }}
             </td>
             <td>{{ row.baselineMinutesPerKm | number: '1.2-2' }}</td>
             <td>
@@ -137,29 +136,29 @@
             </td>
             <td>
               <div class="flags">
-                <i
-                  class="pi pi-exclamation-circle text-red-600"
-                  pTooltip="Out of plausible range"
-                  *ngIf="row.isOutOfRange"
-                ></i>
-                <i class="pi pi-clock text-orange-600" pTooltip="Stale" *ngIf="row.isStale"></i>
-                <i
-                  class="pi pi-database text-yellow-600"
-                  pTooltip="Low sample count"
-                  *ngIf="row.isLowSample"
-                ></i>
-                <i
-                  class="pi pi-chart-line text-purple-600"
-                  pTooltip="High deviation vs baseline"
-                  *ngIf="row.isHighDeviation"
-                ></i>
-                <span
-                  class="text-xs text-gray-600"
-                  pTooltip="Suspicious ratio"
-                  *ngIf="row.suspiciousRatio > 0"
-                >
-                  S {{ formatRatio(row) }}
-                </span>
+                @if (row.isOutOfRange) {
+                  <i
+                    class="pi pi-exclamation-circle text-red-600"
+                    pTooltip="Out of plausible range"
+                  ></i>
+                }
+                @if (row.isStale) {
+                  <i class="pi pi-clock text-orange-600" pTooltip="Stale"></i>
+                }
+                @if (row.isLowSample) {
+                  <i class="pi pi-database text-yellow-600" pTooltip="Low sample count"></i>
+                }
+                @if (row.isHighDeviation) {
+                  <i
+                    class="pi pi-chart-line text-purple-600"
+                    pTooltip="High deviation vs baseline"
+                  ></i>
+                }
+                @if (row.suspiciousRatio > 0) {
+                  <span class="text-xs text-gray-600" pTooltip="Suspicious ratio">
+                    S {{ formatRatio(row) }}
+                  </span>
+                }
               </div>
             </td>
             <td class="text-right">
@@ -203,31 +202,33 @@
                   <span class="font-semibold">Contributing Drivers</span>
                   <span class="text-xs text-gray-500">Top contributors</span>
                 </div>
-                <div class="text-sm text-gray-500" *ngIf="!row.contributors?.length">
-                  No contributors recorded yet.
-                </div>
-                <p-table *ngIf="row.contributors?.length" [value]="row.contributors">
-                  <ng-template pTemplate="header">
-                    <tr>
-                      <th>Driver</th>
-                      <th>Samples</th>
-                      <th>Last Contribution</th>
-                    </tr>
-                  </ng-template>
-                  <ng-template let-contrib pTemplate="body">
-                    <tr>
-                      <td>{{ contrib.driverName || 'Driver #' + contrib.driverId }}</td>
-                      <td>{{ contrib.sampleCount }}</td>
-                      <td>
-                        {{
-                          contrib.lastContributionUtc
-                            ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm')
-                            : '—'
-                        }}
-                      </td>
-                    </tr>
-                  </ng-template>
-                </p-table>
+                @if (!row.contributors?.length) {
+                  <div class="text-sm text-gray-500">No contributors recorded yet.</div>
+                }
+                @if (row.contributors?.length) {
+                  <p-table [value]="row.contributors">
+                    <ng-template pTemplate="header">
+                      <tr>
+                        <th>Driver</th>
+                        <th>Samples</th>
+                        <th>Last Contribution</th>
+                      </tr>
+                    </ng-template>
+                    <ng-template let-contrib pTemplate="body">
+                      <tr>
+                        <td>{{ contrib.driverName || 'Driver #' + contrib.driverId }}</td>
+                        <td>{{ contrib.sampleCount }}</td>
+                        <td>
+                          {{
+                            contrib.lastContributionUtc
+                              ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm')
+                              : '—'
+                          }}
+                        </td>
+                      </tr>
+                    </ng-template>
+                  </p-table>
+                }
               </div>
             </td>
           </tr>

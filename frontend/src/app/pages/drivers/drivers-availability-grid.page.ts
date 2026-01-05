@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
@@ -44,7 +43,6 @@ interface GridCell {
 @Component({
   selector: 'app-drivers-availability-grid',
   imports: [
-    CommonModule,
     FormsModule,
     ButtonModule,
     DialogModule,

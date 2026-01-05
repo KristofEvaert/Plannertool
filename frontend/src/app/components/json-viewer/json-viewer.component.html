@@ -14,7 +14,7 @@
   </div>
 
   @if (isEmpty) {
-    <div class="json-viewer-empty">{{ emptyMessage }}</div>
+    <div class="json-viewer-empty">{{ emptyMessage() }}</div>
   } @else {
     <pre class="json-viewer-content">{{ displayValue }}</pre>
   }

@@ -10,7 +10,7 @@
     <div class="audit-filter">
       <label>Date range</label>
       <p-datepicker
-        styleClass="w-64"
+        class="w-64"
         placeholder="Select range"
         [ngModel]="dateRange()"
         [selectionMode]="'range'"
@@ -208,14 +208,12 @@
           <span [class.audit-duration-slow]="isSlow(item)">{{ item.durationMs }} ms</span>
         </td>
         <td class="audit-cell text-right">
-          <button
-            type="button"
-            pButton
+          <p-button
             pRowToggler
             class="p-button-text p-button-sm"
             [pRowToggler]="item"
             [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-          ></button>
+          />
         </td>
       </tr>
     </ng-template>
@@ -239,20 +237,16 @@
                   >
                     {{ item.path || '-' }}
                   </span>
-                  <div
-                    class="audit-detail-query"
-                    *ngIf="getQueryChips(item).length || getQueryExtraCount(item) > 0"
-                  >
-                    <p-tag
-                      class="audit-query-chip"
-                      severity="info"
-                      *ngFor="let chip of getQueryChips(item)"
-                      [value]="chip"
-                    />
-                    <span class="audit-query-more" *ngIf="getQueryExtraCount(item) > 0">
-                      +{{ getQueryExtraCount(item) }}
-                    </span>
-                  </div>
+                  @if (getQueryChips(item).length || getQueryExtraCount(item) > 0) {
+                    <div class="audit-detail-query">
+                      @for (chip of getQueryChips(item); track chip) {
+                        <p-tag class="audit-query-chip" severity="info" [value]="chip" />
+                      }
+                      @if (getQueryExtraCount(item) > 0) {
+                        <span class="audit-query-more"> +{{ getQueryExtraCount(item) }} </span>
+                      }
+                    </div>
+                  }
                 </div>
                 <div class="audit-detail-right">
                   <p-tag
@@ -288,16 +282,15 @@
                     >
                       {{ value || '-' }}
                     </div>
-                    <button
-                      type="button"
-                      pButton
-                      icon="pi pi-copy"
-                      class="p-button-text p-button-sm audit-copy-button"
-                      pTooltip="Copy"
-                      tooltipPosition="top"
-                      *ngIf="copy && value"
-                      (click)="copyText(value)"
-                    ></button>
+                    @if (copy && value) {
+                      <p-button
+                        icon="pi pi-copy"
+                        class="p-button-text p-button-sm audit-copy-button"
+                        pTooltip="Copy"
+                        tooltipPosition="top"
+                        (click)="copyText(value)"
+                      />
+                    }
                   </div>
                 </div>
               </ng-template>

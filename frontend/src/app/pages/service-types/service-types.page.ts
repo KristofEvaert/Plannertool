@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
@@ -38,7 +38,6 @@ interface OwnerFilterOption {
 @Component({
   selector: 'app-service-types',
   imports: [
-    CommonModule,
     FormsModule,
     ButtonModule,
     TableModule,
@@ -47,8 +46,8 @@ interface OwnerFilterOption {
     DialogModule,
     CheckboxModule,
     ToastModule,
-    HelpManualComponent,
-  ],
+    HelpManualComponent
+],
   providers: [MessageService],
   templateUrl: './service-types.page.html',
   standalone: true,

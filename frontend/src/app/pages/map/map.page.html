@@ -87,29 +87,33 @@
       </div>
     </div>
 
-    <div class="info-section" *ngIf="mapData()">
-      <span class="info-badge">
-        <i class="pi pi-map-marker mr-1"></i>
-        Total points: {{ mapData()!.totalCount }}
-        <span *ngIf="mapData()!.minOrderDate && mapData()!.maxOrderDate">
-          ({{ mapData()!.minOrderDate }} to {{ mapData()!.maxOrderDate }})
+    @if (mapData()) {
+      <div class="info-section">
+        <span class="info-badge">
+          <i class="pi pi-map-marker mr-1"></i>
+          Total points: {{ mapData()!.totalCount }}
+          @if (mapData()!.minOrderDate && mapData()!.maxOrderDate) {
+            <span> ({{ mapData()!.minOrderDate }} to {{ mapData()!.maxOrderDate }}) </span>
+          }
         </span>
-      </span>
-    </div>
+      </div>
+    }
   </div>
 
   <div class="map-page-content">
     <div class="map-left-panel">
-      <div class="map-toolbar" *ngIf="mapData()">
-        <label class="toggle-label">
-          <input
-            type="checkbox"
-            [checked]="showPlannedLocations()"
-            (change)="onToggleShowPlannedLocations($event)"
-          />
-          Show planned locations
-        </label>
-      </div>
+      @if (mapData()) {
+        <div class="map-toolbar">
+          <label class="toggle-label">
+            <input
+              type="checkbox"
+              [checked]="showPlannedLocations()"
+              (change)="onToggleShowPlannedLocations($event)"
+            />
+            Show planned locations
+          </label>
+        </div>
+      }
 
       <div class="map-section">
         <div id="serviceLocationsMap" class="map-element"></div>
@@ -119,19 +123,25 @@
         <div class="legend-urgency">
           <div class="legend-urgency-title">Urgency legend</div>
           <div class="legend-urgency-items">
-            <div class="legend-urgency-item" *ngFor="let item of urgencyLegend">
-              <span class="legend-swatch" [ngStyle]="getLegendSwatchStyle(item.key)"></span>
-              <span class="legend-urgency-label">{{ item.label }}</span>
-            </div>
+            @for (item of urgencyLegend; track item) {
+              <div class="legend-urgency-item">
+                <span class="legend-swatch" [ngStyle]="getLegendSwatchStyle(item.key)"></span>
+                <span class="legend-urgency-label">{{ item.label }}</span>
+              </div>
+            }
           </div>
         </div>
 
-        <div class="legend-service-types" *ngIf="selectedServiceTypesLegend().length > 0">
-          <div class="legend-service-type" *ngFor="let st of selectedServiceTypesLegend()">
-            <span class="legend-shape" [ngClass]="getLegendShapeClass(st.id)"></span>
-            <span class="legend-service-type-label">{{ st.name }}</span>
+        @if (selectedServiceTypesLegend().length > 0) {
+          <div class="legend-service-types">
+            @for (st of selectedServiceTypesLegend(); track st) {
+              <div class="legend-service-type">
+                <span class="legend-shape" [ngClass]="getLegendShapeClass(st.id)"></span>
+                <span class="legend-service-type-label">{{ st.name }}</span>
+              </div>
+            }
           </div>
-        </div>
+        }
       </div>
     </div>
 
@@ -206,39 +216,49 @@
               (ngModelChange)="onWeightTemplateChange($event)"
             />
           </div>
-          <div class="weight-actions" *ngIf="canManageTemplates()">
-            <p-button
-              label="Save as new"
-              icon="pi pi-save"
-              size="small"
-              severity="secondary"
-              (onClick)="openNewTemplateDialog()"
-            />
-            <p-button
-              label="Update template"
-              icon="pi pi-refresh"
-              size="small"
-              severity="secondary"
-              [disabled]="!canUpdateSelectedTemplate()"
-              (onClick)="openRenameTemplateDialog()"
-            />
-          </div>
-          <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
-            <label class="weight-label">
-              Driver Time
-              <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
-            </label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightTime" />
-            <span class="weight-value">{{ activeWeightTime() }}%</span>
-          </div>
-          <div class="weight-row" *ngIf="weightCost() === 0 || showInactiveWeights()">
-            <label class="weight-label">
-              Distance
-              <span class="weight-muted" *ngIf="weightCost() > 0">(suppressed)</span>
-            </label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDistance" />
-            <span class="weight-value">{{ activeWeightDistance() }}%</span>
-          </div>
+          @if (canManageTemplates()) {
+            <div class="weight-actions">
+              <p-button
+                label="Save as new"
+                icon="pi pi-save"
+                size="small"
+                severity="secondary"
+                (onClick)="openNewTemplateDialog()"
+              />
+              <p-button
+                label="Update template"
+                icon="pi pi-refresh"
+                size="small"
+                severity="secondary"
+                [disabled]="!canUpdateSelectedTemplate()"
+                (onClick)="openRenameTemplateDialog()"
+              />
+            </div>
+          }
+          @if (weightCost() === 0 || showInactiveWeights()) {
+            <div class="weight-row">
+              <label class="weight-label">
+                Driver Time
+                @if (weightCost() > 0) {
+                  <span class="weight-muted">(suppressed)</span>
+                }
+              </label>
+              <input type="range" min="0" max="100" step="1" [(ngModel)]="weightTime" />
+              <span class="weight-value">{{ activeWeightTime() }}%</span>
+            </div>
+          }
+          @if (weightCost() === 0 || showInactiveWeights()) {
+            <div class="weight-row">
+              <label class="weight-label">
+                Distance
+                @if (weightCost() > 0) {
+                  <span class="weight-muted">(suppressed)</span>
+                }
+              </label>
+              <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDistance" />
+              <span class="weight-value">{{ activeWeightDistance() }}%</span>
+            </div>
+          }
           <div class="weight-row">
             <label class="weight-label">Due Date</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDate" />
@@ -279,297 +299,317 @@
             <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
             <span>Enforce service type match</span>
           </label>
-          <button
-            type="button"
-            class="weight-toggle"
-            *ngIf="hasInactiveWeights()"
-            (click)="showInactiveWeights.set(!showInactiveWeights())"
-          >
-            {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
-          </button>
+          @if (hasInactiveWeights()) {
+            <button
+              type="button"
+              class="weight-toggle"
+              (click)="showInactiveWeights.set(!showInactiveWeights())"
+            >
+              {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
+            </button>
+          }
         </div>
 
-        <div class="drivers-list" *ngIf="!loadingDrivers()">
-          <div
-            class="driver-item"
-            *ngFor="let item of driversWithAvailability(); trackBy: trackByDriverId"
-            [class.driver-item-selected]="isDriverExpanded(item)"
-            [class.driver-item-unavailable]="!item.availability"
-            [class.driver-item-overbooked]="isDriverOverbooked(item)"
-            [class.driver-item-selected.driver-item-overbooked]="
-              isDriverOverbooked(item) && isDriverExpanded(item)
-            "
-          >
-            <div
-              class="driver-header"
-              role="button"
-              tabindex="0"
-              (click)="toggleDriverCard(item, $event)"
-              (keydown.enter)="toggleDriverCard(item, $event)"
-              (keydown.space)="toggleDriverCard(item, $event)"
-            >
-              <div class="driver-content">
-                <span class="driver-name">{{ item.driver.name }}</span>
-                <span class="driver-hours">{{ getDriverHeaderDuration(item) }}</span>
-                <span class="driver-availability">
-                  <i class="pi pi-clock mr-1"></i>
-                  {{ getDriverHeaderTimeRange(item) }}
-                </span>
-              </div>
-              <i
-                class="driver-toggle-icon pi"
-                [ngClass]="isDriverExpanded(item) ? 'pi-chevron-down' : 'pi-chevron-right'"
-              ></i>
-            </div>
-            <div
-              class="driver-route-info"
-              *ngIf="isDriverExpanded(item)"
-              (click)="$event.stopPropagation()"
-              (mousedown)="$event.stopPropagation()"
-              (touchstart)="$event.stopPropagation()"
-            >
-              <div class="route-header">
-                <h4 class="route-title">
-                  <i class="pi pi-map mr-1"></i>
-                  Route
-                </h4>
-              </div>
-              <div class="route-summary">
-                <i class="pi pi-map-marker mr-1"></i>
-                <span
-                  >{{ getLocationCount(getCurrentRouteForDisplay()!.waypoints) }} location(s)</span
-                >
-                <span class="route-time" *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1">
-                  <i class="pi pi-clock mr-1"></i>
-                  {{ formatRouteTime(getCurrentRouteForDisplay()!.totalTimeMinutes) }}
-                  <span style="opacity: 0.75">
-                    ({{ formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!)) }}
-                    service +
-                    {{ formatRouteTime(getDriveMinutes(getCurrentRouteForDisplay()!)) }} driving)
-                  </span>
-                </span>
-                <span
-                  class="route-distance"
-                  *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 1"
-                >
-                  <i class="pi pi-map mr-1"></i>
-                  <ng-container
-                    *ngIf="isRouteCalculating(getCurrentRouteForDisplay()); else showKm"
-                  >
-                    Calculating...
-                  </ng-container>
-                  <ng-template #showKm>
-                    {{ getCurrentRouteForDisplay()!.totalDistanceKm.toFixed(1) }} km
-                  </ng-template>
-                </span>
-              </div>
+        @if (!loadingDrivers()) {
+          <div class="drivers-list">
+            @for (item of driversWithAvailability(); track trackByDriverId($index, item)) {
               <div
-                class="route-locations"
-                *ngIf="getCurrentRouteForDisplay()!.waypoints.length > 0"
-              >
-                <div
-                  class="route-location-item route-start route-location-clickable"
-                  *ngIf="getStartWaypoint(getCurrentRouteForDisplay()!) as startWp"
-                  (click)="toggleStartOverrideEditor()"
-                >
-                  <span class="route-location-label">Start</span>
-                  <span class="route-location-name">{{ startWp.name }}</span>
-                  <span
-                    class="route-location-address"
-                    [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'start')"
-                  >
-                    {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'start') }}
-                  </span>
-                  <div class="route-override-editor" *ngIf="showStartOverrideEditor">
-                    <input
-                      type="text"
-                      class="route-override-input"
-                      placeholder="Start address (optional)"
-                      (click)="$event.stopPropagation()"
-                      [(ngModel)]="startOverrideAddress"
-                    />
-                    <div class="route-override-coords">
-                      <input
-                        type="number"
-                        class="route-override-input"
-                        placeholder="Lat"
-                        (click)="$event.stopPropagation()"
-                        [(ngModel)]="startOverrideLatitude"
-                      />
-                      <input
-                        type="number"
-                        class="route-override-input"
-                        placeholder="Lng"
-                        (click)="$event.stopPropagation()"
-                        [(ngModel)]="startOverrideLongitude"
-                      />
-                    </div>
-                    <div class="route-override-actions">
-                      <button
-                        type="button"
-                        class="route-override-btn"
-                        (click)="$event.stopPropagation(); applyStartOverride()"
-                      >
-                        Apply
-                      </button>
-                      <button
-                        type="button"
-                        class="route-override-btn secondary"
-                        (click)="$event.stopPropagation(); clearStartOverride()"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div *ngIf="getStopSchedule(getCurrentRouteForDisplay()) as stopSchedule">
-                  <div
-                    class="route-location-item"
-                    *ngFor="
-                      let waypoint of getLocationWaypoints(getCurrentRouteForDisplay()!);
-                      let i = index
-                    "
-                  >
-                    <button
-                      type="button"
-                      class="route-location-number route-location-number-btn"
-                      title="Select stop to reorder"
-                      (click)="$event.stopPropagation(); toggleSelectedRouteStop(i)"
-                    >
-                      {{ i + 1 }}
-                    </button>
-
-                    <div class="route-reorder-controls" *ngIf="selectedRouteStopIndex() === i">
-                      <button
-                        type="button"
-                        class="route-reorder-btn"
-                        title="Move up"
-                        [disabled]="i === 0"
-                        (click)="$event.stopPropagation(); moveSelectedStop('up')"
-                      >
-                        <i class="pi pi-arrow-up"></i>
-                      </button>
-                      <button
-                        type="button"
-                        class="route-reorder-btn"
-                        title="Move down"
-                        [disabled]="
-                          i === getLocationWaypoints(getCurrentRouteForDisplay()!).length - 1
-                        "
-                        (click)="$event.stopPropagation(); moveSelectedStop('down')"
-                      >
-                        <i class="pi pi-arrow-down"></i>
-                      </button>
-                    </div>
-
-                    <div class="route-location-main">
-                      <span class="route-location-name">{{ waypoint.name }}</span>
-                      <span
-                        class="route-location-address route-location-address-compact"
-                        *ngIf="waypoint.address"
-                        [title]="waypoint.address"
-                      >
-                        {{ waypoint.address }}
-                      </span>
-                    </div>
-                    <span class="route-location-time" *ngIf="stopSchedule[i]?.label">
-                      {{ stopSchedule[i]?.label }}
-                    </span>
-                    <span
-                      class="route-location-time"
-                      *ngIf="!stopSchedule[i]?.label && waypoint.serviceMinutes"
-                    >
-                      ({{ waypoint.serviceMinutes }}m)
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  class="route-location-item route-end route-location-clickable"
-                  *ngIf="getEndWaypoint(getCurrentRouteForDisplay()!) as endWp"
-                  (click)="toggleEndOverrideEditor()"
-                >
-                  <span class="route-location-label">End</span>
-                  <span class="route-location-name">{{ endWp.name }}</span>
-                  <span
-                    class="route-location-address"
-                    [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'end')"
-                  >
-                    {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'end') }}
-                  </span>
-                  <div class="route-override-editor" *ngIf="showEndOverrideEditor">
-                    <input
-                      type="text"
-                      class="route-override-input"
-                      placeholder="End address (optional)"
-                      (click)="$event.stopPropagation()"
-                      [(ngModel)]="endOverrideAddress"
-                    />
-                    <div class="route-override-coords">
-                      <input
-                        type="number"
-                        class="route-override-input"
-                        placeholder="Lat"
-                        (click)="$event.stopPropagation()"
-                        [(ngModel)]="endOverrideLatitude"
-                      />
-                      <input
-                        type="number"
-                        class="route-override-input"
-                        placeholder="Lng"
-                        (click)="$event.stopPropagation()"
-                        [(ngModel)]="endOverrideLongitude"
-                      />
-                    </div>
-                    <div class="route-override-actions">
-                      <button
-                        type="button"
-                        class="route-override-btn"
-                        (click)="$event.stopPropagation(); applyEndOverride()"
-                      >
-                        Apply
-                      </button>
-                      <button
-                        type="button"
-                        class="route-override-btn secondary"
-                        (click)="$event.stopPropagation(); clearEndOverride()"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div
-                class="route-actions"
-                *ngIf="
-                  isBuildingRoute() &&
-                  getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId
+                class="driver-item"
+                [class.driver-item-selected]="isDriverExpanded(item)"
+                [class.driver-item-unavailable]="!item.availability"
+                [class.driver-item-overbooked]="isDriverOverbooked(item)"
+                [class.driver-item-selected.driver-item-overbooked]="
+                  isDriverOverbooked(item) && isDriverExpanded(item)
                 "
               >
-                <p-button
-                  label="Clear Route"
-                  icon="pi pi-times"
-                  severity="secondary"
-                  size="small"
-                  [style]="{ width: '100%', marginTop: '0.5rem' }"
-                  (onClick)="clearRoute()"
-                />
+                <div
+                  class="driver-header"
+                  role="button"
+                  tabindex="0"
+                  (click)="toggleDriverCard(item, $event)"
+                  (keydown.enter)="toggleDriverCard(item, $event)"
+                  (keydown.space)="toggleDriverCard(item, $event)"
+                >
+                  <div class="driver-content">
+                    <span class="driver-name">{{ item.driver.name }}</span>
+                    <span class="driver-hours">{{ getDriverHeaderDuration(item) }}</span>
+                    <span class="driver-availability">
+                      <i class="pi pi-clock mr-1"></i>
+                      {{ getDriverHeaderTimeRange(item) }}
+                    </span>
+                  </div>
+                  <i
+                    class="driver-toggle-icon pi"
+                    [ngClass]="isDriverExpanded(item) ? 'pi-chevron-down' : 'pi-chevron-right'"
+                  ></i>
+                </div>
+                @if (isDriverExpanded(item)) {
+                  <div
+                    class="driver-route-info"
+                    (click)="$event.stopPropagation()"
+                    (mousedown)="$event.stopPropagation()"
+                    (touchstart)="$event.stopPropagation()"
+                  >
+                    <div class="route-header">
+                      <h4 class="route-title">
+                        <i class="pi pi-map mr-1"></i>
+                        Route
+                      </h4>
+                    </div>
+                    <div class="route-summary">
+                      <i class="pi pi-map-marker mr-1"></i>
+                      <span
+                        >{{
+                          getLocationCount(getCurrentRouteForDisplay()!.waypoints)
+                        }}
+                        location(s)</span
+                      >
+                      @if (getCurrentRouteForDisplay()!.waypoints.length > 1) {
+                        <span class="route-time">
+                          <i class="pi pi-clock mr-1"></i>
+                          {{ formatRouteTime(getCurrentRouteForDisplay()!.totalTimeMinutes) }}
+                          <span style="opacity: 0.75">
+                            ({{
+                              formatRouteTime(getTotalServiceMinutes(getCurrentRouteForDisplay()!))
+                            }}
+                            service +
+                            {{ formatRouteTime(getDriveMinutes(getCurrentRouteForDisplay()!)) }}
+                            driving)
+                          </span>
+                        </span>
+                      }
+                      @if (getCurrentRouteForDisplay()!.waypoints.length > 1) {
+                        <span class="route-distance">
+                          <i class="pi pi-map mr-1"></i>
+                          @if (isRouteCalculating(getCurrentRouteForDisplay())) {
+                            Calculating...
+                          } @else {
+                            {{ getCurrentRouteForDisplay()!.totalDistanceKm.toFixed(1) }} km
+                          }
+                        </span>
+                      }
+                    </div>
+                    @if (getCurrentRouteForDisplay()!.waypoints.length > 0) {
+                      <div class="route-locations">
+                        @if (getStartWaypoint(getCurrentRouteForDisplay()!); as startWp) {
+                          <div
+                            class="route-location-item route-start route-location-clickable"
+                            (click)="toggleStartOverrideEditor()"
+                          >
+                            <span class="route-location-label">Start</span>
+                            <span class="route-location-name">{{ startWp.name }}</span>
+                            <span
+                              class="route-location-address"
+                              [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'start')"
+                            >
+                              {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'start') }}
+                            </span>
+                            @if (showStartOverrideEditor) {
+                              <div class="route-override-editor">
+                                <input
+                                  type="text"
+                                  class="route-override-input"
+                                  placeholder="Start address (optional)"
+                                  (click)="$event.stopPropagation()"
+                                  [(ngModel)]="startOverrideAddress"
+                                />
+                                <div class="route-override-coords">
+                                  <input
+                                    type="number"
+                                    class="route-override-input"
+                                    placeholder="Lat"
+                                    (click)="$event.stopPropagation()"
+                                    [(ngModel)]="startOverrideLatitude"
+                                  />
+                                  <input
+                                    type="number"
+                                    class="route-override-input"
+                                    placeholder="Lng"
+                                    (click)="$event.stopPropagation()"
+                                    [(ngModel)]="startOverrideLongitude"
+                                  />
+                                </div>
+                                <div class="route-override-actions">
+                                  <button
+                                    type="button"
+                                    class="route-override-btn"
+                                    (click)="$event.stopPropagation(); applyStartOverride()"
+                                  >
+                                    Apply
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="route-override-btn secondary"
+                                    (click)="$event.stopPropagation(); clearStartOverride()"
+                                  >
+                                    Reset
+                                  </button>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        }
+                        @if (getStopSchedule(getCurrentRouteForDisplay()); as stopSchedule) {
+                          <div>
+                            @for (
+                              waypoint of getLocationWaypoints(getCurrentRouteForDisplay()!);
+                              track waypoint;
+                              let i = $index
+                            ) {
+                              <div class="route-location-item">
+                                <button
+                                  type="button"
+                                  class="route-location-number route-location-number-btn"
+                                  title="Select stop to reorder"
+                                  (click)="$event.stopPropagation(); toggleSelectedRouteStop(i)"
+                                >
+                                  {{ i + 1 }}
+                                </button>
+                                @if (selectedRouteStopIndex() === i) {
+                                  <div class="route-reorder-controls">
+                                    <button
+                                      type="button"
+                                      class="route-reorder-btn"
+                                      title="Move up"
+                                      [disabled]="i === 0"
+                                      (click)="$event.stopPropagation(); moveSelectedStop('up')"
+                                    >
+                                      <i class="pi pi-arrow-up"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      class="route-reorder-btn"
+                                      title="Move down"
+                                      [disabled]="
+                                        i ===
+                                        getLocationWaypoints(getCurrentRouteForDisplay()!).length -
+                                          1
+                                      "
+                                      (click)="$event.stopPropagation(); moveSelectedStop('down')"
+                                    >
+                                      <i class="pi pi-arrow-down"></i>
+                                    </button>
+                                  </div>
+                                }
+                                <div class="route-location-main">
+                                  <span class="route-location-name">{{ waypoint.name }}</span>
+                                  @if (waypoint.address) {
+                                    <span
+                                      class="route-location-address route-location-address-compact"
+                                      [title]="waypoint.address"
+                                    >
+                                      {{ waypoint.address }}
+                                    </span>
+                                  }
+                                </div>
+                                @if (stopSchedule[i]?.label) {
+                                  <span class="route-location-time">
+                                    {{ stopSchedule[i]?.label }}
+                                  </span>
+                                }
+                                @if (!stopSchedule[i]?.label && waypoint.serviceMinutes) {
+                                  <span class="route-location-time">
+                                    ({{ waypoint.serviceMinutes }}m)
+                                  </span>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                        @if (getEndWaypoint(getCurrentRouteForDisplay()!); as endWp) {
+                          <div
+                            class="route-location-item route-end route-location-clickable"
+                            (click)="toggleEndOverrideEditor()"
+                          >
+                            <span class="route-location-label">End</span>
+                            <span class="route-location-name">{{ endWp.name }}</span>
+                            <span
+                              class="route-location-address"
+                              [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'end')"
+                            >
+                              {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'end') }}
+                            </span>
+                            @if (showEndOverrideEditor) {
+                              <div class="route-override-editor">
+                                <input
+                                  type="text"
+                                  class="route-override-input"
+                                  placeholder="End address (optional)"
+                                  (click)="$event.stopPropagation()"
+                                  [(ngModel)]="endOverrideAddress"
+                                />
+                                <div class="route-override-coords">
+                                  <input
+                                    type="number"
+                                    class="route-override-input"
+                                    placeholder="Lat"
+                                    (click)="$event.stopPropagation()"
+                                    [(ngModel)]="endOverrideLatitude"
+                                  />
+                                  <input
+                                    type="number"
+                                    class="route-override-input"
+                                    placeholder="Lng"
+                                    (click)="$event.stopPropagation()"
+                                    [(ngModel)]="endOverrideLongitude"
+                                  />
+                                </div>
+                                <div class="route-override-actions">
+                                  <button
+                                    type="button"
+                                    class="route-override-btn"
+                                    (click)="$event.stopPropagation(); applyEndOverride()"
+                                  >
+                                    Apply
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="route-override-btn secondary"
+                                    (click)="$event.stopPropagation(); clearEndOverride()"
+                                  >
+                                    Reset
+                                  </button>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                    @if (
+                      isBuildingRoute() &&
+                      getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId
+                    ) {
+                      <div class="route-actions">
+                        <p-button
+                          label="Clear Route"
+                          icon="pi pi-times"
+                          severity="secondary"
+                          size="small"
+                          [style]="{ width: '100%', marginTop: '0.5rem' }"
+                          (onClick)="clearRoute()"
+                        />
+                      </div>
+                    }
+                  </div>
+                }
               </div>
-            </div>
+            }
+            @if (driversWithAvailability().length === 0) {
+              <div class="no-drivers">
+                <i class="pi pi-info-circle mr-2"></i>
+                No drivers found
+              </div>
+            }
           </div>
+        }
 
-          <div class="no-drivers" *ngIf="driversWithAvailability().length === 0">
-            <i class="pi pi-info-circle mr-2"></i>
-            No drivers found
+        @if (loadingDrivers()) {
+          <div class="drivers-loading">
+            <i class="pi pi-spin pi-spinner mr-2"></i>
+            Loading drivers...
           </div>
-        </div>
-
-        <div class="drivers-loading" *ngIf="loadingDrivers()">
-          <i class="pi pi-spin pi-spinner mr-2"></i>
-          Loading drivers...
-        </div>
+        }
       </div>
     </div>
   </div>
@@ -616,13 +656,19 @@
 >
   <div class="bulk-add-dialog">
     <div class="bulk-add-subtitle">These locations were skipped during the bulk add.</div>
-    <div class="bulk-add-list" *ngIf="bulkAddRejections().length > 0">
-      <div class="bulk-add-item" *ngFor="let item of bulkAddRejections()">
-        <div class="bulk-add-name">{{ item.name }}</div>
-        <div class="bulk-add-reason">{{ item.reason }}</div>
-        <div class="bulk-add-address" *ngIf="item.address">{{ item.address }}</div>
+    @if (bulkAddRejections().length > 0) {
+      <div class="bulk-add-list">
+        @for (item of bulkAddRejections(); track item) {
+          <div class="bulk-add-item">
+            <div class="bulk-add-name">{{ item.name }}</div>
+            <div class="bulk-add-reason">{{ item.reason }}</div>
+            @if (item.address) {
+              <div class="bulk-add-address">{{ item.address }}</div>
+            }
+          </div>
+        }
       </div>
-    </div>
+    }
   </div>
   <ng-template pTemplate="footer">
     <div class="flex justify-end">
