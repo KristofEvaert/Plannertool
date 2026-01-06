@@ -339,14 +339,13 @@ public class UsersController : ControllerBase
             var hasExistingCoordinates = driver.StartLatitude.HasValue
                 && driver.StartLongitude.HasValue
                 && !(driver.StartLatitude.Value == 0 && driver.StartLongitude.Value == 0);
-            if (!latitude.HasValue && hasExistingCoordinates)
+            // Alleen bestaande coords overnemen als er GEEN nieuw adres is meegegeven
+            if (string.IsNullOrWhiteSpace(address) && !hasIncomingCoordinates && hasExistingCoordinates)
             {
                 latitude = driver.StartLatitude;
-            }
-            if (!longitude.HasValue && hasExistingCoordinates)
-            {
                 longitude = driver.StartLongitude;
             }
+
         }
 
         var hasAddress = !string.IsNullOrWhiteSpace(address);
