@@ -258,11 +258,22 @@ export class UsersPage {
         },
         error: (err) => {
           this.loading.set(false);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: err?.error?.message || err?.message || 'Failed to assign roles',
-          });
+          if (
+            err.error.message ===
+            'Unable to resolve DriverStartLatitude/DriverStartLongitude from DriverStartAddress.'
+          ) {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'Unable to get coordinates from address',
+            });
+          } else {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: err?.error?.message || err?.message || 'Failed to assign roles',
+            });
+          }
         },
       });
   }
