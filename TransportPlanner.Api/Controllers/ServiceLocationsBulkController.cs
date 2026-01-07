@@ -156,6 +156,8 @@ public class ServiceLocationsBulkController : ControllerBase
             .Select(sl => new BulkServiceLocationInsertDto
             {
                 ErpId = sl.ErpId,
+                AccountId = sl.AccountId,
+                SerialNumber = sl.SerialNumber,
                 Name = sl.Name,
                 Address = sl.Address,
                 Latitude = sl.Latitude,
@@ -434,9 +436,8 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(4, 10).Value = "ExtraInstructions";
         sheet.Cell(4, 11).Value = "MinVisitDurationMinutes";
         sheet.Cell(4, 12).Value = "MaxVisitDurationMinutes";
-        sheet.Cell(4, 10).Value = "ExtraInstructions";
-        sheet.Cell(4, 11).Value = "MinVisitDurationMinutes";
-        sheet.Cell(4, 12).Value = "MaxVisitDurationMinutes";
+        sheet.Cell(4, 13).Value = "AccountId";
+        sheet.Cell(4, 14).Value = "SerialNumber";
         
         // Instruction row (row 5)
         sheet.Cell(5, 1).Value = "Required";
@@ -451,9 +452,8 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(5, 10).Value = "Optional (pipe or newline separated)";
         sheet.Cell(5, 11).Value = "Optional (>= 0)";
         sheet.Cell(5, 12).Value = "Optional (>= 0)";
-        sheet.Cell(5, 10).Value = "Optional (pipe or newline separated)";
-        sheet.Cell(5, 11).Value = "Optional (>= 0)";
-        sheet.Cell(5, 12).Value = "Optional (>= 0)";
+        sheet.Cell(5, 13).Value = "Optional";
+        sheet.Cell(5, 14).Value = "Optional";
         
         // Format date columns (DueDate and PriorityDate) as text to preserve yyyy-MM-dd format
         // Set the entire column range to text format
@@ -492,6 +492,8 @@ public class ServiceLocationsBulkController : ControllerBase
                 : string.Empty;
             sheet.Cell(row, 11).Value = location.Constraint?.MinVisitDurationMinutes?.ToString() ?? string.Empty;
             sheet.Cell(row, 12).Value = location.Constraint?.MaxVisitDurationMinutes?.ToString() ?? string.Empty;
+            sheet.Cell(row, 13).Value = location.AccountId ?? string.Empty;
+            sheet.Cell(row, 14).Value = location.SerialNumber ?? string.Empty;
         }
         
         // Style service type info rows
@@ -500,12 +502,12 @@ public class ServiceLocationsBulkController : ControllerBase
         infoRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
         
         // Style header
-        var headerRange = sheet.Range(3, 1, 3, 12);
+        var headerRange = sheet.Range(3, 1, 3, 14);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
         
         // Style instruction row
-        var instructionRange = sheet.Range(4, 1, 4, 12);
+        var instructionRange = sheet.Range(4, 1, 4, 14);
         instructionRange.Style.Font.Italic = true;
         instructionRange.Style.Font.FontColor = XLColor.DarkGray;
         
@@ -1060,7 +1062,9 @@ public class ServiceLocationsBulkController : ControllerBase
                     worksheet.Cell(row, 9).GetFormattedString(),
                     worksheet.Cell(row, 10).GetFormattedString(),
                     worksheet.Cell(row, 11).GetFormattedString(),
-                    worksheet.Cell(row, 12).GetFormattedString()
+                    worksheet.Cell(row, 12).GetFormattedString(),
+                    worksheet.Cell(row, 13).GetFormattedString(),
+                    worksheet.Cell(row, 14).GetFormattedString()
                 };
                 
                 try
@@ -1380,9 +1384,33 @@ public class ServiceLocationsBulkController : ControllerBase
                     }
                 }
 
+                string? accountId = null;
+                var accountIdCell = worksheet.Cell(row, 13);
+                if (!accountIdCell.IsEmpty())
+                {
+                    var accountIdStr = accountIdCell.GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(accountIdStr))
+                    {
+                        accountId = accountIdStr;
+                    }
+                }
+
+                string? serialNumber = null;
+                var serialNumberCell = worksheet.Cell(row, 14);
+                if (!serialNumberCell.IsEmpty())
+                {
+                    var serialNumberStr = serialNumberCell.GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(serialNumberStr))
+                    {
+                        serialNumber = serialNumberStr;
+                    }
+                }
+
                 var item = new BulkServiceLocationInsertDto
                 {
                     ErpId = erpId,
+                    AccountId = accountId,
+                    SerialNumber = serialNumber,
                     Name = name,
                     Address = address,
                     Latitude = latitude,
@@ -1818,7 +1846,7 @@ public class ServiceLocationsBulkController : ControllerBase
         {
             var row = startRow + i;
             var values = rows[i];
-            for (int col = 1; col <= 12; col++)
+            for (int col = 1; col <= 14; col++)
             {
                 sheet.Cell(row, col).Value = values.Length >= col ? values[col - 1] : string.Empty;
             }
@@ -1828,11 +1856,11 @@ public class ServiceLocationsBulkController : ControllerBase
         infoRange.Style.Font.Bold = true;
         infoRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
 
-        var headerRange = sheet.Range(3, 1, 3, 12);
+        var headerRange = sheet.Range(3, 1, 3, 14);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
         
-        var instructionRange = sheet.Range(4, 1, 4, 12);
+        var instructionRange = sheet.Range(4, 1, 4, 14);
         instructionRange.Style.Font.Italic = true;
         instructionRange.Style.Font.FontColor = XLColor.DarkGray;
 

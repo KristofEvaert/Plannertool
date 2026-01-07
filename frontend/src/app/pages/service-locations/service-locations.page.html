@@ -113,7 +113,7 @@
         <label class="text-sm font-medium">Search:</label>
         <input
           pInputText
-          placeholder="Name, address, or ERP ID"
+          placeholder="Name, address, ERP ID, account, or serial"
           styleClass="w-64"
           [ngModel]="search()"
           (ngModelChange)="search.set($event)"
@@ -186,6 +186,12 @@
             <div>
               <div class="font-medium text-gray-900">{{ item.name }}</div>
               <div class="text-xs text-gray-500">ERP {{ item.erpId }}</div>
+              @if (item.accountId) {
+                <div class="text-xs text-gray-500">Account {{ item.accountId }}</div>
+              }
+              @if (item.serialNumber) {
+                <div class="text-xs text-gray-500">Serial {{ item.serialNumber }}</div>
+              }
             </div>
             @if (item.driverInstruction) {
               <i
@@ -295,6 +301,10 @@
                       <div>
                         {{ item.priorityDate ? (item.priorityDate | date: 'yyyy-MM-dd') : '-' }}
                       </div>
+                      <div class="text-gray-500">Account ID</div>
+                      <div>{{ item.accountId || '-' }}</div>
+                      <div class="text-gray-500">Serial Number</div>
+                      <div>{{ item.serialNumber || '-' }}</div>
                       <div class="text-gray-500">Min Visit Duration</div>
                       <div>{{ detail.constraints?.minVisitDurationMinutes ?? '-' }}</div>
                       <div class="text-gray-500">Max Visit Duration</div>
@@ -426,6 +436,16 @@
       <div>
         <label class="block text-sm font-medium mb-1">ErpId *</label>
         <p-inputNumber class="w-full" [useGrouping]="false" [(ngModel)]="form().erpId" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Account ID</label>
+          <input pInputText class="w-full" [(ngModel)]="form().accountId" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Serial Number</label>
+          <input pInputText class="w-full" [(ngModel)]="form().serialNumber" />
+        </div>
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Name *</label>

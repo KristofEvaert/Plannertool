@@ -2,6 +2,8 @@ export interface ServiceLocationDto {
   id: number;
   toolId: string; // Guid as string
   erpId: number;
+  accountId?: string;
+  serialNumber?: string;
   name: string;
   address?: string;
   latitude: number;
@@ -22,6 +24,8 @@ export interface ServiceLocationDto {
 
 export interface CreateServiceLocationRequest {
   erpId: number;
+  accountId?: string;
+  serialNumber?: string;
   name: string;
   address?: string;
   latitude: number | null;
@@ -37,6 +41,8 @@ export interface CreateServiceLocationRequest {
 
 export interface UpdateServiceLocationRequest {
   erpId: number;
+  accountId?: string;
+  serialNumber?: string;
   name: string;
   address?: string;
   latitude: number | null;
@@ -77,6 +83,8 @@ export interface ServiceLocationListParams {
 // Bulk insert types
 export interface BulkServiceLocationInsertDto {
   erpId: number;
+  accountId?: string;
+  serialNumber?: string;
   name: string;
   address?: string;
   latitude: number | null;

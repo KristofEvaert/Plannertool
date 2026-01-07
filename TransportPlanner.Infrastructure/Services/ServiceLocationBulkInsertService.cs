@@ -363,6 +363,14 @@ public class ServiceLocationBulkInsertService
                 }
                 existingServiceLocation.ServiceTypeId = request.ServiceTypeId; // Update ServiceTypeId from request
                 existingServiceLocation.OwnerId = request.OwnerId; // Update OwnerId from request
+                if (!string.IsNullOrWhiteSpace(item.AccountId))
+                {
+                    existingServiceLocation.AccountId = item.AccountId.Trim();
+                }
+                if (!string.IsNullOrWhiteSpace(item.SerialNumber))
+                {
+                    existingServiceLocation.SerialNumber = item.SerialNumber.Trim();
+                }
                 if (!string.IsNullOrWhiteSpace(item.DriverInstruction))
                 {
                     existingServiceLocation.DriverInstruction = item.DriverInstruction.Trim();
@@ -454,6 +462,8 @@ public class ServiceLocationBulkInsertService
                 ServiceMinutes = item.ServiceMinutes ?? 20,
                 ServiceTypeId = request.ServiceTypeId, // Set ServiceTypeId from request
                 OwnerId = request.OwnerId, // Set OwnerId from request
+                AccountId = string.IsNullOrWhiteSpace(item.AccountId) ? null : item.AccountId.Trim(),
+                SerialNumber = string.IsNullOrWhiteSpace(item.SerialNumber) ? null : item.SerialNumber.Trim(),
                 DriverInstruction = string.IsNullOrWhiteSpace(item.DriverInstruction) ? null : item.DriverInstruction.Trim(),
                 ExtraInstructions = NormalizeInstructions(item.ExtraInstructions),
                 Status = ServiceLocationStatus.Open,

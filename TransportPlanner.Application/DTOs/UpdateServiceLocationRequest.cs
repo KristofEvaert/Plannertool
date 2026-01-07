@@ -3,6 +3,8 @@ namespace TransportPlanner.Application.DTOs;
 public class UpdateServiceLocationRequest
 {
     public int ErpId { get; set; }
+    public string? AccountId { get; set; }
+    public string? SerialNumber { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
     public double? Latitude { get; set; }

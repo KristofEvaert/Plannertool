@@ -885,6 +885,14 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<int>("ErpId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AccountId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SerialNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")

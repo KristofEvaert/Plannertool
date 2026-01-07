@@ -512,13 +512,17 @@ public class ServiceLocationsController : ControllerBase
                 query = query.Where(sl => 
                     sl.Name.ToLower().Contains(searchLower) ||
                     (sl.Address != null && sl.Address.ToLower().Contains(searchLower)) ||
+                    (sl.AccountId != null && sl.AccountId.ToLower().Contains(searchLower)) ||
+                    (sl.SerialNumber != null && sl.SerialNumber.ToLower().Contains(searchLower)) ||
                     sl.ErpId == erpIdSearch);
             }
             else
             {
                 query = query.Where(sl => 
                     sl.Name.ToLower().Contains(searchLower) ||
-                    (sl.Address != null && sl.Address.ToLower().Contains(searchLower)));
+                    (sl.Address != null && sl.Address.ToLower().Contains(searchLower)) ||
+                    (sl.AccountId != null && sl.AccountId.ToLower().Contains(searchLower)) ||
+                    (sl.SerialNumber != null && sl.SerialNumber.ToLower().Contains(searchLower)));
             }
         }
 
@@ -580,6 +584,8 @@ public class ServiceLocationsController : ControllerBase
             Id = sl.Id,
             ToolId = sl.ToolId,
             ErpId = sl.ErpId,
+            AccountId = sl.AccountId,
+            SerialNumber = sl.SerialNumber,
             Name = sl.Name,
             Address = sl.Address,
             Latitude = sl.Latitude ?? 0,
@@ -653,6 +659,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -784,6 +792,8 @@ public class ServiceLocationsController : ControllerBase
         {
             ToolId = Guid.NewGuid(),
             ErpId = request.ErpId,
+            AccountId = string.IsNullOrWhiteSpace(request.AccountId) ? null : request.AccountId.Trim(),
+            SerialNumber = string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber.Trim(),
             Name = request.Name.Trim(),
             Address = address,
             Latitude = latitude,
@@ -812,6 +822,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -941,6 +953,8 @@ public class ServiceLocationsController : ControllerBase
         }
 
         serviceLocation.ErpId = request.ErpId;
+        serviceLocation.AccountId = string.IsNullOrWhiteSpace(request.AccountId) ? null : request.AccountId.Trim();
+        serviceLocation.SerialNumber = string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber.Trim();
         serviceLocation.Name = request.Name.Trim();
         serviceLocation.Address = address;
         serviceLocation.Latitude = latitude;
@@ -971,6 +985,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -1029,6 +1045,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -1086,6 +1104,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -1145,6 +1165,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -1203,6 +1225,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,
@@ -1260,6 +1284,8 @@ public class ServiceLocationsController : ControllerBase
             Id = serviceLocation.Id,
             ToolId = serviceLocation.ToolId,
             ErpId = serviceLocation.ErpId,
+            AccountId = serviceLocation.AccountId,
+            SerialNumber = serviceLocation.SerialNumber,
             Name = serviceLocation.Name,
             Address = serviceLocation.Address,
             Latitude = serviceLocation.Latitude ?? 0,

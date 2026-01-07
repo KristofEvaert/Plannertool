@@ -28,6 +28,12 @@ public class ServiceLocationConfiguration : IEntityTypeConfiguration<ServiceLoca
         builder.HasIndex(sl => sl.ErpId)
             .IsUnique();
 
+        builder.Property(sl => sl.AccountId)
+            .HasMaxLength(100);
+
+        builder.Property(sl => sl.SerialNumber)
+            .HasMaxLength(100);
+
         builder.Property(sl => sl.Name)
             .IsRequired()
             .HasMaxLength(200);

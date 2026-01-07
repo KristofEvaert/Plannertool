@@ -44,6 +44,8 @@ type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & {
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
 interface ServiceLocationFormState {
   erpId: number;
+  accountId?: string;
+  serialNumber?: string;
   name: string;
   address?: string;
   latitude: number | null;
@@ -131,6 +133,8 @@ export class ServiceLocationsPage {
 
   form = signal<ServiceLocationFormState>({
     erpId: 0,
+    accountId: '',
+    serialNumber: '',
     name: '',
     address: '',
     latitude: null,
@@ -536,6 +540,8 @@ export class ServiceLocationsPage {
     const defaultOwnerId = this.owners().length > 0 ? this.owners()[0].id : 0;
     this.form.set({
       erpId: 0,
+      accountId: '',
+      serialNumber: '',
       name: '',
       address: '',
       latitude: null,
@@ -569,6 +575,8 @@ export class ServiceLocationsPage {
     const longitude = item.longitude === 0 ? null : item.longitude;
     this.form.set({
       erpId: item.erpId,
+      accountId: item.accountId || '',
+      serialNumber: item.serialNumber || '',
       name: item.name,
       address: item.address || '',
       latitude,
@@ -1015,6 +1023,8 @@ export class ServiceLocationsPage {
     this.loading.set(true);
     const request: CreateServiceLocationRequest | UpdateServiceLocationRequest = {
       erpId: form.erpId,
+      accountId: form.accountId?.trim() || undefined,
+      serialNumber: form.serialNumber?.trim() || undefined,
       name: form.name.trim(),
       address: form.address?.trim() || undefined,
       latitude: form.latitude,
@@ -1247,6 +1257,8 @@ export class ServiceLocationsPage {
 
     const updateRequest: UpdateServiceLocationRequest = {
       erpId: item.erpId,
+      accountId: item.accountId,
+      serialNumber: item.serialNumber,
       name: item.name,
       address: item.address,
       latitude: item.latitude,
@@ -1297,6 +1309,8 @@ export class ServiceLocationsPage {
 
     const updateRequest: UpdateServiceLocationRequest = {
       erpId: item.erpId,
+      accountId: item.accountId,
+      serialNumber: item.serialNumber,
       name: item.name,
       address: item.address,
       latitude: item.latitude,
@@ -1470,6 +1484,8 @@ export class ServiceLocationsPage {
 
     const updateRequest: UpdateServiceLocationRequest = {
       erpId: item.erpId,
+      accountId: item.accountId,
+      serialNumber: item.serialNumber,
       name: item.name,
       address: item.address,
       latitude: item.latitude,
