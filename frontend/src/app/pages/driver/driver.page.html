@@ -162,13 +162,16 @@
 
               <div class="max-h-[420px] overflow-auto pr-1">
                 @for (stop of r.stops; track stop.id) {
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabindex="0"
                     class="w-full text-left p-2 rounded border mb-2 hover:bg-gray-50 transition-colors"
                     [class.border-blue-500]="selectedStopId() === stop.id"
                     [class.bg-orange-50]="stop.status === 'NotVisited'"
                     [class.border-orange-400]="stop.status === 'NotVisited'"
                     (click)="onStopClick(stop)"
+                    (keydown.enter)="onStopClick(stop)"
+                    (keydown.space)="onStopClick(stop)"
                   >
                     <div class="flex items-center justify-between gap-2">
                       <div class="min-w-0">
@@ -183,12 +186,21 @@
                           </div>
                         }
                       </div>
-                      <p-tag
-                        [value]="stop.status ?? 'Pending'"
-                        [severity]="severityForStopStatus(stop.status)"
-                      />
+                      <div class="flex items-center gap-2">
+                        <p-button
+                          icon="pi pi-directions"
+                          size="small"
+                          severity="secondary"
+                          [outlined]="true"
+                          (onClick)="$event.stopPropagation(); openInGoogleMaps(stop)"
+                        />
+                        <p-tag
+                          [value]="stop.status ?? 'Pending'"
+                          [severity]="severityForStopStatus(stop.status)"
+                        />
+                      </div>
                     </div>
-                  </button>
+                  </div>
                 }
               </div>
 
@@ -230,15 +242,7 @@
                           [disabled]="!canEditStops() || s.status === 'Completed'"
                           (onClick)="departStop(s)"
                         />
-                        <p-button
-                          label="Maps"
-                          icon="pi pi-directions"
-                          size="small"
-                          severity="secondary"
-                          [outlined]="true"
-                          (onClick)="openInGoogleMaps(s)"
-                        />
-                      </div>
+                    </div>
                       <div>
                         <p-button
                           label="Not visited"
@@ -287,17 +291,19 @@
                       />
                     </div>
 
-                    <div>
-                      <label class="block text-sm font-semibold mb-1">Issue</label>
-                      <p-select
-                        optionLabel="label"
-                        optionValue="value"
-                        [options]="issueOptions"
-                        [ngModel]="s.issueCode ?? ''"
-                        [disabled]="!canEditStops()"
-                        (ngModelChange)="saveIssueCode(s, $event)"
-                      />
-                    </div>
+                    @if (s.status === 'NotVisited') {
+                      <div>
+                        <label class="block text-sm font-semibold mb-1">Issue</label>
+                        <p-select
+                          optionLabel="label"
+                          optionValue="value"
+                          [options]="issueOptions"
+                          [ngModel]="s.issueCode ?? ''"
+                          [disabled]="!canEditStops()"
+                          (ngModelChange)="saveIssueCode(s, $event)"
+                        />
+                      </div>
+                    }
 
                     <div class="flex items-center gap-2 mt-6">
                       <p-checkbox
@@ -336,101 +342,6 @@
                       </div>
                     </div>
 
-                    <div class="md:col-span-2 space-y-2">
-                      <div>
-                        <label class="block text-sm font-semibold mb-1">Remark</label>
-                        <textarea
-                          pTextarea
-                          class="w-full"
-                          rows="3"
-                          placeholder="Optional remark…"
-                          [ngModel]="s.note"
-                          [disabled]="!canEditStops()"
-                          (ngModelChange)="saveNote(s, $event)"
-                        ></textarea>
-                      </div>
-                      <div class="flex flex-col gap-2">
-                        <div class="text-xs text-gray-500">
-                          Remark is required when marking Not visited.
-                        </div>
-                      </div>
-                    </div>
-                    <div class="md:col-span-2 space-y-3">
-                      <div>
-                        <label class="block text-sm font-semibold mb-1">Driver note</label>
-                        <textarea
-                          pTextarea
-                          class="w-full"
-                          rows="2"
-                          placeholder="Optional note for the planner..."
-                          [ngModel]="s.driverNote"
-                          [disabled]="!canEditStops()"
-                          (ngModelChange)="saveDriverNote(s, $event)"
-                        ></textarea>
-                      </div>
-                      <div class="border-t pt-2">
-                        <div class="font-semibold mb-2">Message planner (stop)</div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label class="block text-sm font-semibold mb-1">Category</label>
-                          <p-select
-                            optionLabel="label"
-                            optionValue="value"
-                            [options]="messageCategoryOptions"
-                            [ngModel]="stopMessageCategory()"
-                            [disabled]="!canEditStops()"
-                            (ngModelChange)="stopMessageCategory.set($event)"
-                          />
-                          </div>
-                          <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold mb-1">Message</label>
-                            <textarea
-                              pTextarea
-                              class="w-full"
-                              rows="2"
-                              placeholder="Send a note about this stop..."
-                              [ngModel]="stopMessageText()"
-                              [disabled]="!canEditStops()"
-                              (ngModelChange)="stopMessageText.set($event)"
-                            ></textarea>
-                          </div>
-                          <div class="md:col-span-2">
-                          <p-button
-                            label="Send message"
-                            icon="pi pi-send"
-                            size="small"
-                            [loading]="sendingMessage()"
-                            [disabled]="!canEditStops()"
-                            (onClick)="sendStopMessage(s)"
-                          />
-                        </div>
-                      </div>
-                      <div class="mt-3 space-y-2">
-                        @if (routeMessagesForSelectedStop().length === 0) {
-                          <div class="text-xs text-gray-500">No messages yet.</div>
-                        } @else {
-                          @for (message of routeMessagesForSelectedStop(); track message.id) {
-                            <div
-                              class="rounded border p-2 text-sm"
-                              [class.bg-blue-50]="!!message.plannerId"
-                              [class.bg-gray-50]="!message.plannerId"
-                            >
-                              <div class="flex items-center justify-between text-xs text-gray-500">
-                                <span>{{ messageSenderLabel(message) }}</span>
-                                <span>{{ messageTimeLabel(message.createdUtc) }}</span>
-                              </div>
-                              <div class="mt-1">{{ message.messageText }}</div>
-                            </div>
-                          }
-                        }
-                      </div>
-                      @if (!canEditStops()) {
-                        <div class="text-xs text-gray-500 mt-2">
-                          Messaging is available only for today's route.
-                          </div>
-                        }
-                      </div>
-                    </div>
                     <div class="md:col-span-2">
                       <div class="border-t pt-2">
                         <div class="font-semibold mb-2">Proof of delivery</div>
@@ -534,6 +445,103 @@
                             </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+
+
+                    <div class="md:col-span-2 space-y-2">
+                      <div>
+                        <label class="block text-sm font-semibold mb-1">Remark</label>
+                        <textarea
+                          pTextarea
+                          class="w-full"
+                          rows="3"
+                          placeholder="Optional remark…"
+                          [ngModel]="s.note"
+                          [disabled]="!canEditStops()"
+                          (ngModelChange)="saveNote(s, $event)"
+                        ></textarea>
+                      </div>
+                      <div class="flex flex-col gap-2">
+                        <div class="text-xs text-gray-500">
+                          Remark is required when marking Not visited.
+                        </div>
+                      </div>
+                    </div>
+                    <div class="md:col-span-2 space-y-3">
+                      <div>
+                        <label class="block text-sm font-semibold mb-1">Driver note</label>
+                        <textarea
+                          pTextarea
+                          class="w-full"
+                          rows="2"
+                          placeholder="Optional note for the planner..."
+                          [ngModel]="s.driverNote"
+                          [disabled]="!canEditStops()"
+                          (ngModelChange)="saveDriverNote(s, $event)"
+                        ></textarea>
+                      </div>
+                      <div class="border-t pt-2">
+                        <div class="font-semibold mb-2">Message planner (stop)</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label class="block text-sm font-semibold mb-1">Category</label>
+                          <p-select
+                            optionLabel="label"
+                            optionValue="value"
+                            [options]="messageCategoryOptions"
+                            [ngModel]="stopMessageCategory()"
+                            [disabled]="!canEditStops()"
+                            (ngModelChange)="stopMessageCategory.set($event)"
+                          />
+                          </div>
+                          <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold mb-1">Message</label>
+                            <textarea
+                              pTextarea
+                              class="w-full"
+                              rows="2"
+                              placeholder="Send a note about this stop..."
+                              [ngModel]="stopMessageText()"
+                              [disabled]="!canEditStops()"
+                              (ngModelChange)="stopMessageText.set($event)"
+                            ></textarea>
+                          </div>
+                          <div class="md:col-span-2">
+                          <p-button
+                            label="Send message"
+                            icon="pi pi-send"
+                            size="small"
+                            [loading]="sendingMessage()"
+                            [disabled]="!canEditStops()"
+                            (onClick)="sendStopMessage(s)"
+                          />
+                        </div>
+                      </div>
+                      <div class="mt-3 space-y-2">
+                        @if (routeMessagesForSelectedStop().length === 0) {
+                          <div class="text-xs text-gray-500">No messages yet.</div>
+                        } @else {
+                          @for (message of routeMessagesForSelectedStop(); track message.id) {
+                            <div
+                              class="rounded border p-2 text-sm"
+                              [class.bg-blue-50]="!!message.plannerId"
+                              [class.bg-gray-50]="!message.plannerId"
+                            >
+                              <div class="flex items-center justify-between text-xs text-gray-500">
+                                <span>{{ messageSenderLabel(message) }}</span>
+                                <span>{{ messageTimeLabel(message.createdUtc) }}</span>
+                              </div>
+                              <div class="mt-1">{{ message.messageText }}</div>
+                            </div>
+                          }
+                        }
+                      </div>
+                      @if (!canEditStops()) {
+                        <div class="text-xs text-gray-500 mt-2">
+                          Messaging is available only for today's route.
+                          </div>
+                        }
                       </div>
                     </div>
                   </div>
