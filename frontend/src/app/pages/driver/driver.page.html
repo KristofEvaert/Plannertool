@@ -85,6 +85,43 @@
             }
           </div>
           <div id="driver-map" class="driver-map"></div>
+          @if (route()) {
+            <div class="mt-3 pt-3 border-t">
+              <div class="font-semibold mb-2">Message planner (route)</div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Category</label>
+                  <p-select
+                    optionLabel="label"
+                    optionValue="value"
+                    [options]="messageCategoryOptions"
+                    [ngModel]="routeMessageCategory()"
+                    (ngModelChange)="routeMessageCategory.set($event)"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-semibold mb-1">Message</label>
+                  <textarea
+                    pTextarea
+                    class="w-full"
+                    rows="2"
+                    placeholder="Share an update with the planner..."
+                    [ngModel]="routeMessageText()"
+                    (ngModelChange)="routeMessageText.set($event)"
+                  ></textarea>
+                </div>
+                <div class="md:col-span-2">
+                  <p-button
+                    label="Send message"
+                    icon="pi pi-send"
+                    size="small"
+                    [loading]="sendingMessage()"
+                    (onClick)="sendRouteMessage()"
+                  />
+                </div>
+              </div>
+            </div>
+          }
         </div>
 
         <div class="card p-3">
@@ -126,42 +163,6 @@
                     </div>
                   </button>
                 }
-              </div>
-
-              <div class="mt-3 pt-3 border-t">
-                <div class="font-semibold mb-2">Message planner (route)</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-sm font-semibold mb-1">Category</label>
-                    <p-select
-                      optionLabel="label"
-                      optionValue="value"
-                      [options]="messageCategoryOptions"
-                      [ngModel]="routeMessageCategory()"
-                      (ngModelChange)="routeMessageCategory.set($event)"
-                    />
-                  </div>
-                  <div class="md:col-span-2">
-                    <label class="block text-sm font-semibold mb-1">Message</label>
-                    <textarea
-                      pTextarea
-                      class="w-full"
-                      rows="2"
-                      placeholder="Share an update with the planner..."
-                      [ngModel]="routeMessageText()"
-                      (ngModelChange)="routeMessageText.set($event)"
-                    ></textarea>
-                  </div>
-                  <div class="md:col-span-2">
-                    <p-button
-                      label="Send message"
-                      icon="pi pi-send"
-                      size="small"
-                      [loading]="sendingMessage()"
-                      (onClick)="sendRouteMessage()"
-                    />
-                  </div>
-                </div>
               </div>
 
               @if (selectedStop(); as s) {

@@ -59,37 +59,37 @@ public class RouteMessagesController : ControllerBase
             return Forbid();
         }
 
-        var query = _dbContext.RouteMessages
-            .AsNoTracking()
-            .Include(m => m.Route)
-            .Include(m => m.Driver)
-            .Where(m => m.Route.OwnerId == ownerId.Value);
+        var query = from message in _dbContext.RouteMessages.AsNoTracking()
+            join route in _dbContext.Routes.AsNoTracking() on message.RouteId equals route.Id
+            join driver in _dbContext.Drivers.AsNoTracking() on message.DriverId equals driver.Id
+            where route.OwnerId == ownerId.Value
+            select new { message, driver };
 
         if (routeId.HasValue)
         {
-            query = query.Where(m => m.RouteId == routeId.Value);
+            query = query.Where(x => x.message.RouteId == routeId.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(status)
             && Enum.TryParse<RouteMessageStatus>(status, ignoreCase: true, out var statusEnum))
         {
-            query = query.Where(m => m.Status == statusEnum);
+            query = query.Where(x => x.message.Status == statusEnum);
         }
 
         var items = await query
-            .OrderByDescending(m => m.CreatedUtc)
-            .Select(m => new RouteMessageDto
+            .OrderByDescending(x => x.message.CreatedUtc)
+            .Select(x => new RouteMessageDto
             {
-                Id = m.Id,
-                RouteId = m.RouteId,
-                RouteStopId = m.RouteStopId,
-                DriverId = m.DriverId,
-                DriverName = m.Driver.Name,
-                PlannerId = m.PlannerId,
-                MessageText = m.MessageText,
-                CreatedUtc = m.CreatedUtc,
-                Status = m.Status.ToString(),
-                Category = m.Category.ToString()
+                Id = x.message.Id,
+                RouteId = x.message.RouteId,
+                RouteStopId = x.message.RouteStopId,
+                DriverId = x.message.DriverId,
+                DriverName = x.driver.Name,
+                PlannerId = x.message.PlannerId,
+                MessageText = x.message.MessageText,
+                CreatedUtc = x.message.CreatedUtc,
+                Status = x.message.Status.ToString(),
+                Category = x.message.Category.ToString()
             })
             .ToListAsync(cancellationToken);
 
@@ -196,7 +196,6 @@ public class RouteMessagesController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var message = await _dbContext.RouteMessages
-            .Include(m => m.Route)
             .FirstOrDefaultAsync(m => m.Id == messageId, cancellationToken);
 
         if (message == null)
@@ -204,7 +203,16 @@ public class RouteMessagesController : ControllerBase
             return NotFound();
         }
 
-        if (!CanAccessOwner(message.Route.OwnerId))
+        var route = await _dbContext.Routes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == message.RouteId, cancellationToken);
+
+        if (route == null)
+        {
+            return NotFound(new { message = "Route not found." });
+        }
+
+        if (!CanAccessOwner(route.OwnerId))
         {
             return Forbid();
         }
@@ -224,7 +232,6 @@ public class RouteMessagesController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var message = await _dbContext.RouteMessages
-            .Include(m => m.Route)
             .FirstOrDefaultAsync(m => m.Id == messageId, cancellationToken);
 
         if (message == null)
@@ -232,7 +239,16 @@ public class RouteMessagesController : ControllerBase
             return NotFound();
         }
 
-        if (!CanAccessOwner(message.Route.OwnerId))
+        var route = await _dbContext.Routes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == message.RouteId, cancellationToken);
+
+        if (route == null)
+        {
+            return NotFound(new { message = "Route not found." });
+        }
+
+        if (!CanAccessOwner(route.OwnerId))
         {
             return Forbid();
         }

@@ -12,7 +12,5 @@ public class RouteMessage
     public RouteMessageStatus Status { get; set; } = RouteMessageStatus.New;
     public RouteMessageCategory Category { get; set; } = RouteMessageCategory.Info;
 
-    public Route Route { get; set; } = null!;
-    public RouteStop? RouteStop { get; set; }
     public Driver Driver { get; set; } = null!;
 }

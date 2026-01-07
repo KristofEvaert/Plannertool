@@ -1568,22 +1568,7 @@ namespace TransportPlanner.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TransportPlanner.Domain.Entities.Route", "Route")
-                        .WithMany("Messages")
-                        .HasForeignKey("RouteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TransportPlanner.Domain.Entities.RouteStop", "RouteStop")
-                        .WithMany()
-                        .HasForeignKey("RouteStopId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Driver");
-
-                    b.Navigation("Route");
-
-                    b.Navigation("RouteStop");
                 });
 
             modelBuilder.Entity("TransportPlanner.Domain.Entities.RouteStop", b =>
@@ -1703,8 +1688,6 @@ namespace TransportPlanner.Infrastructure.Migrations
             modelBuilder.Entity("TransportPlanner.Domain.Entities.Route", b =>
                 {
                     b.Navigation("ChangeNotifications");
-
-                    b.Navigation("Messages");
 
                     b.Navigation("Stops");
 

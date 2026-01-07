@@ -28,6 +28,5 @@ public class Route
     public WeightTemplate? WeightTemplate { get; set; }
     public ICollection<RouteVersion> Versions { get; set; } = new List<RouteVersion>();
     public ICollection<RouteChangeNotification> ChangeNotifications { get; set; } = new List<RouteChangeNotification>();
-    public ICollection<RouteMessage> Messages { get; set; } = new List<RouteMessage>();
 }
 
