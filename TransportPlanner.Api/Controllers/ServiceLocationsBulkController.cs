@@ -87,7 +87,6 @@ public class ServiceLocationsBulkController : ControllerBase
     /// <summary>
     /// Download service locations bulk template as JSON
     /// </summary>
-    [AllowAnonymous]
     [HttpGet("json")]
     [ProducesResponseType(typeof(ServiceLocationBulkExportResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -211,7 +210,6 @@ public class ServiceLocationsBulkController : ControllerBase
     /// <summary>
     /// Bulk upsert service locations via JSON (insert or update)
     /// </summary>
-    [AllowAnonymous]
     [HttpPost("json")]
     [ProducesResponseType(typeof(BulkInsertResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

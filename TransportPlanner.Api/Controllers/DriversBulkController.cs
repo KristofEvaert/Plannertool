@@ -45,7 +45,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Download driver availability template as JSON (keyed by email)
     /// </summary>
-    [AllowAnonymous]
     [HttpGet("bulk/json")]
     [ProducesResponseType(typeof(DriverAvailabilityExportResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverAvailabilityExportResponse>> DownloadAvailabilityTemplate(
@@ -127,7 +126,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Download driver service types template as JSON (keyed by email)
     /// </summary>
-    [AllowAnonymous]
     [HttpGet("service-types/bulk/json")]
     [ProducesResponseType(typeof(DriverServiceTypesBulkExportResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<DriverServiceTypesBulkExportResponse>> DownloadDriverServiceTypesTemplate(
@@ -197,7 +195,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Bulk upsert driver service types via JSON (keyed by email)
     /// </summary>
-    [AllowAnonymous]
     [HttpPost("service-types/bulk/json")]
     [ProducesResponseType(typeof(DriverServiceTypesBulkResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -227,7 +224,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Bulk upsert driver availability via JSON (keyed by email)
     /// </summary>
-    [AllowAnonymous]
     [HttpPost("bulk/json")]
     [ProducesResponseType(typeof(DriverAvailabilityBulkUpsertResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -247,7 +243,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Upload Excel file with availability grid
     /// </summary>
-    [AllowAnonymous]
     [HttpPost("bulk/excel")]
     [ProducesResponseType(typeof(DriverAvailabilityBulkUpsertResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -455,7 +450,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Download Excel template for driver service types (includes existing data)
     /// </summary>
-    [AllowAnonymous]
     [HttpGet("service-types/bulk/excel")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> DownloadDriverServiceTypesTemplateExcel(
@@ -556,7 +550,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Upload Excel file and bulk upsert driver service types
     /// </summary>
-    [AllowAnonymous]
     [HttpPost("service-types/bulk/excel")]
     [ProducesResponseType(typeof(DriverServiceTypesBulkResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -672,7 +665,6 @@ public class DriversBulkController : ControllerBase
     /// <summary>
     /// Download Excel template with availability grid
     /// </summary>
-    [AllowAnonymous]
     [HttpGet("bulk/excel")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     public IActionResult DownloadAvailabilityTemplateExcel()
