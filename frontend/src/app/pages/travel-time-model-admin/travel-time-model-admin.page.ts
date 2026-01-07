@@ -11,7 +11,6 @@ import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
@@ -27,7 +26,6 @@ interface SelectOption<T> {
   imports: [
     CommonModule,
     FormsModule,
-    TableModule,
     SelectModule,
     ButtonModule,
     TagModule,
@@ -137,16 +135,20 @@ export class TravelTimeModelAdminPage {
     });
   }
 
-  onRowExpand(event: { data: TravelTimeModelLearnedStatDto }): void {
-    this.expandedRows.update((current) => ({ ...current, [event.data.id]: true }));
-  }
-
-  onRowCollapse(event: { data: TravelTimeModelLearnedStatDto }): void {
+  toggleRow(row: TravelTimeModelLearnedStatDto): void {
     this.expandedRows.update((current) => {
       const next = { ...current };
-      delete next[event.data.id];
+      if (next[row.id]) {
+        delete next[row.id];
+      } else {
+        next[row.id] = true;
+      }
       return next;
     });
+  }
+
+  isRowExpanded(row: TravelTimeModelLearnedStatDto): boolean {
+    return !!this.expandedRows()[row.id];
   }
 
   formatBucket(row: TravelTimeModelLearnedStatDto): string {

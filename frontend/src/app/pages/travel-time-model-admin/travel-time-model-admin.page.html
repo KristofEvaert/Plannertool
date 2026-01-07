@@ -74,166 +74,179 @@
     </div>
 
     <div class="card p-3">
-      <p-table
-        dataKey="id"
-        [value]="filteredRows()"
-        [loading]="loading()"
-        [expandedRowKeys]="expandedRows()"
-        (onRowExpand)="onRowExpand($event)"
-        (onRowCollapse)="onRowCollapse($event)"
-      >
-        <ng-template pTemplate="header">
-          <tr>
-            <th class="w-8"></th>
-            <th>Region</th>
-            <th>Day</th>
-            <th>Bucket</th>
-            <th>Band</th>
-            <th>Status</th>
-            <th>Samples</th>
-            <th>Avg</th>
-            <th>Min/Max</th>
-            <th>Baseline</th>
-            <th>Expected</th>
-            <th>Deviation</th>
-            <th>Last Sample</th>
-            <th>Flags</th>
-            <th class="text-right">Actions</th>
-          </tr>
-        </ng-template>
-        <ng-template let-row let-expanded="expanded" pTemplate="body">
-          <tr>
-            <td>
-              <p-button
-                pButton
-                pRowToggler
-                class="p-button-text p-button-sm"
-                [pRowToggler]="row"
-                [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-              />
-            </td>
-            <td class="font-medium">{{ row.regionName }}</td>
-            <td>{{ row.dayType }}</td>
-            <td>{{ formatBucket(row) }}</td>
-            <td>{{ formatDistanceBand(row) }}</td>
-            <td><p-tag [value]="row.status" [severity]="statusSeverity(row.status)" /></td>
-            <td>{{ row.totalSampleCount }}</td>
-            <td>
-              {{ row.avgMinutesPerKm !== null ? (row.avgMinutesPerKm | number: '1.2-2') : '—' }}
-            </td>
-            <td>
-              {{ row.minMinutesPerKm !== null ? (row.minMinutesPerKm | number: '1.2-2') : '—' }} /
-              {{ row.maxMinutesPerKm !== null ? (row.maxMinutesPerKm | number: '1.2-2') : '—' }}
-            </td>
-            <td>{{ row.baselineMinutesPerKm | number: '1.2-2' }}</td>
-            <td>
-              {{ row.expectedRangeMin | number: '1.2-2' }} -
-              {{ row.expectedRangeMax | number: '1.2-2' }}
-            </td>
-            <td>{{ formatDeviation(row) }}</td>
-            <td>
-              {{ row.lastSampleAtUtc ? (row.lastSampleAtUtc | date: 'yyyy-MM-dd HH:mm') : '—' }}
-            </td>
-            <td>
-              <div class="flags">
-                @if (row.isOutOfRange) {
-                  <i
-                    class="pi pi-exclamation-circle text-red-600"
-                    pTooltip="Out of plausible range"
-                  ></i>
-                }
-                @if (row.isStale) {
-                  <i class="pi pi-clock text-orange-600" pTooltip="Stale"></i>
-                }
-                @if (row.isLowSample) {
-                  <i class="pi pi-database text-yellow-600" pTooltip="Low sample count"></i>
-                }
-                @if (row.isHighDeviation) {
-                  <i
-                    class="pi pi-chart-line text-purple-600"
-                    pTooltip="High deviation vs baseline"
-                  ></i>
-                }
-                @if (row.suspiciousRatio > 0) {
-                  <span class="text-xs text-gray-600" pTooltip="Suspicious ratio">
-                    S {{ formatRatio(row) }}
-                  </span>
-                }
-              </div>
-            </td>
-            <td class="text-right">
-              <div class="actions">
-                <p-button
-                  label="Approve"
-                  size="small"
-                  [disabled]="row.status === 'Approved'"
-                  (onClick)="applyStatus(row, 'Approved')"
-                />
-                <p-button
-                  label="Quarantine"
-                  size="small"
-                  severity="warn"
-                  [outlined]="true"
-                  (onClick)="applyStatus(row, 'Quarantined')"
-                />
-                <p-button
-                  label="Reject"
-                  size="small"
-                  severity="danger"
-                  [outlined]="true"
-                  (onClick)="applyStatus(row, 'Rejected')"
-                />
-                <p-button
-                  label="Reset"
-                  size="small"
-                  severity="secondary"
-                  [outlined]="true"
-                  (onClick)="resetBucket(row)"
-                />
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-        <ng-template let-row pTemplate="rowexpansion">
-          <tr>
-            <td colspan="15">
-              <div class="expansion">
-                <div class="expansion-header">
-                  <span class="font-semibold">Contributing Drivers</span>
-                  <span class="text-xs text-gray-500">Top contributors</span>
+      @if (loading()) {
+        <div class="text-sm text-gray-500">Loading learned stats...</div>
+      }
+      @if (!loading() && !filteredRows().length) {
+        <div class="text-sm text-gray-500">No learned stats match the current filters.</div>
+      }
+      @if (filteredRows().length) {
+        <div class="travel-cards">
+          @for (row of filteredRows(); track row.id) {
+            <div class="tt-card">
+              <div class="tt-card-header">
+                <div class="tt-card-main">
+                  <div class="tt-title">
+                    <span class="tt-region">{{ row.regionName }}</span>
+                    <span class="tt-divider">|</span>
+                    <span>{{ row.dayType }}</span>
+                  </div>
+                  <div class="tt-sub">
+                    <span>Bucket {{ formatBucket(row) }}</span>
+                    <span class="tt-divider">|</span>
+                    <span>Band {{ formatDistanceBand(row) }}</span>
+                  </div>
                 </div>
-                @if (!row.contributors?.length) {
-                  <div class="text-sm text-gray-500">No contributors recorded yet.</div>
-                }
-                @if (row.contributors?.length) {
-                  <p-table [value]="row.contributors">
-                    <ng-template pTemplate="header">
-                      <tr>
-                        <th>Driver</th>
-                        <th>Samples</th>
-                        <th>Last Contribution</th>
-                      </tr>
-                    </ng-template>
-                    <ng-template let-contrib pTemplate="body">
-                      <tr>
-                        <td>{{ contrib.driverName || 'Driver #' + contrib.driverId }}</td>
-                        <td>{{ contrib.sampleCount }}</td>
-                        <td>
-                          {{
-                            contrib.lastContributionUtc
-                              ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm')
-                              : '—'
-                          }}
-                        </td>
-                      </tr>
-                    </ng-template>
-                  </p-table>
-                }
+                <div class="tt-card-meta">
+                  <p-tag [value]="row.status" [severity]="statusSeverity(row.status)" />
+                  <div class="flags">
+                    @if (row.isOutOfRange) {
+                      <i
+                        class="pi pi-exclamation-circle text-red-600"
+                        pTooltip="Out of plausible range"
+                      ></i>
+                    }
+                    @if (row.isStale) {
+                      <i class="pi pi-clock text-orange-600" pTooltip="Stale"></i>
+                    }
+                    @if (row.isLowSample) {
+                      <i class="pi pi-database text-yellow-600" pTooltip="Low sample count"></i>
+                    }
+                    @if (row.isHighDeviation) {
+                      <i
+                        class="pi pi-chart-line text-purple-600"
+                        pTooltip="High deviation vs baseline"
+                      ></i>
+                    }
+                    @if (row.suspiciousRatio > 0) {
+                      <span class="text-xs text-gray-600" pTooltip="Suspicious ratio">
+                        S {{ formatRatio(row) }}
+                      </span>
+                    }
+                  </div>
+                </div>
               </div>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
+
+              <div class="tt-stats">
+                <div class="tt-stat">
+                  <span class="tt-label">Samples</span>
+                  <span class="tt-value">{{ row.totalSampleCount }}</span>
+                </div>
+                <div class="tt-stat">
+                  <span class="tt-label">Avg min/km</span>
+                  <span class="tt-value">
+                    {{ row.avgMinutesPerKm !== null ? (row.avgMinutesPerKm | number: '1.2-2') : 'ƒ?"' }}
+                  </span>
+                </div>
+                <div class="tt-stat">
+                  <span class="tt-label">Min/Max</span>
+                  <span class="tt-value">
+                    {{ row.minMinutesPerKm !== null ? (row.minMinutesPerKm | number: '1.2-2') : 'ƒ?"' }} /
+                    {{ row.maxMinutesPerKm !== null ? (row.maxMinutesPerKm | number: '1.2-2') : 'ƒ?"' }}
+                  </span>
+                </div>
+                <div class="tt-stat">
+                  <span class="tt-label">Baseline</span>
+                  <span class="tt-value">{{ row.baselineMinutesPerKm | number: '1.2-2' }}</span>
+                </div>
+                <div class="tt-stat">
+                  <span class="tt-label">Expected</span>
+                  <span class="tt-value">
+                    {{ row.expectedRangeMin | number: '1.2-2' }} - {{ row.expectedRangeMax | number: '1.2-2' }}
+                  </span>
+                </div>
+                <div class="tt-stat">
+                  <span class="tt-label">Deviation</span>
+                  <span class="tt-value">{{ formatDeviation(row) }}</span>
+                </div>
+                <div class="tt-stat">
+                  <span class="tt-label">Last sample</span>
+                  <span class="tt-value">
+                    {{ row.lastSampleAtUtc ? (row.lastSampleAtUtc | date: 'yyyy-MM-dd HH:mm') : 'ƒ?"' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="tt-card-footer">
+                <div class="actions">
+                  <p-button
+                    label="Approve"
+                    size="small"
+                    [disabled]="row.status === 'Approved'"
+                    (onClick)="applyStatus(row, 'Approved')"
+                  />
+                  <p-button
+                    label="Quarantine"
+                    size="small"
+                    severity="warn"
+                    [outlined]="true"
+                    (onClick)="applyStatus(row, 'Quarantined')"
+                  />
+                  <p-button
+                    label="Reject"
+                    size="small"
+                    severity="danger"
+                    [outlined]="true"
+                    (onClick)="applyStatus(row, 'Rejected')"
+                  />
+                  <p-button
+                    label="Reset"
+                    size="small"
+                    severity="secondary"
+                    [outlined]="true"
+                    (onClick)="resetBucket(row)"
+                  />
+                </div>
+                <p-button
+                  class="tt-expand"
+                  size="small"
+                  [outlined]="true"
+                  [icon]="isRowExpanded(row) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                  [label]="'Contributors (' + (row.contributors?.length || 0) + ')'"
+                  (onClick)="toggleRow(row)"
+                />
+              </div>
+
+              @if (isRowExpanded(row)) {
+                <div class="tt-expand-panel">
+                  <div class="tt-expand-header">
+                    <span class="font-semibold">Contributing drivers</span>
+                    <span class="text-xs text-gray-500">Top contributors</span>
+                  </div>
+                  @if (!row.contributors?.length) {
+                    <div class="text-sm text-gray-500">No contributors recorded yet.</div>
+                  }
+                  @if (row.contributors?.length) {
+                    <div class="tt-contrib-list">
+                      @for (contrib of row.contributors; track contrib.driverId) {
+                        <div class="tt-contrib-row">
+                          <div class="tt-contrib-name">
+                            {{ contrib.driverName || 'Driver #' + contrib.driverId }}
+                          </div>
+                          <div class="tt-contrib-meta">
+                            <span class="tt-label">Samples</span>
+                            <span class="tt-value">{{ contrib.sampleCount }}</span>
+                          </div>
+                          <div class="tt-contrib-meta">
+                            <span class="tt-label">Last</span>
+                            <span class="tt-value">
+                              {{
+                                contrib.lastContributionUtc
+                                  ? (contrib.lastContributionUtc | date: 'yyyy-MM-dd HH:mm')
+                                  : 'ƒ?"'
+                              }}
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
   </div>
 </div>
