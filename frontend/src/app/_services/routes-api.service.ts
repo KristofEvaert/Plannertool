@@ -25,11 +25,19 @@ export interface RouteStopDto {
   driverNote?: string;
   issueCode?: string;
   followUpRequired?: boolean;
+  checklistItems?: RouteStopChecklistItemDto[];
   proofStatus?: string;
+  hasProofPhoto?: boolean;
+  hasProofSignature?: boolean;
   lastUpdatedByUserId?: string;
   lastUpdatedUtc?: string;
   driverInstruction?: string;
   remark?: string;
+}
+
+export interface RouteStopChecklistItemDto {
+  text: string;
+  isChecked: boolean;
 }
 
 export interface RouteGeometryPointDto {
@@ -95,6 +103,7 @@ export interface UpdateRouteStopRequest {
   driverNote?: string;
   issueCode?: string;
   followUpRequired?: boolean;
+  checklistItems?: RouteStopChecklistItemDto[];
   proofStatus?: string;
   status?: string;
 }
@@ -108,6 +117,7 @@ export interface AutoGenerateAllResponse {
 export class RoutesApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/routes`;
+  private readonly routeStopsUrl = `${environment.apiBaseUrl}/api/routeStops`;
 
   getRoutes(date: Date, driverToolId: string, ownerId: number): Observable<RouteDto[]> {
     const params = new HttpParams()
@@ -151,6 +161,36 @@ export class RoutesApiService {
       {
         departedAtUtc,
       },
+    );
+  }
+
+  getRouteStopProofPhoto(routeStopId: number): Observable<Blob> {
+    return this.http.get(`${this.routeStopsUrl}/${routeStopId}/proof/photo`, {
+      responseType: 'blob',
+    });
+  }
+
+  getRouteStopProofSignature(routeStopId: number): Observable<Blob> {
+    return this.http.get(`${this.routeStopsUrl}/${routeStopId}/proof/signature`, {
+      responseType: 'blob',
+    });
+  }
+
+  uploadRouteStopProofPhoto(routeStopId: number, file: File): Observable<RouteStopDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<RouteStopDto>(
+      `${this.routeStopsUrl}/${routeStopId}/proof/photo`,
+      formData,
+    );
+  }
+
+  uploadRouteStopProofSignature(routeStopId: number, file: File): Observable<RouteStopDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<RouteStopDto>(
+      `${this.routeStopsUrl}/${routeStopId}/proof/signature`,
+      formData,
     );
   }
 

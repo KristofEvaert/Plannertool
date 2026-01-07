@@ -8,17 +8,18 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
 import { DatePickerModule } from 'primeng/datepicker';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
-import { catchError, interval, of, startWith, Subscription, switchMap } from 'rxjs';
+import { catchError, forkJoin, interval, map, of, startWith, Subscription, switchMap } from 'rxjs';
 
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { RouteMessageDto } from '@models/route-message.model';
@@ -40,6 +41,24 @@ interface OwnerOption {
   label: string;
   value: number;
 }
+interface MessageDriverFilterOption {
+  label: string;
+  value: number | null;
+}
+interface MessageRow extends RouteMessageDto {
+  indent: number;
+  isReply: boolean;
+  threadKey: string;
+}
+interface MessageThread {
+  key: string;
+  routeId: number;
+  routeStopId: number | null;
+  driverId: number;
+  driverName: string;
+  latestCreatedUtc: string;
+  messages: MessageRow[];
+}
 
 type DriverPosition = {
   lat: number;
@@ -56,8 +75,8 @@ type DriverPosition = {
     DatePickerModule,
     SelectModule,
     ButtonModule,
+    CheckboxModule,
     TagModule,
-    TableModule,
     ToastModule,
     HelpManualComponent,
   ],
@@ -89,6 +108,33 @@ export class RouteFollowupPage implements AfterViewInit {
 
   route = signal<RouteDto | null>(null);
   messages = signal<RouteMessageDto[]>([]);
+  selectedStopId = signal<number | null>(null);
+  proofPhotoUrl = signal<string | null>(null);
+  proofSignatureUrl = signal<string | null>(null);
+  proofPhotoLoading = signal(false);
+  proofSignatureLoading = signal(false);
+
+  selectedStop = computed(() => {
+    const route = this.route();
+    const stopId = this.selectedStopId();
+    if (!route || !stopId) return null;
+    return route.stops.find((s) => s.id === stopId) ?? null;
+  });
+
+  messageDriverFilterId = signal<number | null>(null);
+  messageStatusFilter = signal('');
+  replyTarget = signal<RouteMessageDto | null>(null);
+  replyText = signal('');
+  replyCategory = signal('Info');
+  sendingReply = signal(false);
+  replyThreadKey = computed(() => {
+    const target = this.replyTarget();
+    return target ? RouteFollowupPage.threadKeyFor(target) : null;
+  });
+  composeTarget = signal('all');
+  composeMessageText = signal('');
+  composeCategory = signal('Info');
+  sendingCompose = signal(false);
 
   private map: L.Map | null = null;
   private layerGroup: L.LayerGroup | null = null;
@@ -101,9 +147,109 @@ export class RouteFollowupPage implements AfterViewInit {
     return all.filter((d) => d.ownerId === ownerId);
   });
 
+  messageDriverOptions = computed<MessageDriverFilterOption[]>(() => {
+    const seen = new Map<number, string>();
+    for (const message of this.messages()) {
+      if (!seen.has(message.driverId)) {
+        seen.set(message.driverId, message.driverName || `Driver #${message.driverId}`);
+      }
+    }
+    const options = Array.from(seen.entries())
+      .map(([value, label]) => ({ label, value }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return [{ label: 'All drivers', value: null }, ...options];
+  });
+
+  composeDriverOptions = computed(() => {
+    const options = this.driversForSelectedOwner()
+      .map((driver) => ({ label: driver.label, value: driver.value }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return [{ label: 'All drivers', value: 'all' }, ...options];
+  });
+
   isToday = computed(() => RouteFollowupPage.isSameDay(this.selectedDate(), new Date()));
 
   unreadCount = computed(() => this.messages().filter((m) => m.status === 'New').length);
+
+  filteredMessages = computed(() => {
+    const driverId = this.messageDriverFilterId();
+    const status = this.messageStatusFilter();
+    return this.messages().filter((message) => {
+      if (driverId != null && message.driverId !== driverId) {
+        return false;
+      }
+      if (status && message.status !== status) {
+        return false;
+      }
+      return true;
+    });
+  });
+
+  messageThreads = computed<MessageThread[]>(() => {
+    const items = this.filteredMessages();
+    if (items.length === 0) return [];
+
+    const threads = new Map<string, MessageThread>();
+    for (const message of items) {
+      const key = RouteFollowupPage.threadKeyFor(message);
+      let thread = threads.get(key);
+      if (!thread) {
+        thread = {
+          key,
+          routeId: message.routeId,
+          routeStopId: message.routeStopId ?? null,
+          driverId: message.driverId,
+          driverName: message.driverName || `Driver #${message.driverId}`,
+          latestCreatedUtc: message.createdUtc,
+          messages: [],
+        };
+        threads.set(key, thread);
+      }
+
+      const isReply = RouteFollowupPage.isPlannerMessage(message);
+      thread.messages.push({
+        ...message,
+        indent: isReply ? 1 : 0,
+        isReply,
+        threadKey: key,
+      });
+
+      if (
+        RouteFollowupPage.messageTimeValue(message.createdUtc) >
+        RouteFollowupPage.messageTimeValue(thread.latestCreatedUtc)
+      ) {
+        thread.latestCreatedUtc = message.createdUtc;
+      }
+    }
+
+    for (const thread of threads.values()) {
+      thread.messages.sort(
+        (a, b) =>
+          RouteFollowupPage.messageTimeValue(a.createdUtc) -
+          RouteFollowupPage.messageTimeValue(b.createdUtc),
+      );
+    }
+
+    return Array.from(threads.values()).sort(
+      (a, b) =>
+        RouteFollowupPage.messageTimeValue(b.latestCreatedUtc) -
+        RouteFollowupPage.messageTimeValue(a.latestCreatedUtc),
+    );
+  });
+
+  readonly messageStatusOptions = [
+    { label: 'All statuses', value: '' },
+    { label: 'New', value: 'New' },
+    { label: 'Read', value: 'Read' },
+    { label: 'Resolved', value: 'Resolved' },
+  ];
+
+  readonly messageCategoryOptions = [
+    { label: 'Info', value: 'Info' },
+    { label: 'Delay', value: 'Delay' },
+    { label: 'Issue', value: 'Issue' },
+    { label: 'Other', value: 'Other' },
+  ];
 
   driverPosition = computed<DriverPosition>(() => {
     const route = this.route();
@@ -178,9 +324,37 @@ export class RouteFollowupPage implements AfterViewInit {
       const ownerId = this.selectedOwnerId();
       if (!ownerId) {
         this.messages.set([]);
+        this.replyTarget.set(null);
+        this.replyText.set('');
         return;
       }
       this.loadMessages(ownerId);
+    });
+
+    effect(() => {
+      const driverId = this.messageDriverFilterId();
+      if (driverId == null) return;
+      const exists = this.messages().some((m) => m.driverId === driverId);
+      if (!exists) {
+        this.messageDriverFilterId.set(null);
+      }
+    });
+
+    effect(() => {
+      const options = this.composeDriverOptions();
+      const current = this.composeTarget();
+      if (options.some((o) => o.value === current)) return;
+      this.composeTarget.set(options[0]?.value ?? 'all');
+    });
+
+    effect(() => {
+      const target = this.replyTarget();
+      if (!target) return;
+      const exists = this.messages().some((m) => m.id === target.id);
+      if (!exists) {
+        this.replyTarget.set(null);
+        this.replyText.set('');
+      }
     });
 
     // Auto-load when selection changes.
@@ -199,6 +373,31 @@ export class RouteFollowupPage implements AfterViewInit {
 
       this.loadRoute(date, driverToolId, ownerId, { enablePollingIfToday: true });
     });
+
+    effect(() => {
+      const route = this.route();
+      if (!route || route.stops.length === 0) {
+        this.selectedStopId.set(null);
+        return;
+      }
+      const selectedId = this.selectedStopId();
+      if (selectedId && route.stops.some((stop) => stop.id === selectedId)) {
+        return;
+      }
+      this.selectedStopId.set(route.stops[0].id);
+    });
+
+    effect(() => {
+      const stop = this.selectedStop();
+      this.resetProofState();
+      if (!stop) return;
+      if (stop.hasProofPhoto) {
+        this.loadProofPhoto(stop.id);
+      }
+      if (stop.hasProofSignature) {
+        this.loadProofSignature(stop.id);
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -206,7 +405,10 @@ export class RouteFollowupPage implements AfterViewInit {
     this.refreshMap();
 
     // Ensure we stop polling on destroy.
-    this.destroyRef.onDestroy(() => this.stopPolling());
+    this.destroyRef.onDestroy(() => {
+      this.stopPolling();
+      this.resetProofState();
+    });
   }
 
   private loadLookups(): void {
@@ -393,6 +595,10 @@ export class RouteFollowupPage implements AfterViewInit {
     this.map.invalidateSize();
   }
 
+  onStopClick(stop: RouteStopDto): void {
+    this.selectedStopId.set(stop.id);
+  }
+
   stopDurationMinutes(stop: RouteStopDto): number | null {
     if (stop.actualServiceMinutes != null) return stop.actualServiceMinutes;
     if (!stop.arrivedAtUtc || !stop.completedAtUtc) return null;
@@ -409,6 +615,59 @@ export class RouteFollowupPage implements AfterViewInit {
     const d = new Date(utcIso);
     if (Number.isNaN(d.getTime())) return '—';
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  private resetProofState(): void {
+    const photoUrl = untracked(() => this.proofPhotoUrl());
+    const signatureUrl = untracked(() => this.proofSignatureUrl());
+    this.revokeProofUrl(photoUrl);
+    this.revokeProofUrl(signatureUrl);
+    this.proofPhotoUrl.set(null);
+    this.proofSignatureUrl.set(null);
+    this.proofPhotoLoading.set(false);
+    this.proofSignatureLoading.set(false);
+  }
+
+  private loadProofPhoto(routeStopId: number): void {
+    this.proofPhotoLoading.set(true);
+    this.routesApi.getRouteStopProofPhoto(routeStopId).subscribe({
+      next: (blob) => {
+        this.proofPhotoLoading.set(false);
+        this.setProofPhotoUrl(blob);
+      },
+      error: () => {
+        this.proofPhotoLoading.set(false);
+      },
+    });
+  }
+
+  private loadProofSignature(routeStopId: number): void {
+    this.proofSignatureLoading.set(true);
+    this.routesApi.getRouteStopProofSignature(routeStopId).subscribe({
+      next: (blob) => {
+        this.proofSignatureLoading.set(false);
+        this.setProofSignatureUrl(blob);
+      },
+      error: () => {
+        this.proofSignatureLoading.set(false);
+      },
+    });
+  }
+
+  private setProofPhotoUrl(blob: Blob): void {
+    this.revokeProofUrl(this.proofPhotoUrl());
+    this.proofPhotoUrl.set(URL.createObjectURL(blob));
+  }
+
+  private setProofSignatureUrl(blob: Blob): void {
+    this.revokeProofUrl(this.proofSignatureUrl());
+    this.proofSignatureUrl.set(URL.createObjectURL(blob));
+  }
+
+  private revokeProofUrl(url: string | null): void {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
   }
 
   severityForStopStatus(
@@ -449,6 +708,193 @@ export class RouteFollowupPage implements AfterViewInit {
     });
   }
 
+  messageSenderLabel(message: RouteMessageDto): string {
+    if (RouteFollowupPage.isPlannerMessage(message)) {
+      return 'Planner';
+    }
+    return message.driverName || `Driver #${message.driverId}`;
+  }
+
+  sendPlannerMessage(): void {
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Select an owner before sending a message.',
+      });
+      return;
+    }
+
+    const messageText = this.composeMessageText().trim();
+    if (!messageText) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Message is required.',
+      });
+      return;
+    }
+
+    const targetValue = this.composeTarget();
+    const drivers = this.driversForSelectedOwner();
+    const targetDrivers =
+      targetValue === 'all'
+        ? drivers
+        : drivers.filter((driver) => driver.value === targetValue);
+
+    if (targetDrivers.length === 0) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'No drivers available for the selected owner.',
+      });
+      return;
+    }
+
+    const date = this.selectedDate();
+    this.sendingCompose.set(true);
+
+    const tasks = targetDrivers.map((driver) =>
+      this.routesApi.getDriverDayRoute(date, driver.value, ownerId, false).pipe(
+        catchError(() => of(null)),
+        switchMap((route) => {
+          if (!route) {
+            return of({
+              driverName: driver.label,
+              status: 'no-route' as const,
+              message: null as RouteMessageDto | null,
+            });
+          }
+          return this.routeMessagesApi
+            .createMessage({
+              routeId: route.id,
+              routeStopId: null,
+              messageText,
+              category: this.composeCategory(),
+            })
+            .pipe(
+              map((created) => ({
+                driverName: driver.label,
+                status: 'sent' as const,
+                message: created,
+              })),
+              catchError(() =>
+                of({
+                  driverName: driver.label,
+                  status: 'failed' as const,
+                  message: null,
+                }),
+              ),
+            );
+        }),
+      ),
+    );
+
+    forkJoin(tasks).subscribe({
+      next: (results) => {
+        this.sendingCompose.set(false);
+        let sent = 0;
+        let noRoute = 0;
+        let failed = 0;
+        for (const result of results) {
+          if (result.status === 'sent' && result.message) {
+            sent += 1;
+            this.upsertMessage(result.message);
+          } else if (result.status === 'no-route') {
+            noRoute += 1;
+          } else {
+            failed += 1;
+          }
+        }
+
+        if (sent > 0) {
+          this.composeMessageText.set('');
+        }
+
+        const parts: string[] = [];
+        if (sent > 0) {
+          parts.push(`Sent ${sent} message${sent === 1 ? '' : 's'}.`);
+        }
+        if (noRoute > 0) {
+          parts.push(`${noRoute} driver${noRoute === 1 ? ' has' : 's have'} no route.`);
+        }
+        if (failed > 0) {
+          parts.push(`${failed} failed to send.`);
+        }
+
+        this.messageService.add({
+          severity: failed > 0 || sent === 0 ? 'warn' : 'success',
+          summary: sent > 0 ? 'Messages sent' : 'No messages sent',
+          detail: parts.join(' '),
+        });
+      },
+      error: () => {
+        this.sendingCompose.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to send messages.',
+        });
+      },
+    });
+  }
+
+  startReply(message: RouteMessageDto): void {
+    this.replyTarget.set(message);
+    this.replyText.set('');
+    this.replyCategory.set(message.category || 'Info');
+  }
+
+  cancelReply(): void {
+    this.replyTarget.set(null);
+    this.replyText.set('');
+  }
+
+  sendReply(): void {
+    const target = this.replyTarget();
+    if (!target) return;
+    const messageText = this.replyText().trim();
+    if (!messageText) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Message is required.',
+      });
+      return;
+    }
+
+    this.sendingReply.set(true);
+    this.routeMessagesApi
+      .createMessage({
+        routeId: target.routeId,
+        routeStopId: target.routeStopId ?? null,
+        messageText,
+        category: this.replyCategory(),
+      })
+      .subscribe({
+        next: (created) => {
+          this.sendingReply.set(false);
+          this.replyText.set('');
+          this.replyTarget.set(null);
+          this.upsertMessage(created);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Reply sent',
+            detail: 'Driver has been notified.',
+          });
+        },
+        error: (err) => {
+          this.sendingReply.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err?.error?.message || err?.message || 'Failed to send reply',
+          });
+        },
+      });
+  }
+
   messageTimeLabel(utcIso?: string): string {
     if (!utcIso) return '-';
     const d = new Date(utcIso);
@@ -459,6 +905,22 @@ export class RouteFollowupPage implements AfterViewInit {
       month: 'short',
       day: '2-digit',
     });
+  }
+
+  private static threadKeyFor(message: RouteMessageDto): string {
+    return `${message.routeId}-${message.routeStopId ?? 'route'}`;
+  }
+
+  private static isPlannerMessage(message: RouteMessageDto): boolean {
+    if (!message.plannerId) return false;
+    if (message.status && message.status !== 'New') return false;
+    return true;
+  }
+
+  private static messageTimeValue(utcIso?: string): number {
+    if (!utcIso) return 0;
+    const time = Date.parse(utcIso);
+    return Number.isNaN(time) ? 0 : time;
   }
 
   private static isSameDay(a: Date, b: Date): boolean {

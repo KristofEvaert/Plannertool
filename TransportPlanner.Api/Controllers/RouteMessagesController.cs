@@ -96,6 +96,58 @@ public class RouteMessagesController : ControllerBase
         return Ok(items);
     }
 
+    [HttpGet("driver")]
+    [Authorize(Roles = AppRoles.Driver)]
+    [ProducesResponseType(typeof(List<RouteMessageDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<RouteMessageDto>>> GetDriverMessages(
+        [FromQuery] int routeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (routeId <= 0)
+        {
+            return BadRequest(new { message = "RouteId is required." });
+        }
+
+        var route = await _dbContext.Routes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == routeId, cancellationToken);
+
+        if (route == null)
+        {
+            return NotFound(new { message = "Route not found." });
+        }
+
+        var driver = await _dbContext.Drivers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.UserId == CurrentUserId, cancellationToken);
+
+        if (driver == null || route.DriverId != driver.Id)
+        {
+            return Forbid();
+        }
+
+        var items = await _dbContext.RouteMessages
+            .AsNoTracking()
+            .Where(m => m.RouteId == routeId)
+            .OrderBy(m => m.CreatedUtc)
+            .Select(m => new RouteMessageDto
+            {
+                Id = m.Id,
+                RouteId = m.RouteId,
+                RouteStopId = m.RouteStopId,
+                DriverId = m.DriverId,
+                DriverName = driver.Name,
+                PlannerId = m.PlannerId,
+                MessageText = m.MessageText,
+                CreatedUtc = m.CreatedUtc,
+                Status = m.Status.ToString(),
+                Category = m.Category.ToString()
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(items);
+    }
+
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin},{AppRoles.Driver}")]
     [ProducesResponseType(typeof(RouteMessageDto), StatusCodes.Status200OK)]
@@ -188,6 +240,11 @@ public class RouteMessagesController : ControllerBase
             .SendAsync("routeMessageCreated", dto, cancellationToken);
         await _hubContext.Clients.Group("superadmin")
             .SendAsync("routeMessageCreated", dto, cancellationToken);
+        if (driver.UserId.HasValue)
+        {
+            await _hubContext.Clients.Group($"driver-{driver.UserId.Value}")
+                .SendAsync("routeMessageCreated", dto, cancellationToken);
+        }
 
         return Ok(dto);
     }
@@ -223,7 +280,6 @@ public class RouteMessagesController : ControllerBase
         }
 
         message.Status = RouteMessageStatus.Read;
-        message.PlannerId = CurrentUserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -259,7 +315,6 @@ public class RouteMessagesController : ControllerBase
         }
 
         message.Status = RouteMessageStatus.Resolved;
-        message.PlannerId = CurrentUserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }

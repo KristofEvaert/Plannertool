@@ -506,6 +506,7 @@ public class AutoRoutesController : ControllerBase
                 Latitude = loc.Latitude ?? 0,
                 Longitude = loc.Longitude ?? 0,
                 ServiceMinutes = serviceMinutes,
+                ChecklistItems = BuildChecklistItems(loc.ExtraInstructions),
                 TravelKmFromPrev = (float)travelKm,
                 TravelMinutesFromPrev = travelMinutesRounded,
                 PlannedStart = date.Date.AddMinutes(startServiceMinute),
@@ -668,7 +669,10 @@ public class AutoRoutesController : ControllerBase
                     DriverNote = s.DriverNote,
                     IssueCode = s.IssueCode,
                     FollowUpRequired = s.FollowUpRequired,
+                    ChecklistItems = MapChecklistItems(s),
                     ProofStatus = s.ProofStatus.ToString(),
+                    HasProofPhoto = s.ProofPhoto != null && s.ProofPhoto.Length > 0,
+                    HasProofSignature = s.ProofSignature != null && s.ProofSignature.Length > 0,
                     LastUpdatedByUserId = s.LastUpdatedByUserId,
                     LastUpdatedUtc = s.LastUpdatedUtc,
                     DriverInstruction = s.ServiceLocation?.DriverInstruction
@@ -701,6 +705,49 @@ public class AutoRoutesController : ControllerBase
         if (normalized < 0.0) return 0.0;
         if (normalized > 100.0) return 100.0;
         return normalized;
+    }
+
+    private static List<RouteStopChecklistItem> BuildChecklistItems(IEnumerable<string>? items)
+    {
+        if (items == null)
+        {
+            return new List<RouteStopChecklistItem>();
+        }
+
+        return items
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => new RouteStopChecklistItem
+            {
+                Text = item.Trim(),
+                IsChecked = false
+            })
+            .ToList();
+    }
+
+    private static List<RouteStopChecklistItemDto> MapChecklistItems(RouteStop stop)
+    {
+        var items = stop.ChecklistItems ?? new List<RouteStopChecklistItem>();
+        if (items.Count > 0)
+        {
+            return items
+                .Where(item => !string.IsNullOrWhiteSpace(item.Text))
+                .Select(item => new RouteStopChecklistItemDto
+                {
+                    Text = item.Text.Trim(),
+                    IsChecked = item.IsChecked
+                })
+                .ToList();
+        }
+
+        var fallback = stop.ServiceLocation?.ExtraInstructions ?? new List<string>();
+        return fallback
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => new RouteStopChecklistItemDto
+            {
+                Text = item.Trim(),
+                IsChecked = false
+            })
+            .ToList();
     }
 
     private static WeightSet ResolveWeights(

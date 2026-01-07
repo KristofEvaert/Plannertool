@@ -23,6 +23,9 @@ public class RouteStopDto
     public string? IssueCode { get; set; }
     public bool FollowUpRequired { get; set; }
     public string ProofStatus { get; set; } = string.Empty;
+    public List<RouteStopChecklistItemDto> ChecklistItems { get; set; } = new();
+    public bool HasProofPhoto { get; set; }
+    public bool HasProofSignature { get; set; }
     public Guid? LastUpdatedByUserId { get; set; }
     public DateTime? LastUpdatedUtc { get; set; }
     public string? DriverInstruction { get; set; }

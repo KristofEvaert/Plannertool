@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
 using TransportPlanner.Application.DTOs;
+using TransportPlanner.Api.Models;
 using TransportPlanner.Domain.Entities;
 using TransportPlanner.Infrastructure.Data;
 using TransportPlanner.Infrastructure.Identity;
@@ -14,7 +15,7 @@ namespace TransportPlanner.Api.Controllers;
 
 [ApiController]
 [Route("api/routeStops")]
-[Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin},{AppRoles.Driver}")]
+[Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin},{AppRoles.Planner},{AppRoles.Driver}")]
 public class RouteStopsController : ControllerBase
 {
     private readonly TransportPlannerDbContext _dbContext;
@@ -164,6 +165,154 @@ public class RouteStopsController : ControllerBase
         return Ok(ToStopDto(stop));
     }
 
+    [HttpGet("{routeStopId:int}/proof/photo")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProofPhoto(
+        [FromRoute] int routeStopId,
+        CancellationToken cancellationToken = default)
+    {
+        var stop = await LoadStopAsync(routeStopId, cancellationToken);
+        if (stop == null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanAccessStopAsync(stop, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (stop.ProofPhoto == null || stop.ProofPhoto.Length == 0)
+        {
+            return NotFound();
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(stop.ProofPhotoContentType)
+            ? "image/jpeg"
+            : stop.ProofPhotoContentType;
+
+        return File(stop.ProofPhoto, contentType);
+    }
+
+    [HttpPost("{routeStopId:int}/proof/photo")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(RouteStopDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RouteStopDto>> UploadProofPhoto(
+        [FromRoute] int routeStopId,
+        [FromForm] RouteStopProofUploadRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var stop = await LoadStopAsync(routeStopId, cancellationToken);
+        if (stop == null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanAccessStopAsync(stop, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var file = request.File;
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "No photo uploaded." });
+        }
+
+        if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Photo must be an image file." });
+        }
+
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, cancellationToken);
+
+        stop.ProofPhoto = stream.ToArray();
+        stop.ProofPhotoContentType = file.ContentType;
+        stop.LastUpdatedByUserId = CurrentUserId;
+        stop.LastUpdatedUtc = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(ToStopDto(stop));
+    }
+
+    [HttpGet("{routeStopId:int}/proof/signature")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProofSignature(
+        [FromRoute] int routeStopId,
+        CancellationToken cancellationToken = default)
+    {
+        var stop = await LoadStopAsync(routeStopId, cancellationToken);
+        if (stop == null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanAccessStopAsync(stop, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (stop.ProofSignature == null || stop.ProofSignature.Length == 0)
+        {
+            return NotFound();
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(stop.ProofSignatureContentType)
+            ? "image/png"
+            : stop.ProofSignatureContentType;
+
+        return File(stop.ProofSignature, contentType);
+    }
+
+    [HttpPost("{routeStopId:int}/proof/signature")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(RouteStopDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RouteStopDto>> UploadProofSignature(
+        [FromRoute] int routeStopId,
+        [FromForm] RouteStopProofUploadRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var stop = await LoadStopAsync(routeStopId, cancellationToken);
+        if (stop == null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanAccessStopAsync(stop, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var file = request.File;
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "No signature uploaded." });
+        }
+
+        if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Signature must be an image file." });
+        }
+
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, cancellationToken);
+
+        stop.ProofSignature = stream.ToArray();
+        stop.ProofSignatureContentType = file.ContentType;
+        stop.LastUpdatedByUserId = CurrentUserId;
+        stop.LastUpdatedUtc = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(ToStopDto(stop));
+    }
+
     private async Task<RouteStop?> LoadStopAsync(int routeStopId, CancellationToken cancellationToken)
     {
         return await _dbContext.RouteStops
@@ -302,11 +451,40 @@ public class RouteStopsController : ControllerBase
             DriverNote = stop.DriverNote,
             IssueCode = stop.IssueCode,
             FollowUpRequired = stop.FollowUpRequired,
+            ChecklistItems = MapChecklistItems(stop),
             ProofStatus = stop.ProofStatus.ToString(),
+            HasProofPhoto = stop.ProofPhoto != null && stop.ProofPhoto.Length > 0,
+            HasProofSignature = stop.ProofSignature != null && stop.ProofSignature.Length > 0,
             LastUpdatedByUserId = stop.LastUpdatedByUserId,
             LastUpdatedUtc = stop.LastUpdatedUtc,
             DriverInstruction = stop.ServiceLocation?.DriverInstruction
         };
+    }
+
+    private static List<RouteStopChecklistItemDto> MapChecklistItems(RouteStop stop)
+    {
+        var items = stop.ChecklistItems ?? new List<RouteStopChecklistItem>();
+        if (items.Count > 0)
+        {
+            return items
+                .Where(item => !string.IsNullOrWhiteSpace(item.Text))
+                .Select(item => new RouteStopChecklistItemDto
+                {
+                    Text = item.Text.Trim(),
+                    IsChecked = item.IsChecked
+                })
+                .ToList();
+        }
+
+        var fallback = stop.ServiceLocation?.ExtraInstructions ?? new List<string>();
+        return fallback
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => new RouteStopChecklistItemDto
+            {
+                Text = item.Trim(),
+                IsChecked = false
+            })
+            .ToList();
     }
 
     private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)

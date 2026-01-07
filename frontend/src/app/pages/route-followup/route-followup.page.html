@@ -64,6 +64,219 @@
         <div class="text-sm text-gray-500">Loading route…</div>
       }
 
+      <div class="card p-3">
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="font-semibold">Follow-up</div>
+              <div class="text-xs text-gray-500">{{ unreadCount() }} new</div>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <div class="w-56">
+                <label class="block text-xs font-semibold mb-1">Driver filter</label>
+                <p-select
+                  placeholder="All drivers"
+                  optionLabel="label"
+                  optionValue="value"
+                  [options]="messageDriverOptions()"
+                  [ngModel]="messageDriverFilterId()"
+                  [filter]="true"
+                  (ngModelChange)="messageDriverFilterId.set($event)"
+                />
+              </div>
+              <div class="w-48">
+                <label class="block text-xs font-semibold mb-1">Status filter</label>
+                <p-select
+                  optionLabel="label"
+                  optionValue="value"
+                  [options]="messageStatusOptions"
+                  [ngModel]="messageStatusFilter()"
+                  (ngModelChange)="messageStatusFilter.set($event)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded border bg-slate-50 p-3">
+            <div class="font-semibold">Send message</div>
+            <div class="text-xs text-gray-500">
+              Messages are sent to the selected date routes. Drivers without a route are skipped.
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1">Send to</label>
+                <p-select
+                  optionLabel="label"
+                  optionValue="value"
+                  [options]="composeDriverOptions()"
+                  [ngModel]="composeTarget()"
+                  [filter]="true"
+                  (ngModelChange)="composeTarget.set($event)"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-semibold mb-1">Category</label>
+                <p-select
+                  optionLabel="label"
+                  optionValue="value"
+                  [options]="messageCategoryOptions"
+                  [ngModel]="composeCategory()"
+                  (ngModelChange)="composeCategory.set($event)"
+                />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-semibold mb-1">Message</label>
+                <textarea
+                  pTextarea
+                  class="w-full"
+                  rows="2"
+                  placeholder="Write a message for the driver(s)..."
+                  [ngModel]="composeMessageText()"
+                  (ngModelChange)="composeMessageText.set($event)"
+                ></textarea>
+              </div>
+              <div class="md:col-span-2">
+                <p-button
+                  label="Send message"
+                  icon="pi pi-send"
+                  size="small"
+                  [loading]="sendingCompose()"
+                  [disabled]="!selectedOwnerId()"
+                  (onClick)="sendPlannerMessage()"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            @if (messageThreads().length === 0) {
+              <div class="text-sm text-gray-500">No messages for the current filters.</div>
+            } @else {
+              @for (thread of messageThreads(); track thread.key) {
+                <div class="rounded border p-3">
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div class="font-semibold">{{ thread.driverName }}</div>
+                      <div class="text-xs text-gray-500">
+                        Route {{ thread.routeId }}
+                        @if (thread.routeStopId) {
+                          - Stop {{ thread.routeStopId }}
+                        }
+                      </div>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      Latest: {{ messageTimeLabel(thread.latestCreatedUtc) }}
+                    </div>
+                  </div>
+
+                  <div class="mt-3 space-y-2">
+                    @for (message of thread.messages; track message.id) {
+                      <div
+                        class="rounded border p-2 text-sm"
+                        [class.bg-slate-50]="message.isReply"
+                        [class.ml-6]="message.indent"
+                      >
+                        <div class="flex items-center justify-between text-xs text-gray-500">
+                          <span>{{ messageSenderLabel(message) }}</span>
+                          <span>{{ messageTimeLabel(message.createdUtc) }}</span>
+                        </div>
+                        <div class="mt-1">{{ message.messageText }}</div>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                          <p-tag
+                            [value]="message.status"
+                            [severity]="messageStatusSeverity(message.status)"
+                          />
+                          <div class="flex flex-wrap gap-1">
+                            <p-button
+                              label="Reply"
+                              icon="pi pi-reply"
+                              size="small"
+                              severity="info"
+                              [outlined]="true"
+                              (onClick)="startReply(message)"
+                            />
+                            <p-button
+                              label="Read"
+                              size="small"
+                              severity="secondary"
+                              [outlined]="true"
+                              [disabled]="message.status !== 'New'"
+                              (onClick)="markMessageRead(message)"
+                            />
+                            <p-button
+                              label="Resolve"
+                              size="small"
+                              severity="success"
+                              [disabled]="message.status === 'Resolved'"
+                              (onClick)="markMessageResolved(message)"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  @if (replyThreadKey() === thread.key) {
+                    <div class="rounded border bg-slate-50 p-3 mt-3">
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <div class="text-sm font-semibold">Reply</div>
+                          <div class="text-xs text-gray-500">
+                            {{ thread.driverName }} - Route {{ thread.routeId }}
+                            @if (thread.routeStopId) {
+                              - Stop {{ thread.routeStopId }}
+                            }
+                          </div>
+                        </div>
+                        <p-button
+                          label="Cancel"
+                          size="small"
+                          severity="secondary"
+                          [outlined]="true"
+                          (onClick)="cancelReply()"
+                        />
+                      </div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <label class="block text-sm font-semibold mb-1">Category</label>
+                          <p-select
+                            optionLabel="label"
+                            optionValue="value"
+                            [options]="messageCategoryOptions"
+                            [ngModel]="replyCategory()"
+                            (ngModelChange)="replyCategory.set($event)"
+                          />
+                        </div>
+                        <div class="md:col-span-2">
+                          <label class="block text-sm font-semibold mb-1">Message</label>
+                          <textarea
+                            pTextarea
+                            class="w-full"
+                            rows="2"
+                            placeholder="Write a reply..."
+                            [ngModel]="replyText()"
+                            (ngModelChange)="replyText.set($event)"
+                          ></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                          <p-button
+                            label="Send reply"
+                            icon="pi pi-send"
+                            size="small"
+                            [loading]="sendingReply()"
+                            (onClick)="sendReply()"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="card p-3">
           <div class="flex items-center justify-between mb-2">
@@ -94,7 +307,12 @@
 
               <div class="max-h-[520px] overflow-auto pr-1">
                 @for (stop of r.stops; track stop.id) {
-                  <div class="p-2 rounded border mb-2">
+                  <button
+                    type="button"
+                    class="w-full text-left p-2 rounded border mb-2 hover:bg-gray-50 transition-colors"
+                    [class.border-blue-500]="selectedStopId() === stop.id"
+                    (click)="onStopClick(stop)"
+                  >
                     <div class="flex items-start justify-between gap-2">
                       <div class="min-w-0">
                         <div class="font-medium truncate">{{ stop.sequence }}. {{ stop.name }}</div>
@@ -115,86 +333,65 @@
                         <span class="font-semibold">Remark:</span> {{ stop.note }}
                       </div>
                     }
-                  </div>
+                  </button>
                 }
               </div>
+              @if (selectedStop(); as s) {
+                <div class="mt-3 pt-3 border-t">
+                  <div class="font-semibold mb-2">Stop details</div>
+                  <div class="space-y-3">
+                    <div>
+                      <div class="text-sm font-semibold">Visit checklist</div>
+                      @if ((s.checklistItems?.length ?? 0) === 0) {
+                        <div class="text-xs text-gray-500">No checklist items.</div>
+                      } @else {
+                        <div class="space-y-2 mt-2">
+                          @for (item of s.checklistItems ?? []; let idx = $index; track idx) {
+                            <div class="flex items-center gap-2">
+                              <p-checkbox
+                                [binary]="true"
+                                [ngModel]="item.isChecked"
+                                [inputId]="'followup-checklist-' + s.id + '-' + idx"
+                                [disabled]="true"
+                              />
+                              <label class="text-sm" [for]="'followup-checklist-' + s.id + '-' + idx">
+                                {{ item.text }}
+                              </label>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="space-y-2">
+                        <div class="text-sm font-semibold">Proof photo</div>
+                        @if (proofPhotoLoading()) {
+                          <div class="text-xs text-gray-500">Loading photo...</div>
+                        } @else if (proofPhotoUrl()) {
+                          <img class="proof-image" [src]="proofPhotoUrl()" alt="Proof photo" />
+                        } @else {
+                          <div class="text-xs text-gray-500">No photo uploaded.</div>
+                        }
+                      </div>
+                      <div class="space-y-2">
+                        <div class="text-sm font-semibold">Signature</div>
+                        @if (proofSignatureLoading()) {
+                          <div class="text-xs text-gray-500">Loading signature...</div>
+                        } @else if (proofSignatureUrl()) {
+                          <img class="proof-image" [src]="proofSignatureUrl()" alt="Proof signature" />
+                        } @else {
+                          <div class="text-xs text-gray-500">No signature uploaded.</div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
             }
           }
         </div>
       </div>
 
-      <div class="card p-3">
-        <div class="flex items-center justify-between mb-2">
-          <div class="font-semibold">Follow-up</div>
-          <div class="text-xs text-gray-500">{{ unreadCount() }} new</div>
-        </div>
-        <p-table
-          [value]="messages()"
-          [paginator]="true"
-          [rows]="10"
-          [rowsPerPageOptions]="[10, 20, 50]"
-        >
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Time</th>
-              <th>Driver</th>
-              <th>Route/Stop</th>
-              <th>Category</th>
-              <th>Message</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="7" class="text-center text-sm text-gray-500">No messages.</td>
-            </tr>
-          </ng-template>
-          <ng-template let-message pTemplate="body">
-            <tr>
-              <td class="whitespace-nowrap">{{ messageTimeLabel(message.createdUtc) }}</td>
-              <td>{{ message.driverName || 'Driver #' + message.driverId }}</td>
-              <td>
-                <div class="text-sm font-medium">Route {{ message.routeId }}</div>
-                @if (message.routeStopId) {
-                  <div class="text-xs text-gray-500">Stop {{ message.routeStopId }}</div>
-                }
-              </td>
-              <td>
-                <p-tag severity="info" [value]="message.category" />
-              </td>
-              <td class="max-w-xs">
-                <div class="truncate">{{ message.messageText }}</div>
-              </td>
-              <td>
-                <p-tag
-                  [value]="message.status"
-                  [severity]="messageStatusSeverity(message.status)"
-                />
-              </td>
-              <td class="whitespace-nowrap">
-                <div class="flex gap-1">
-                  <p-button
-                    label="Read"
-                    size="small"
-                    severity="secondary"
-                    [outlined]="true"
-                    [disabled]="message.status !== 'New'"
-                    (onClick)="markMessageRead(message)"
-                  />
-                  <p-button
-                    label="Resolve"
-                    size="small"
-                    severity="success"
-                    [disabled]="message.status === 'Resolved'"
-                    (onClick)="markMessageResolved(message)"
-                  />
-                </div>
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </div>
     </div>
   </div>
 </div>

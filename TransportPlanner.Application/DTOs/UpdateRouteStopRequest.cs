@@ -38,6 +38,11 @@ public class UpdateRouteStopRequest
     public bool? FollowUpRequired { get; set; }
 
     /// <summary>
+    /// Optional checklist updates for the stop.
+    /// </summary>
+    public List<RouteStopChecklistItemDto>? ChecklistItems { get; set; }
+
+    /// <summary>
     /// Optional proof status override.
     /// </summary>
     public string? ProofStatus { get; set; }

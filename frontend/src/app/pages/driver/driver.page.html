@@ -123,6 +123,25 @@
                   />
                 </div>
               </div>
+              <div class="mt-3 space-y-2">
+                @if (routeMessagesForRoute().length === 0) {
+                  <div class="text-xs text-gray-500">No messages yet.</div>
+                } @else {
+                  @for (message of routeMessagesForRoute(); track message.id) {
+                    <div
+                      class="rounded border p-2 text-sm"
+                      [class.bg-blue-50]="!!message.plannerId"
+                      [class.bg-gray-50]="!message.plannerId"
+                    >
+                      <div class="flex items-center justify-between text-xs text-gray-500">
+                        <span>{{ messageSenderLabel(message) }}</span>
+                        <span>{{ messageTimeLabel(message.createdUtc) }}</span>
+                      </div>
+                      <div class="mt-1">{{ message.messageText }}</div>
+                    </div>
+                  }
+                }
+              </div>
               @if (!canEditStops()) {
                 <div class="text-xs text-gray-500 mt-2">
                   Messaging is available only for today's route.
@@ -291,6 +310,32 @@
                       <label class="text-sm" [for]="'follow-up-' + s.id">Follow-up required</label>
                     </div>
 
+                    <div class="md:col-span-2">
+                      <div class="border-t pt-2">
+                        <div class="font-semibold mb-2">Visit checklist</div>
+                        @if ((s.checklistItems?.length ?? 0) === 0) {
+                          <div class="text-xs text-gray-500">No checklist items.</div>
+                        } @else {
+                          <div class="space-y-2">
+                            @for (item of s.checklistItems ?? []; let idx = $index; track idx) {
+                              <div class="flex items-center gap-2">
+                                <p-checkbox
+                                  [binary]="true"
+                                  [ngModel]="item.isChecked"
+                                  [inputId]="'checklist-' + s.id + '-' + idx"
+                                  [disabled]="!canEditStops()"
+                                  (ngModelChange)="saveChecklistItem(s, idx, $event)"
+                                />
+                                <label class="text-sm" [for]="'checklist-' + s.id + '-' + idx">
+                                  {{ item.text }}
+                                </label>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+
                     <div class="md:col-span-2 space-y-2">
                       <div>
                         <label class="block text-sm font-semibold mb-1">Remark</label>
@@ -350,21 +395,145 @@
                             ></textarea>
                           </div>
                           <div class="md:col-span-2">
-                            <p-button
-                              label="Send message"
-                              icon="pi pi-send"
-                              size="small"
-                              [loading]="sendingMessage()"
-                              [disabled]="!canEditStops()"
-                              (onClick)="sendStopMessage(s)"
-                            />
-                          </div>
+                          <p-button
+                            label="Send message"
+                            icon="pi pi-send"
+                            size="small"
+                            [loading]="sendingMessage()"
+                            [disabled]="!canEditStops()"
+                            (onClick)="sendStopMessage(s)"
+                          />
                         </div>
-                        @if (!canEditStops()) {
-                          <div class="text-xs text-gray-500 mt-2">
-                            Messaging is available only for today's route.
+                      </div>
+                      <div class="mt-3 space-y-2">
+                        @if (routeMessagesForSelectedStop().length === 0) {
+                          <div class="text-xs text-gray-500">No messages yet.</div>
+                        } @else {
+                          @for (message of routeMessagesForSelectedStop(); track message.id) {
+                            <div
+                              class="rounded border p-2 text-sm"
+                              [class.bg-blue-50]="!!message.plannerId"
+                              [class.bg-gray-50]="!message.plannerId"
+                            >
+                              <div class="flex items-center justify-between text-xs text-gray-500">
+                                <span>{{ messageSenderLabel(message) }}</span>
+                                <span>{{ messageTimeLabel(message.createdUtc) }}</span>
+                              </div>
+                              <div class="mt-1">{{ message.messageText }}</div>
+                            </div>
+                          }
+                        }
+                      </div>
+                      @if (!canEditStops()) {
+                        <div class="text-xs text-gray-500 mt-2">
+                          Messaging is available only for today's route.
                           </div>
                         }
+                      </div>
+                    </div>
+                    <div class="md:col-span-2">
+                      <div class="border-t pt-2">
+                        <div class="font-semibold mb-2">Proof of delivery</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div class="space-y-2">
+                            <div class="text-sm font-semibold">Photo</div>
+                            @if (proofPhotoLoading()) {
+                              <div class="text-xs text-gray-500">Loading photo...</div>
+                            } @else if (proofPhotoUrl()) {
+                              <img class="proof-image" [src]="proofPhotoUrl()" alt="Proof photo" />
+                            } @else {
+                              <div class="text-xs text-gray-500">No photo uploaded.</div>
+                            }
+                            @if (cameraError()) {
+                              <div class="text-xs text-red-600">{{ cameraError() }}</div>
+                            }
+                            @if (cameraActive()) {
+                              <video
+                                #cameraVideo
+                                class="camera-video"
+                                autoplay
+                                playsinline
+                                muted
+                              ></video>
+                              <div class="flex flex-wrap items-center gap-2">
+                                <p-button
+                                  label="Capture photo"
+                                  icon="pi pi-camera"
+                                  size="small"
+                                  [disabled]="!canEditStops()"
+                                  (onClick)="capturePhotoFromCamera()"
+                                />
+                                <p-button
+                                  label="Close camera"
+                                  size="small"
+                                  severity="secondary"
+                                  [outlined]="true"
+                                  (onClick)="stopCamera()"
+                                />
+                              </div>
+                            } @else {
+                              <p-button
+                                label="Use camera"
+                                icon="pi pi-camera"
+                                size="small"
+                                [outlined]="true"
+                                [loading]="cameraLoading()"
+                                [disabled]="!canEditStops()"
+                                (onClick)="startCamera()"
+                              />
+                            }
+                            <input
+                              #proofPhotoInput
+                              type="file"
+                              accept="image/*"
+                              class="hidden"
+                              (change)="onProofPhotoSelected($event)"
+                            />
+                            <p-button
+                              [label]="proofPhotoUrl() ? 'Replace file' : 'Upload file'"
+                              icon="pi pi-upload"
+                              size="small"
+                              [outlined]="true"
+                              [disabled]="!canEditStops()"
+                              (onClick)="proofPhotoInput.click()"
+                            />
+                          </div>
+                          <div class="space-y-2">
+                            <div class="text-sm font-semibold">Signature</div>
+                            @if (proofSignatureLoading()) {
+                              <div class="text-xs text-gray-500">Loading signature...</div>
+                            } @else if (proofSignatureUrl()) {
+                              <img class="proof-image" [src]="proofSignatureUrl()" alt="Proof signature" />
+                            } @else {
+                              <div class="text-xs text-gray-500">No signature uploaded.</div>
+                            }
+                            <canvas
+                              #signatureCanvas
+                              class="signature-canvas"
+                              [class.opacity-50]="!canEditStops()"
+                              (pointerdown)="startSignature($event)"
+                              (pointermove)="moveSignature($event)"
+                              (pointerup)="endSignature($event)"
+                              (pointerleave)="endSignature($event)"
+                            ></canvas>
+                            <div class="flex flex-wrap items-center gap-2">
+                              <p-button
+                                label="Clear"
+                                size="small"
+                                severity="secondary"
+                                [outlined]="true"
+                                [disabled]="!canEditStops()"
+                                (onClick)="clearSignature()"
+                              />
+                              <p-button
+                                label="Save signature"
+                                size="small"
+                                [disabled]="!canEditStops()"
+                                (onClick)="saveSignature()"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

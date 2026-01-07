@@ -20,6 +20,11 @@ export class RouteMessagesApiService {
     return this.http.get<RouteMessageDto[]>(this.baseUrl, { params });
   }
 
+  getDriverMessages(routeId: number): Observable<RouteMessageDto[]> {
+    const params = new HttpParams().set('routeId', routeId.toString());
+    return this.http.get<RouteMessageDto[]>(`${this.baseUrl}/driver`, { params });
+  }
+
   createMessage(request: CreateRouteMessageRequest): Observable<RouteMessageDto> {
     return this.http.post<RouteMessageDto>(this.baseUrl, request);
   }

@@ -15,6 +15,13 @@ public class RouteMessagesHub : Hub
             await Groups.AddToGroupAsync(Context.ConnectionId, $"owner-{ownerId}");
         }
 
+        var userIdClaim = Context.User?.FindFirst("uid")?.Value;
+        if (Context.User?.IsInRole(AppRoles.Driver) == true
+            && Guid.TryParse(userIdClaim, out var userId))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"driver-{userId}");
+        }
+
         if (Context.User?.IsInRole(AppRoles.SuperAdmin) == true)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, "superadmin");

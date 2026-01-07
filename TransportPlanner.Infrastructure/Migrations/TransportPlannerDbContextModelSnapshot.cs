@@ -725,6 +725,9 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ChecklistItems")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("DriverNote")
                         .HasColumnType("nvarchar(max)");
 
@@ -760,6 +763,20 @@ namespace TransportPlanner.Infrastructure.Migrations
 
                     b.Property<int?>("PlanningClusterId")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("ProofPhoto")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ProofPhotoContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("ProofSignature")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ProofSignatureContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("ProofStatus")
                         .HasColumnType("int");

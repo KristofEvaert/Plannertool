@@ -468,6 +468,22 @@ public class VrpRouteSolverService : IVrpRouteSolverService
             return Array.Empty<RouteDto>();
         }
 
+        var locationIds = routes
+            .SelectMany(route => route.Stops)
+            .Select(stop => stop.ServiceLocationId)
+            .Distinct()
+            .ToList();
+
+        var instructionLookup = new Dictionary<int, List<string>>();
+        if (locationIds.Count > 0)
+        {
+            instructionLookup = await _dbContext.ServiceLocations
+                .AsNoTracking()
+                .Where(sl => locationIds.Contains(sl.Id))
+                .Select(sl => new { sl.Id, sl.ExtraInstructions })
+                .ToDictionaryAsync(x => x.Id, x => x.ExtraInstructions, cancellationToken);
+        }
+
         var routeEntities = new List<RouteEntity>();
 
         foreach (var route in routes)
@@ -491,6 +507,7 @@ public class VrpRouteSolverService : IVrpRouteSolverService
                     TravelMinutesFromPrev = stop.TravelMinutesFromPrev,
                     PlannedStart = input.Date.Date.AddMinutes(stop.ArrivalMinute),
                     PlannedEnd = input.Date.Date.AddMinutes(stop.DepartureMinute),
+                    ChecklistItems = BuildChecklistItems(instructionLookup, stop.ServiceLocationId),
                     Status = RouteStopStatus.Pending
                 })
                 .ToList();
@@ -608,13 +625,61 @@ public class VrpRouteSolverService : IVrpRouteSolverService
                     DriverNote = s.DriverNote,
                     IssueCode = s.IssueCode,
                     FollowUpRequired = s.FollowUpRequired,
+                    ChecklistItems = MapChecklistItems(s),
                     ProofStatus = s.ProofStatus.ToString(),
+                    HasProofPhoto = s.ProofPhoto != null && s.ProofPhoto.Length > 0,
+                    HasProofSignature = s.ProofSignature != null && s.ProofSignature.Length > 0,
                     LastUpdatedByUserId = s.LastUpdatedByUserId,
                     LastUpdatedUtc = s.LastUpdatedUtc,
                     DriverInstruction = s.ServiceLocation?.DriverInstruction
                 })
                 .ToList()
         };
+    }
+
+    private static List<RouteStopChecklistItem> BuildChecklistItems(
+        IReadOnlyDictionary<int, List<string>> instructionLookup,
+        int serviceLocationId)
+    {
+        if (!instructionLookup.TryGetValue(serviceLocationId, out var items) || items.Count == 0)
+        {
+            return new List<RouteStopChecklistItem>();
+        }
+
+        return items
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => new RouteStopChecklistItem
+            {
+                Text = item.Trim(),
+                IsChecked = false
+            })
+            .ToList();
+    }
+
+    private static List<RouteStopChecklistItemDto> MapChecklistItems(RouteStop stop)
+    {
+        var items = stop.ChecklistItems ?? new List<RouteStopChecklistItem>();
+        if (items.Count > 0)
+        {
+            return items
+                .Where(item => !string.IsNullOrWhiteSpace(item.Text))
+                .Select(item => new RouteStopChecklistItemDto
+                {
+                    Text = item.Text.Trim(),
+                    IsChecked = item.IsChecked
+                })
+                .ToList();
+        }
+
+        var fallback = stop.ServiceLocation?.ExtraInstructions ?? new List<string>();
+        return fallback
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => new RouteStopChecklistItemDto
+            {
+                Text = item.Trim(),
+                IsChecked = false
+            })
+            .ToList();
     }
 
     private RoutingSearchParameters BuildSearchParameters()

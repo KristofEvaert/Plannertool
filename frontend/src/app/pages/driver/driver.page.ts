@@ -1,19 +1,26 @@
 import { CommonModule } from '@angular/common';
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
+  ElementRef,
   inject,
   NgZone,
   signal,
+  untracked,
+  ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type { RouteChangeNotificationDto } from '@models/route-change-notification.model';
+import type { RouteMessageDto } from '@models/route-message.model';
 import { AuthService } from '@services/auth.service';
 import { DriversApiService } from '@services/drivers-api.service';
 import { RouteChangeNotificationsApiService } from '@services/route-change-notifications-api.service';
+import { RouteMessagesHubService } from '@services/route-messages-hub.service';
 import { RouteMessagesApiService } from '@services/route-messages-api.service';
 import {
   RoutesApiService,
@@ -68,16 +75,18 @@ interface OwnerOption {
   styleUrl: './driver.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DriverPage {
+export class DriverPage implements AfterViewInit {
   private readonly driversApi = inject(DriversApiService);
   private readonly routesApi = inject(RoutesApiService);
   private readonly routeMessagesApi = inject(RouteMessagesApiService);
+  private readonly routeMessagesHub = inject(RouteMessagesHubService);
   private readonly routeChangeNotificationsApi = inject(RouteChangeNotificationsApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
   private readonly serviceLocationsApi = inject(ServiceLocationsApiService);
   private readonly zone = inject(NgZone);
   private readonly auth = inject(AuthService);
   private readonly messageService = inject(MessageService);
+  private readonly destroyRef = inject(DestroyRef);
 
   private map: L.Map | null = null;
   private routeLayerGroup: L.LayerGroup | null = null;
@@ -92,6 +101,7 @@ export class DriverPage {
   route = signal<RouteDto | null>(null);
   selectedStopId = signal<number | null>(null);
   routeChangeNotifications = signal<RouteChangeNotificationDto[]>([]);
+  routeMessages = signal<RouteMessageDto[]>([]);
 
   driverOptions = signal<DriverOption[]>([]);
   ownerOptions = signal<OwnerOption[]>([]);
@@ -105,6 +115,36 @@ export class DriverPage {
   stopMessageText = signal('');
   stopMessageCategory = signal('Info');
   sendingMessage = signal(false);
+
+  proofPhotoUrl = signal<string | null>(null);
+  proofSignatureUrl = signal<string | null>(null);
+  proofPhotoLoading = signal(false);
+  proofSignatureLoading = signal(false);
+  signatureHasInk = signal(false);
+  cameraActive = signal(false);
+  cameraLoading = signal(false);
+  cameraError = signal<string | null>(null);
+
+  private signatureDrawing = false;
+  private signatureContext: CanvasRenderingContext2D | null = null;
+  private signatureCanvasRef: ElementRef<HTMLCanvasElement> | null = null;
+  private cameraStream: MediaStream | null = null;
+  private cameraVideoRef: ElementRef<HTMLVideoElement> | null = null;
+
+  @ViewChild('signatureCanvas')
+  set signatureCanvas(value: ElementRef<HTMLCanvasElement> | undefined) {
+    this.signatureCanvasRef = value ?? null;
+    this.initSignatureCanvas();
+  }
+
+  @ViewChild('cameraVideo')
+  set cameraVideo(value: ElementRef<HTMLVideoElement> | undefined) {
+    this.cameraVideoRef = value ?? null;
+    if (this.cameraVideoRef && this.cameraStream) {
+      this.cameraVideoRef.nativeElement.srcObject = this.cameraStream;
+      this.cameraVideoRef.nativeElement.play().catch(() => undefined);
+    }
+  }
 
   readonly issueOptions = [
     { label: 'None', value: '' },
@@ -129,6 +169,20 @@ export class DriverPage {
     return route.stops.find((s) => s.id === stopId) ?? null;
   });
 
+  routeMessagesForRoute = computed(() =>
+    [...this.routeMessages()]
+      .filter((message) => !message.routeStopId)
+      .sort((a, b) => a.createdUtc.localeCompare(b.createdUtc)),
+  );
+
+  routeMessagesForSelectedStop = computed(() => {
+    const stop = this.selectedStop();
+    if (!stop) return [];
+    return [...this.routeMessages()]
+      .filter((message) => message.routeStopId === stop.id)
+      .sort((a, b) => a.createdUtc.localeCompare(b.createdUtc));
+  });
+
   canEditStops = computed(() => {
     const route = this.route();
     if (!route?.date) return false;
@@ -142,6 +196,21 @@ export class DriverPage {
 
   constructor() {
     this.loadLookups();
+
+    this.routeMessagesHub.connect();
+    const hubSub = this.routeMessagesHub.messages$.subscribe((message) => {
+      const route = this.route();
+      if (!route || message.routeId !== route.id) {
+        return;
+      }
+      this.upsertRouteMessage(message);
+    });
+
+    this.destroyRef.onDestroy(() => {
+      hubSub.unsubscribe();
+      this.routeMessagesHub.disconnect();
+      this.resetProofState();
+    });
 
     effect(() => {
       const user = this.auth.currentUser();
@@ -169,6 +238,24 @@ export class DriverPage {
       this.editingCompletedAt.set(DriverPage.parseIsoDate(stop.completedAtUtc));
     });
 
+    effect(() => {
+      const stop = this.selectedStop();
+      this.resetProofState();
+      this.signatureHasInk.set(false);
+
+      if (!stop) {
+        return;
+      }
+
+      if (stop.hasProofPhoto) {
+        this.loadProofPhoto(stop.id);
+      }
+
+      if (stop.hasProofSignature) {
+        this.loadProofSignature(stop.id);
+      }
+    });
+
     effect((onCleanup) => {
       const driverToolId = this.selectedDriverToolId();
       const ownerId = this.selectedOwnerId();
@@ -185,6 +272,10 @@ export class DriverPage {
 
       onCleanup(() => sub.unsubscribe());
     });
+  }
+
+  ngAfterViewInit(): void {
+    this.initSignatureCanvas();
   }
 
   private static parseIsoDate(utcIso?: string): Date | null {
@@ -292,12 +383,18 @@ export class DriverPage {
       next: (route) => {
         this.route.set(route);
         this.loadRouteNotifications(route?.id ?? null);
+        if (route?.id) {
+          this.loadRouteMessages(route.id);
+        } else {
+          this.routeMessages.set([]);
+        }
         this.loading.set(false);
         this.scheduleMapRefresh();
       },
       error: (err) => {
         this.loading.set(false);
         this.error.set(err?.message ?? 'Failed to load route');
+        this.routeMessages.set([]);
       },
     });
   }
@@ -314,6 +411,45 @@ export class DriverPage {
       error: () => {
         this.routeChangeNotifications.set([]);
       },
+    });
+  }
+
+  private loadRouteMessages(routeId: number): void {
+    const currentUser = this.auth.currentUser();
+    const isDriver = currentUser?.roles.includes('Driver') ?? false;
+    if (!isDriver) {
+      const ownerId = this.selectedOwnerId();
+      if (!ownerId) {
+        this.routeMessages.set([]);
+        return;
+      }
+      this.routeMessagesApi.getMessages(ownerId, undefined, routeId).subscribe({
+        next: (items) => {
+          this.routeMessages.set(items);
+        },
+        error: () => {
+          this.routeMessages.set([]);
+        },
+      });
+      return;
+    }
+
+    this.routeMessagesApi.getDriverMessages(routeId).subscribe({
+      next: (items) => {
+        this.routeMessages.set(items);
+      },
+      error: () => {
+        this.routeMessages.set([]);
+      },
+    });
+  }
+
+  private upsertRouteMessage(message: RouteMessageDto): void {
+    this.routeMessages.update((items) => {
+      if (items.some((m) => m.id === message.id)) {
+        return items;
+      }
+      return [...items, message];
     });
   }
 
@@ -371,6 +507,15 @@ export class DriverPage {
 
   saveFollowUpRequired(stop: RouteStopDto, required: boolean | null | undefined): void {
     this.updateStop(stop.id, { followUpRequired: !!required });
+  }
+
+  saveChecklistItem(stop: RouteStopDto, index: number, checked: boolean | null | undefined): void {
+    const items = stop.checklistItems ?? [];
+    if (index < 0 || index >= items.length) return;
+    const nextItems = items.map((item, idx) =>
+      idx === index ? { ...item, isChecked: !!checked } : item,
+    );
+    this.updateStop(stop.id, { checklistItems: nextItems });
   }
 
   saveArrivedAt(stop: RouteStopDto, arrivedAt: Date | null | undefined): void {
@@ -446,9 +591,10 @@ export class DriverPage {
         category: this.routeMessageCategory(),
       })
       .subscribe({
-        next: () => {
+        next: (created) => {
           this.sendingMessage.set(false);
           this.routeMessageText.set('');
+          this.upsertRouteMessage(created);
           this.messageService.add({
             severity: 'success',
             summary: 'Message sent',
@@ -485,9 +631,10 @@ export class DriverPage {
         category: this.stopMessageCategory(),
       })
       .subscribe({
-        next: () => {
+        next: (created) => {
           this.sendingMessage.set(false);
           this.stopMessageText.set('');
+          this.upsertRouteMessage(created);
           this.messageService.add({
             severity: 'success',
             summary: 'Message sent',
@@ -596,6 +743,22 @@ export class DriverPage {
     return 'info';
   }
 
+  messageTimeLabel(utcIso?: string): string {
+    if (!utcIso) return '—';
+    const d = new Date(utcIso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      month: 'short',
+      day: '2-digit',
+    });
+  }
+
+  messageSenderLabel(message: RouteMessageDto): string {
+    return DriverPage.isPlannerMessage(message) ? 'Planner' : 'You';
+  }
+
   onArrivedAtEditChange(value: Date | null): void {
     this.editingArrivedAt.set(value);
     const stop = this.selectedStop();
@@ -634,6 +797,293 @@ export class DriverPage {
     window.open(url, '_blank');
   }
 
+  onProofPhotoSelected(event: Event): void {
+    const stop = this.selectedStop();
+    if (!stop || !this.canEditStops()) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    this.uploadProofPhoto(stop.id, file);
+  }
+
+  async startCamera(): Promise<void> {
+    if (!this.canEditStops()) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.cameraError.set('Camera access is not available in this browser.');
+      return;
+    }
+
+    if (this.cameraStream) {
+      this.cameraActive.set(true);
+      return;
+    }
+
+    this.cameraError.set(null);
+    this.cameraLoading.set(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      this.cameraStream = stream;
+      this.cameraActive.set(true);
+      const video = this.cameraVideoRef?.nativeElement;
+      if (video) {
+        video.srcObject = stream;
+        await video.play().catch(() => undefined);
+      }
+    } catch (err) {
+      this.cameraError.set('Unable to access the camera.');
+    } finally {
+      this.cameraLoading.set(false);
+    }
+  }
+
+  stopCamera(): void {
+    if (this.cameraStream) {
+      for (const track of this.cameraStream.getTracks()) {
+        track.stop();
+      }
+    }
+    this.cameraStream = null;
+    if (this.cameraVideoRef) {
+      this.cameraVideoRef.nativeElement.srcObject = null;
+    }
+    this.cameraActive.set(false);
+    this.cameraLoading.set(false);
+  }
+
+  capturePhotoFromCamera(): void {
+    const stop = this.selectedStop();
+    if (!stop || !this.canEditStops()) return;
+    const video = this.cameraVideoRef?.nativeElement;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+      this.cameraError.set('Camera is not ready yet.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to capture photo.',
+          });
+          return;
+        }
+
+        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+        this.uploadProofPhoto(stop.id, file, true);
+      },
+      'image/jpeg',
+      0.9,
+    );
+  }
+
+  saveSignature(): void {
+    const stop = this.selectedStop();
+    if (!stop || !this.canEditStops()) return;
+    if (!this.signatureHasInk()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Add a signature before saving.',
+      });
+      return;
+    }
+
+    const canvas = this.signatureCanvasRef?.nativeElement;
+    if (!canvas) return;
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to capture signature.',
+        });
+        return;
+      }
+
+      const file = new File([blob], 'signature.png', { type: 'image/png' });
+      this.proofSignatureLoading.set(true);
+      this.routesApi.uploadRouteStopProofSignature(stop.id, file).subscribe({
+        next: (updated) => {
+          this.proofSignatureLoading.set(false);
+          this.applyStopUpdate(updated);
+          this.loadProofSignature(updated.id);
+          this.clearSignature();
+        },
+        error: (err) => {
+          this.proofSignatureLoading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err?.error?.message || err?.message || 'Failed to upload signature',
+          });
+        },
+      });
+    }, 'image/png');
+  }
+
+  private uploadProofPhoto(routeStopId: number, file: File, stopCameraAfter = false): void {
+    this.proofPhotoLoading.set(true);
+    this.routesApi.uploadRouteStopProofPhoto(routeStopId, file).subscribe({
+      next: (updated) => {
+        this.proofPhotoLoading.set(false);
+        this.applyStopUpdate(updated);
+        this.loadProofPhoto(updated.id);
+        if (stopCameraAfter) {
+          this.stopCamera();
+        }
+      },
+      error: (err) => {
+        this.proofPhotoLoading.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err?.error?.message || err?.message || 'Failed to upload photo',
+        });
+      },
+    });
+  }
+
+  clearSignature(): void {
+    this.clearSignatureCanvas();
+    this.signatureHasInk.set(false);
+  }
+
+  startSignature(event: PointerEvent): void {
+    if (!this.canEditStops()) return;
+    if (!this.signatureContext || !this.signatureCanvasRef) return;
+    const point = this.getSignaturePoint(event);
+    this.signatureContext.beginPath();
+    this.signatureContext.moveTo(point.x, point.y);
+    this.signatureDrawing = true;
+    this.signatureHasInk.set(true);
+    this.signatureCanvasRef.nativeElement.setPointerCapture(event.pointerId);
+  }
+
+  moveSignature(event: PointerEvent): void {
+    if (!this.signatureDrawing || !this.signatureContext) return;
+    const point = this.getSignaturePoint(event);
+    this.signatureContext.lineTo(point.x, point.y);
+    this.signatureContext.stroke();
+  }
+
+  endSignature(event?: PointerEvent): void {
+    if (!this.signatureDrawing) return;
+    this.signatureDrawing = false;
+    if (event && this.signatureCanvasRef) {
+      this.signatureCanvasRef.nativeElement.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  private initSignatureCanvas(): void {
+    const canvas = this.signatureCanvasRef?.nativeElement;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * ratio);
+    canvas.height = Math.round(rect.height * ratio);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#111827';
+    this.signatureContext = ctx;
+    this.clearSignatureCanvas();
+  }
+
+  private clearSignatureCanvas(): void {
+    const canvas = this.signatureCanvasRef?.nativeElement;
+    if (!canvas || !this.signatureContext) return;
+    this.signatureContext.save();
+    this.signatureContext.setTransform(1, 0, 0, 1, 0, 0);
+    this.signatureContext.clearRect(0, 0, canvas.width, canvas.height);
+    this.signatureContext.restore();
+  }
+
+  private getSignaturePoint(event: PointerEvent): { x: number; y: number } {
+    const canvas = this.signatureCanvasRef?.nativeElement;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  private resetProofState(): void {
+    const photoUrl = untracked(() => this.proofPhotoUrl());
+    const signatureUrl = untracked(() => this.proofSignatureUrl());
+    this.revokeProofUrl(photoUrl);
+    this.revokeProofUrl(signatureUrl);
+    this.proofPhotoUrl.set(null);
+    this.proofSignatureUrl.set(null);
+    this.proofPhotoLoading.set(false);
+    this.proofSignatureLoading.set(false);
+    this.cameraError.set(null);
+    this.stopCamera();
+    this.clearSignatureCanvas();
+  }
+
+  private loadProofPhoto(routeStopId: number): void {
+    this.proofPhotoLoading.set(true);
+    this.routesApi.getRouteStopProofPhoto(routeStopId).subscribe({
+      next: (blob) => {
+        this.proofPhotoLoading.set(false);
+        this.setProofPhotoUrl(blob);
+      },
+      error: () => {
+        this.proofPhotoLoading.set(false);
+      },
+    });
+  }
+
+  private loadProofSignature(routeStopId: number): void {
+    this.proofSignatureLoading.set(true);
+    this.routesApi.getRouteStopProofSignature(routeStopId).subscribe({
+      next: (blob) => {
+        this.proofSignatureLoading.set(false);
+        this.setProofSignatureUrl(blob);
+      },
+      error: () => {
+        this.proofSignatureLoading.set(false);
+      },
+    });
+  }
+
+  private setProofPhotoUrl(blob: Blob): void {
+    this.revokeProofUrl(this.proofPhotoUrl());
+    this.proofPhotoUrl.set(URL.createObjectURL(blob));
+  }
+
+  private setProofSignatureUrl(blob: Blob): void {
+    this.revokeProofUrl(this.proofSignatureUrl());
+    this.proofSignatureUrl.set(URL.createObjectURL(blob));
+  }
+
+  private revokeProofUrl(url: string | null): void {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   private computeDurationMinutes(
     arrivedAt?: string | null,
     completedAt?: string | null,
@@ -644,5 +1094,11 @@ export class DriverPage {
     if (Number.isNaN(a.getTime()) || Number.isNaN(c.getTime())) return null;
     const minutes = Math.round(Math.abs(c.getTime() - a.getTime()) / 60000);
     return Number.isFinite(minutes) ? minutes : null;
+  }
+
+  private static isPlannerMessage(message: RouteMessageDto): boolean {
+    if (!message.plannerId) return false;
+    if (message.status && message.status !== 'New') return false;
+    return true;
   }
 }

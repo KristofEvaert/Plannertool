@@ -47,6 +47,11 @@ public class RouteStop
     public string? IssueCode { get; set; }
     public bool FollowUpRequired { get; set; }
     public RouteStopProofStatus ProofStatus { get; set; } = RouteStopProofStatus.None;
+    public List<RouteStopChecklistItem> ChecklistItems { get; set; } = new();
+    public byte[]? ProofPhoto { get; set; }
+    public string? ProofPhotoContentType { get; set; }
+    public byte[]? ProofSignature { get; set; }
+    public string? ProofSignatureContentType { get; set; }
     public Guid? LastUpdatedByUserId { get; set; }
     public DateTime? LastUpdatedUtc { get; set; }
     
