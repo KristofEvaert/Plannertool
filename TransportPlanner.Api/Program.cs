@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Net;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -39,6 +40,22 @@ builder.Services.AddSwaggerGen(c =>
     // Ignore entity types in schema generation - only use DTOs
     c.IgnoreObsoleteProperties();
     c.IgnoreObsoleteActions();
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    c.AddSecurityRequirement(swaggerDoc => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer", swaggerDoc, string.Empty),
+            new List<string>()
+        }
+    });
 });
 
 // Routing (road distances) - OSRM public server by default
@@ -203,3 +220,5 @@ using (var scope = app.Services.CreateScope())
 }
 
 await app.RunAsync();
+
+

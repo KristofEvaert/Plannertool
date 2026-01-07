@@ -582,8 +582,6 @@ public class DriversBulkController : ControllerBase
         {
             return BadRequest(new { message = "Worksheet not found." });
         }
-
-        const int headerRow = 1;
         const int emailColumn = 1;
         const int serviceTypeColumn = 2;
         const int dataStartRow = 2;
@@ -1207,3 +1205,5 @@ public class DriversBulkController : ControllerBase
     }
 
 }
+
+
