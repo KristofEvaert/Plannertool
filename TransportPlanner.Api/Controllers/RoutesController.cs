@@ -828,8 +828,7 @@ public class RoutesController : ControllerBase
                 return Forbid();
             }
 
-            var cutoff = stop.Route.Date.Date.AddDays(1).AddMinutes(-1); // 23:59 of route day (UTC)
-            if (DateTime.UtcNow > cutoff)
+            if (stop.Route.Date.Date != DateTime.UtcNow.Date)
             {
                 return Forbid();
             }

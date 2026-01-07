@@ -96,6 +96,7 @@
                     optionValue="value"
                     [options]="messageCategoryOptions"
                     [ngModel]="routeMessageCategory()"
+                    [disabled]="!canEditStops()"
                     (ngModelChange)="routeMessageCategory.set($event)"
                   />
                 </div>
@@ -107,6 +108,7 @@
                     rows="2"
                     placeholder="Share an update with the planner..."
                     [ngModel]="routeMessageText()"
+                    [disabled]="!canEditStops()"
                     (ngModelChange)="routeMessageText.set($event)"
                   ></textarea>
                 </div>
@@ -116,10 +118,16 @@
                     icon="pi pi-send"
                     size="small"
                     [loading]="sendingMessage()"
+                    [disabled]="!canEditStops()"
                     (onClick)="sendRouteMessage()"
                   />
                 </div>
               </div>
+              @if (!canEditStops()) {
+                <div class="text-xs text-gray-500 mt-2">
+                  Messaging is available only for today's route.
+                </div>
+              }
             </div>
           }
         </div>
@@ -192,7 +200,7 @@
                           label="Arrive"
                           icon="pi pi-play"
                           size="small"
-                          [disabled]="s.status === 'Completed' || s.status === 'Arrived'"
+                          [disabled]="!canEditStops() || s.status === 'Completed' || s.status === 'Arrived'"
                           (onClick)="arriveStop(s)"
                         />
                         <p-button
@@ -200,7 +208,7 @@
                           icon="pi pi-stop"
                           size="small"
                           severity="success"
-                          [disabled]="s.status === 'Completed'"
+                          [disabled]="!canEditStops() || s.status === 'Completed'"
                           (onClick)="departStop(s)"
                         />
                         <p-button
@@ -218,6 +226,7 @@
                           icon="pi pi-ban"
                           size="small"
                           severity="warn"
+                          [disabled]="!canEditStops()"
                           (onClick)="markNotVisited()"
                         />
                       </div>
@@ -230,6 +239,7 @@
                         [ngModel]="stopDurationMinutes(s)"
                         [min]="0"
                         [max]="1440"
+                        [disabled]="!canEditStops()"
                         (ngModelChange)="saveDuration(s, $event)"
                       />
                     </div>
@@ -241,6 +251,7 @@
                         [ngModel]="editingArrivedAt()"
                         [showIcon]="true"
                         [showTime]="true"
+                        [disabled]="!canEditStops()"
                         (ngModelChange)="onArrivedAtEditChange($event)"
                       />
                     </div>
@@ -252,6 +263,7 @@
                         [ngModel]="editingCompletedAt()"
                         [showIcon]="true"
                         [showTime]="true"
+                        [disabled]="!canEditStops()"
                         (ngModelChange)="onCompletedAtEditChange($event)"
                       />
                     </div>
@@ -263,6 +275,7 @@
                         optionValue="value"
                         [options]="issueOptions"
                         [ngModel]="s.issueCode ?? ''"
+                        [disabled]="!canEditStops()"
                         (ngModelChange)="saveIssueCode(s, $event)"
                       />
                     </div>
@@ -272,6 +285,7 @@
                         [binary]="true"
                         [ngModel]="s.followUpRequired"
                         [inputId]="'follow-up-' + s.id"
+                        [disabled]="!canEditStops()"
                         (ngModelChange)="saveFollowUpRequired(s, $event)"
                       />
                       <label class="text-sm" [for]="'follow-up-' + s.id">Follow-up required</label>
@@ -286,6 +300,7 @@
                           rows="3"
                           placeholder="Optional remark…"
                           [ngModel]="s.note"
+                          [disabled]="!canEditStops()"
                           (ngModelChange)="saveNote(s, $event)"
                         ></textarea>
                       </div>
@@ -304,6 +319,7 @@
                           rows="2"
                           placeholder="Optional note for the planner..."
                           [ngModel]="s.driverNote"
+                          [disabled]="!canEditStops()"
                           (ngModelChange)="saveDriverNote(s, $event)"
                         ></textarea>
                       </div>
@@ -312,13 +328,14 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label class="block text-sm font-semibold mb-1">Category</label>
-                            <p-select
-                              optionLabel="label"
-                              optionValue="value"
-                              [options]="messageCategoryOptions"
-                              [ngModel]="stopMessageCategory()"
-                              (ngModelChange)="stopMessageCategory.set($event)"
-                            />
+                          <p-select
+                            optionLabel="label"
+                            optionValue="value"
+                            [options]="messageCategoryOptions"
+                            [ngModel]="stopMessageCategory()"
+                            [disabled]="!canEditStops()"
+                            (ngModelChange)="stopMessageCategory.set($event)"
+                          />
                           </div>
                           <div class="md:col-span-2">
                             <label class="block text-sm font-semibold mb-1">Message</label>
@@ -328,6 +345,7 @@
                               rows="2"
                               placeholder="Send a note about this stop..."
                               [ngModel]="stopMessageText()"
+                              [disabled]="!canEditStops()"
                               (ngModelChange)="stopMessageText.set($event)"
                             ></textarea>
                           </div>
@@ -337,10 +355,16 @@
                               icon="pi pi-send"
                               size="small"
                               [loading]="sendingMessage()"
+                              [disabled]="!canEditStops()"
                               (onClick)="sendStopMessage(s)"
                             />
                           </div>
                         </div>
+                        @if (!canEditStops()) {
+                          <div class="text-xs text-gray-500 mt-2">
+                            Messaging is available only for today's route.
+                          </div>
+                        }
                       </div>
                     </div>
                   </div>

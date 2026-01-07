@@ -122,6 +122,11 @@ public class RouteMessagesController : ControllerBase
             return Forbid();
         }
 
+        if (IsDriver && route.Date.Date != DateTime.UtcNow.Date)
+        {
+            return Forbid();
+        }
+
         Driver? driver = null;
         if (IsDriver)
         {

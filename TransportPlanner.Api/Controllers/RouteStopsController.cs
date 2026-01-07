@@ -192,8 +192,7 @@ public class RouteStopsController : ControllerBase
                 return false;
             }
 
-            var cutoff = stop.Route.Date.Date.AddDays(1).AddMinutes(-1);
-            if (DateTime.UtcNow > cutoff)
+            if (stop.Route.Date.Date != DateTime.UtcNow.Date)
             {
                 return false;
             }

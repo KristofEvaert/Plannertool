@@ -26,6 +26,7 @@ import {
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
 import { ServiceLocationsApiService } from '@services/service-locations-api.service';
+import { toYmd } from '@utils/date.utils';
 import * as L from 'leaflet';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
@@ -126,6 +127,13 @@ export class DriverPage {
     const stopId = this.selectedStopId();
     if (!route || !stopId) return null;
     return route.stops.find((s) => s.id === stopId) ?? null;
+  });
+
+  canEditStops = computed(() => {
+    const route = this.route();
+    if (!route?.date) return false;
+    const routeDate = route.date.split('T')[0];
+    return routeDate === toYmd(new Date());
   });
 
   activeRouteChangeNotifications = computed(() =>
