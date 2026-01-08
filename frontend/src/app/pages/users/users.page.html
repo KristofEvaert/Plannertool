@@ -1,124 +1,278 @@
-<div class="container mx-auto p-6 space-y-6">
-  <div class="flex items-center gap-2">
-    <h1 class="text-3xl font-bold text-gray-900">User & Role Management</h1>
-    <app-help-manual [sectionId]="'users'" />
+<div class="container mx-auto p-6 space-y-8">
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="flex flex-col">
+        <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">User & Role Management</h1>
+        <p class="text-gray-500 text-sm">
+          Assign roles and configure system permissions for all users
+        </p>
+      </div>
+      <app-help-manual [sectionId]="'users'" />
+    </div>
+    <div class="flex items-center">
+      <p-inputgroup>
+        <input
+          pInputText
+          placeholder="Filter by email..."
+          class="w-full md:w-80 shadow-sm border-gray-300 focus:ring-primary focus:border-primary"
+          [(ngModel)]="emailFilter"
+        />
+        <p-inputgroup-addon>
+          <i class="pi pi-search"></i>
+        </p-inputgroup-addon>
+      </p-inputgroup>
+      <span class="p-input-icon-left w-full md:w-auto"> </span>
+    </div>
   </div>
 
-  <div class="card p-4 space-y-4">
-    <div class="flex items-center gap-2">
-      <label class="text-sm font-medium">Filter by email</label>
-      <input
-        pInputText
-        placeholder="Search email..."
-        class="w-64"
-        [ngModel]="emailFilter()"
-        (ngModelChange)="emailFilter.set($event)"
-      />
+  <p-toast />
+
+  <!-- Pending Users Section -->
+  <section class="space-y-4">
+    <div class="flex items-center gap-2 border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-800">Pending Users</h2>
+      <p-badge severity="warn" class="mr-2" [value]="pendingUsers().length.toString()" />
+      <span class="text-gray-400 text-sm font-medium"
+        >New registrations awaiting role assignment</span
+      >
     </div>
-    <p-table [value]="filteredUsers()" [loading]="loading()">
-      <ng-template pTemplate="header">
-        <tr>
-          <th>Email</th>
-          <th>Name</th>
-          <th>Roles</th>
-          <th>Owner</th>
-          <th>Driver Owner</th>
-          <th>Actions</th>
-        </tr>
-      </ng-template>
-      <ng-template let-user pTemplate="body">
-        <tr>
-          <td>{{ user.email }}</td>
-          <td>
+
+    @if (pendingUsers().length === 0) {
+      <div
+        class="flex flex-col items-center justify-center p-16 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200"
+      >
+        <div class="bg-white p-4 rounded-full shadow-sm mb-4">
+          <i class="pi pi-check text-green-500 text-3xl"></i>
+        </div>
+        <p class="text-gray-500 font-medium text-lg">Clear! No pending users to process.</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        @for (user of pendingUsers(); track user.id) {
+          <ng-container *ngTemplateOutlet="userCard; context: { $implicit: user }" />
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Regular Users Section -->
+  <section class="space-y-4">
+    <div class="flex items-center gap-2 border-b border-gray-200 pb-3">
+      <h2 class="text-2xl font-bold text-gray-800">Regular Users</h2>
+      <p-badge severity="info" class="mr-2" [value]="regularUsers().length.toString()" />
+      <span class="text-gray-400 text-sm font-medium"
+        >Active members with defined system roles</span
+      >
+    </div>
+
+    @if (regularUsers().length === 0) {
+      <div
+        class="flex flex-col items-center justify-center p-16 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200"
+      >
+        <div class="bg-white p-4 rounded-full shadow-sm mb-4">
+          <i class="pi pi-filter text-gray-400 text-3xl"></i>
+        </div>
+        <p class="text-gray-500 font-medium text-lg">No regular users match your current filter.</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        @for (user of regularUsers(); track user.id) {
+          <ng-container *ngTemplateOutlet="userCard; context: { $implicit: user }" />
+        }
+      </div>
+    }
+  </section>
+</div>
+
+<!-- Reusable User Card Template -->
+<ng-template #userCard let-user>
+  <p-card class="h-full shadow-lg border-0 overflow-hidden ring-1 ring-black/5">
+    <ng-template pTemplate="header">
+      <div
+        class="p-5 bg-linear-to-r from-primary to-primary-600 flex justify-between items-center text-white"
+      >
+        <div class="flex flex-col overflow-hidden">
+          <h3 class="text-lg font-bold truncate pr-4" [title]="user.email">{{ user.email }}</h3>
+        </div>
+        <div class="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+          <i class="pi pi-id-card text-xl"></i>
+        </div>
+      </div>
+    </ng-template>
+
+    <div class="flex flex-col md:flex-row gap-8 py-2">
+      <!-- Left Column: Identity & Access -->
+      <div class="flex-1 space-y-6">
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-bold text-gray-500 uppercase tracking-tighter"
+            >Display Name</label
+          >
+          <p-inputgroup>
+            <p-inputgroup-addon>
+              <i class="pi pi-user"></i>
+            </p-inputgroup-addon>
             <input
               pInputText
-              class="w-48"
-              placeholder="Display name"
+              class="w-full border-gray-200 focus:border-primary"
+              placeholder="Display Name"
               [(ngModel)]="user.displayName"
             />
-          </td>
-          <td>
-            <div class="flex flex-wrap gap-2">
-              @for (role of rolesList; track role) {
-                <label class="flex items-center gap-1 text-sm">
-                  <input
-                    type="checkbox"
+          </p-inputgroup>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <label class="text-xs font-bold text-gray-500 uppercase tracking-tighter"
+            >Privileges</label
+          >
+          <div class="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            @for (role of rolesList; track role) {
+              @if (isCurrentSuperAdmin() || (role !== 'SuperAdmin' && role !== 'Admin')) {
+                <div class="flex items-center gap-3 group">
+                  <p-checkbox
+                    [binary]="true"
                     [disabled]="role === 'SuperAdmin' && !isCurrentSuperAdmin()"
-                    [checked]="rolesFor(user.id).includes(role)"
-                    (change)="toggleRole(user.id, role)"
+                    [inputId]="user.id + role"
+                    [ngModel]="rolesFor(user.id).includes(role)"
+                    (onChange)="toggleRole(user.id, role)"
                   />
-                  {{ role }}
-                </label>
+                  <label
+                    class="text-sm font-medium text-gray-700 cursor-pointer select-none group-hover:text-primary transition-colors"
+                    [for]="user.id + role"
+                  >
+                    {{ role }}
+                  </label>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Settings (Conditional) -->
+      @if (
+        rolesFor(user.id).length > 1 ||
+        (rolesFor(user.id).length === 1 && !rolesFor(user.id).includes('SuperAdmin'))
+      ) {
+        <div class="flex-1 space-y-6">
+          <label class="text-xs font-bold text-gray-500 uppercase tracking-tighter"
+            >Role Configuration</label
+          >
+
+          <!-- Driver Settings -->
+          @if (rolesFor(user.id).includes('Driver')) {
+            <div class="p-4 bg-green-50/60 rounded-xl border border-green-100 space-y-4">
+              <div class="flex items-center gap-2 text-green-800 font-bold text-xs uppercase mb-1">
+                <i class="pi pi-map-marker"></i>
+                <span>Logistics Parameters</span>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <input
+                  pInputText
+                  placeholder="Base Address"
+                  class="w-full text-sm py-2 px-3 bg-white/80"
+                  [(ngModel)]="driverStartAddressSelection[user.id]"
+                />
+              </div>
+
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <span class="text-[9px] text-gray-500 uppercase font-black block mb-1"
+                    >Latitude</span
+                  >
+                  <input
+                    type="number"
+                    pInputText
+                    placeholder="Lat"
+                    class="w-full text-sm bg-white/80"
+                    [(ngModel)]="driverStartLatitudeSelection[user.id]"
+                  />
+                </div>
+                <div class="flex-1">
+                  <span class="text-[9px] text-gray-500 uppercase font-black block mb-1"
+                    >Longitude</span
+                  >
+                  <input
+                    type="number"
+                    pInputText
+                    placeholder="Lon"
+                    class="w-full text-sm bg-white/80"
+                    [(ngModel)]="driverStartLongitudeSelection[user.id]"
+                  />
+                </div>
+              </div>
+
+              <div class="text-[10px] text-gray-500/80 bg-white/40 p-2 rounded-lg italic">
+                <strong>Current:</strong> {{ user.driverStartAddress || 'N/A' }}
+                <span class="block opacity-75"
+                  >Coords: {{ user.driverStartLatitude ?? '—' }},
+                  {{ user.driverStartLongitude ?? '—' }}</span
+                >
+              </div>
+            </div>
+          }
+          <!-- Admin/Planner Settings -->
+          @if (
+            rolesFor(user.id).includes('Driver') ||
+            rolesFor(user.id).includes('Admin') ||
+            rolesFor(user.id).includes('Planner')
+          ) {
+            <div class="p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2">
+              <div class="flex items-center gap-2 text-blue-800 font-bold text-xs uppercase mb-1">
+                <i class="pi pi-building"></i>
+                <span>Owner</span>
+              </div>
+              @if (rolesFor(user.id).includes('Admin') || rolesFor(user.id).includes('Planner')) {
+                <p-select
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Assign Admin/Planner Owner"
+                  class="w-full"
+                  [options]="owners()"
+                  (onChange)="staffOwnerSelection[user.id] = $event.value"
+                  [(ngModel)]="staffOwnerSelection[user.id]"
+                />
+              }
+              @if (rolesFor(user.id).includes('Driver')) {
+                <p-select
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Assign Driver Owner"
+                  class="w-full"
+                  [options]="owners()"
+                  (onChange)="driverOwnerSelection[user.id] = $event.value"
+                  [(ngModel)]="driverOwnerSelection[user.id]"
+                />
               }
             </div>
-          </td>
-          <td>
-            <p-select
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Owner for admin/planner"
-              styleClass="w-52 mb-2"
-              [options]="owners()"
-              [disabled]="
-                rolesFor(user.id).includes('SuperAdmin') ||
-                !(rolesFor(user.id).includes('Admin') || rolesFor(user.id).includes('Planner'))
-              "
-              (onChange)="staffOwnerSelection[user.id] = $event.value"
-              [(ngModel)]="staffOwnerSelection[user.id]"
-            />
-            <p-select
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Owner for driver"
-              styleClass="w-52"
-              [options]="owners()"
-              [disabled]="!rolesFor(user.id).includes('Driver')"
-              (onChange)="driverOwnerSelection[user.id] = $event.value"
-              [(ngModel)]="driverOwnerSelection[user.id]"
-            />
-            <div class="mt-2 space-y-2">
-              <input
-                pInputText
-                placeholder="Driver start address"
-                class="w-52"
-                [disabled]="!rolesFor(user.id).includes('Driver')"
-                [(ngModel)]="driverStartAddressSelection[user.id]"
-              />
-              <div class="flex gap-2">
-                <input
-                  type="number"
-                  pInputText
-                  placeholder="Lat"
-                  class="w-24"
-                  [disabled]="!rolesFor(user.id).includes('Driver')"
-                  [(ngModel)]="driverStartLatitudeSelection[user.id]"
-                />
-                <input
-                  type="number"
-                  pInputText
-                  placeholder="Lon"
-                  class="w-24"
-                  [disabled]="!rolesFor(user.id).includes('Driver')"
-                  [(ngModel)]="driverStartLongitudeSelection[user.id]"
-                />
-              </div>
-              <div class="text-xs text-gray-500">
-                Current: {{ user.driverStartAddress || 'N/A' }} ({{
-                  user.driverStartLatitude ?? '—'
-                }}, {{ user.driverStartLongitude ?? '—' }})
-              </div>
-            </div>
-          </td>
-          <td>
-            <p-button
-              label="Save"
-              size="small"
-              [loading]="loading()"
-              (onClick)="assignRoles(user)"
-            />
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
-  </div>
-</div>
+          }
+        </div>
+      } @else {
+        <!-- Hint for Pending Users -->
+        <div
+          class="flex-1 flex flex-col items-center justify-center p-8 bg-gray-50 rounded-xl border border-gray-100 text-center"
+        >
+          <i class="pi pi-lock text-gray-300 text-3xl mb-3"></i>
+          <p class="text-gray-400 text-sm italic">
+            Assign a role to set configuration options for this user.
+          </p>
+        </div>
+      }
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="flex items-center justify-end pt-4 border-t border-gray-100">
+        <p-button
+          label="Save Changes"
+          icon="pi pi-save"
+          severity="info"
+          class="px-6"
+          [raised]="true"
+          [loading]="loading()"
+          (onClick)="assignRoles(user)"
+        />
+      </div>
+    </ng-template>
+  </p-card>
+</ng-template>

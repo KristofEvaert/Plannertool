@@ -1,4 +1,4 @@
-
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
@@ -7,10 +7,14 @@ import { AuthService } from '@services/auth.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { UsersApiService } from '@services/users-api.service';
 import { MessageService } from 'primeng/api';
+import { BadgeModule } from 'primeng/badge';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
 import { ToastModule } from 'primeng/toast';
 
 const ALL_ROLES = ['SuperAdmin', 'Admin', 'Planner', 'Driver'] as const;
@@ -21,13 +25,18 @@ type Role = (typeof ALL_ROLES)[number];
   standalone: true,
   imports: [
     FormsModule,
-    TableModule,
     ButtonModule,
     InputTextModule,
     SelectModule,
     ToastModule,
-    HelpManualComponent
-],
+    HelpManualComponent,
+    CardModule,
+    CheckboxModule,
+    InputGroupModule,
+    InputGroupAddonModule,
+    BadgeModule,
+    NgTemplateOutlet,
+  ],
   providers: [MessageService],
   templateUrl: './users.page.html',
 })
@@ -62,6 +71,14 @@ export class UsersPage {
     const term = this.emailFilter().trim().toLowerCase();
     if (!term) return this.users();
     return this.users().filter((u) => u.email.toLowerCase().includes(term));
+  });
+
+  pendingUsers = computed(() => {
+    return this.filteredUsers().filter((u) => u.roles.length === 0);
+  });
+
+  regularUsers = computed(() => {
+    return this.filteredUsers().filter((u) => u.roles.length > 0);
   });
 
   constructor() {
@@ -241,11 +258,22 @@ export class UsersPage {
         },
         error: (err) => {
           this.loading.set(false);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: err?.error?.message || err?.message || 'Failed to assign roles',
-          });
+          if (
+            err.error.message ===
+            'Unable to resolve DriverStartLatitude/DriverStartLongitude from DriverStartAddress.'
+          ) {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'Unable to get coordinates from address',
+            });
+          } else {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: err?.error?.message || err?.message || 'Failed to assign roles',
+            });
+          }
         },
       });
   }

@@ -1,0 +1,9 @@
+/* Help Bookmark Styles */
+.help-bookmark {
+  transition: all 0.3s ease;
+}
+
+.help-bookmark:hover {
+  background: linear-gradient(to left, #1d4ed8, #1e40af) !important;
+  box-shadow: -6px 6px 16px rgba(0, 0, 0, 0.4) !important;
+}

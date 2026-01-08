@@ -2,21 +2,43 @@
   <div class="w-full max-w-md bg-white p-8 rounded shadow">
     <h1 class="text-2xl font-semibold mb-6 text-center">Login</h1>
     <div class="flex flex-col gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Email</label>
-        <input pInputText fluid type="email" autocomplete="username" [(ngModel)]="email" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Password</label>
-        <p-password
-          fluid
-          autocomplete="current-password"
-          [toggleMask]="true"
-          [feedback]="false"
-          [(ngModel)]="password"
-        />
-      </div>
-      <p-button fluid label="Login" [loading]="loading" (onClick)="login()" />
+      <form (submit)="login($event)">
+        <div>
+          <label class="block text-sm font-medium mb-1">Email</label>
+          <input
+            pInputText
+            fluid
+            type="email"
+            autocomplete="email"
+            [class.p-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
+            [field]="loginForm.email"
+          />
+          @if (loginForm.email().touched() && loginForm.email().invalid()) {
+            <small id="email-help" class="text-red-700">{{
+              loginForm.email().errors()[0].message
+            }}</small>
+          }
+        </div>
+        <div class="py-6">
+          <label class="block text-sm font-medium mb-1" for="password">Password</label>
+          <p-password
+            fluid
+            autocomplete="planner-password"
+            id="password"
+            [toggleMask]="true"
+            [feedback]="false"
+            [invalid]="loginForm.password().touched() && loginForm.password().invalid()"
+            [field]="loginForm.password"
+          />
+          @if (loginForm.password().touched() && loginForm.password().invalid()) {
+            <small id="password-help" class="text-red-700">{{
+              loginForm.password().errors()[0].message
+            }}</small>
+          }
+        </div>
+        <p-button fluid type="submit" label="Login" [loading]="loading()" />
+      </form>
     </div>
   </div>
 </div>
+<p-toast />
