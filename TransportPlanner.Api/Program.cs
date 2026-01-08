@@ -18,6 +18,7 @@ using TransportPlanner.Api.Middleware;
 using TransportPlanner.Api.Options;
 using TransportPlanner.Api.Services.AuditTrail;
 using TransportPlanner.Api.Hubs;
+using TransportPlanner.Api.Swagger;
 using TransportPlanner.Infrastructure.Services.Vrp;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,20 +43,14 @@ builder.Services.AddSwaggerGen(c =>
     c.IgnoreObsoleteActions();
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Description = "JWT Authorization header using the Bearer scheme. Paste the token only (no \"Bearer \" prefix).",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT"
     });
-    c.AddSecurityRequirement(swaggerDoc => new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecuritySchemeReference("Bearer", swaggerDoc, string.Empty),
-            new List<string>()
-        }
-    });
+    c.DocumentFilter<RequireAuthorizationDocumentFilter>();
 });
 
 // Routing (road distances) - OSRM public server by default
@@ -132,6 +127,36 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Path.HasValue
+            && context.Request.Path.Value!.EndsWith("swagger.json", StringComparison.OrdinalIgnoreCase))
+        {
+            var originalBody = context.Response.Body;
+            await using var buffer = new MemoryStream();
+            context.Response.Body = buffer;
+
+            await next();
+
+            buffer.Position = 0;
+            using var reader = new StreamReader(buffer, Encoding.UTF8, detectEncodingFromByteOrderMarks: false);
+            var json = await reader.ReadToEndAsync();
+
+            json = json.Replace(
+                "\"#/components/securitySchemes/Bearer\"",
+                "\"Bearer\"",
+                StringComparison.OrdinalIgnoreCase);
+
+            var bytes = Encoding.UTF8.GetBytes(json);
+            context.Response.ContentLength = bytes.Length;
+            context.Response.Body = originalBody;
+            await context.Response.Body.WriteAsync(bytes);
+            return;
+        }
+
+        await next();
+    });
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
