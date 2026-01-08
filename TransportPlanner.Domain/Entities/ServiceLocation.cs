@@ -4,7 +4,7 @@ public class ServiceLocation
 {
     public int Id { get; set; }
     public Guid ToolId { get; set; } // Unique ID for this tool
-    public int ErpId { get; set; } // ERP ID, unique
+    public int? ErpId { get; set; } // Optional ERP ID, unique when provided
     public string? AccountId { get; set; }
     public string? SerialNumber { get; set; }
     public string Name { get; set; } = string.Empty;

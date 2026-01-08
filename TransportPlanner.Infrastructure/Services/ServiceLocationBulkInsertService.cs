@@ -71,34 +71,34 @@ public class ServiceLocationBulkInsertService
             return result;
         }
 
-        var maxExistingErpId = await _dbContext.ServiceLocations
-            .MaxAsync(sl => (int?)sl.ErpId, cancellationToken) ?? 0;
-        var maxRequestedErpId = request.Items
-            .Where(i => i.ErpId.HasValue && i.ErpId.Value > 0)
-            .Select(i => i.ErpId!.Value)
-            .DefaultIfEmpty(0)
-            .Max();
-        var nextErpId = Math.Max(maxExistingErpId, maxRequestedErpId) + 1;
+        var toolIdsInRequest = request.Items
+            .Where(i => i.ToolId.HasValue && i.ToolId.Value != Guid.Empty)
+            .Select(i => i.ToolId!.Value)
+            .Distinct()
+            .ToList();
 
-        foreach (var item in request.Items)
-        {
-            if (!item.ErpId.HasValue || item.ErpId.Value == 0)
-            {
-                item.ErpId = nextErpId++;
-            }
-        }
+        var existingServiceLocations = toolIdsInRequest.Count == 0
+            ? new Dictionary<Guid, ServiceLocation>()
+            : await _dbContext.ServiceLocations
+                .Where(sl => toolIdsInRequest.Contains(sl.ToolId))
+                .ToDictionaryAsync(sl => sl.ToolId, cancellationToken);
 
-        // Preload existing service locations by ERP ID
         var erpIdsInRequest = request.Items
             .Where(i => i.ErpId.HasValue && i.ErpId.Value > 0)
             .Select(i => i.ErpId!.Value)
             .Distinct()
             .ToList();
-        var existingServiceLocations = await _dbContext.ServiceLocations
-            .Where(sl => erpIdsInRequest.Contains(sl.ErpId))
-            .ToDictionaryAsync(sl => sl.ErpId, cancellationToken);
 
-        _logger.LogInformation("Found {Count} existing service locations out of {Total} requested", existingServiceLocations.Count, erpIdsInRequest.Count);
+        var existingServiceLocationsByErpId = erpIdsInRequest.Count == 0
+            ? new Dictionary<int, ServiceLocation>()
+            : await _dbContext.ServiceLocations
+                .Where(sl => sl.ErpId.HasValue && erpIdsInRequest.Contains(sl.ErpId.Value))
+                .ToDictionaryAsync(sl => sl.ErpId!.Value, cancellationToken);
+
+        _logger.LogInformation(
+            "Found {Count} existing service locations by ToolId out of {Total} requested",
+            existingServiceLocations.Count,
+            toolIdsInRequest.Count);
 
         var existingLocationIds = existingServiceLocations.Values.Select(sl => sl.Id).ToList();
         var constraintsByLocationId = existingLocationIds.Count == 0
@@ -107,6 +107,9 @@ public class ServiceLocationBulkInsertService
                 .Where(c => existingLocationIds.Contains(c.ServiceLocationId))
                 .ToDictionaryAsync(c => c.ServiceLocationId, cancellationToken);
 
+        var seenToolIds = new HashSet<Guid>();
+        var seenErpIds = new HashSet<int>();
+
         // Process each item
         for (int i = 0; i < request.Items.Count; i++)
         {
@@ -114,19 +117,77 @@ public class ServiceLocationBulkInsertService
             var rowRef = $"JSON item {i + 1}";
 
             // Validation
-            if (!item.ErpId.HasValue || item.ErpId.Value <= 0)
+            var toolId = item.ToolId;
+            if (toolId.HasValue && toolId.Value == Guid.Empty)
             {
                 result.Errors.Add(new BulkErrorDto
                 {
                     RowRef = rowRef,
-                    Message = "ErpId must be greater than 0"
+                    Message = "ToolId cannot be empty"
                 });
                 result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
                 result.Skipped++;
                 continue;
             }
 
-            var erpId = item.ErpId.Value;
+            if (toolId.HasValue && !seenToolIds.Add(toolId.Value))
+            {
+                result.Errors.Add(new BulkErrorDto
+                {
+                    RowRef = rowRef,
+                    Message = "Duplicate ToolId in request"
+                });
+                result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                result.Skipped++;
+                continue;
+            }
+
+            var erpIdProvided = item.ErpId.HasValue;
+            int? erpId = null;
+            if (erpIdProvided)
+            {
+                if (item.ErpId!.Value < 0)
+                {
+                    result.Errors.Add(new BulkErrorDto
+                    {
+                        RowRef = rowRef,
+                        Message = "ErpId must be 0 or greater"
+                    });
+                    result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                    result.Skipped++;
+                    continue;
+                }
+
+                if (item.ErpId.Value > 0)
+                {
+                    erpId = item.ErpId.Value;
+                    if (!seenErpIds.Add(erpId.Value))
+                    {
+                        result.Errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = $"Duplicate ErpId {erpId.Value} in request"
+                        });
+                        result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                        result.Skipped++;
+                        continue;
+                    }
+                }
+            }
+
+            if (erpId.HasValue
+                && existingServiceLocationsByErpId.TryGetValue(erpId.Value, out var existingByErpId)
+                && (!toolId.HasValue || existingByErpId.ToolId != toolId.Value))
+            {
+                result.Errors.Add(new BulkErrorDto
+                {
+                    RowRef = rowRef,
+                    Message = $"ErpId {erpId.Value} already exists for another service location"
+                });
+                result.FailedItems.Add(new BulkServiceLocationFailedItem { RowRef = rowRef, Item = item });
+                result.Skipped++;
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(item.Name))
             {
@@ -357,8 +418,12 @@ public class ServiceLocationBulkInsertService
                 }
             }
 
-            // Check if ERP ID already exists - update instead of skip
-            if (existingServiceLocations.TryGetValue(erpId, out var existingServiceLocation))
+            var existingServiceLocation = toolId.HasValue
+                && existingServiceLocations.TryGetValue(toolId.Value, out var foundLocation)
+                ? foundLocation
+                : null;
+
+            if (existingServiceLocation != null)
             {
                 var newDueDate = item.DueDate.ToDateTime(TimeOnly.MinValue).Date;
                 var dueDateChanged = existingServiceLocation.DueDate.Date != newDueDate;
@@ -386,6 +451,10 @@ public class ServiceLocationBulkInsertService
                 }
                 existingServiceLocation.ServiceTypeId = request.ServiceTypeId; // Update ServiceTypeId from request
                 existingServiceLocation.OwnerId = request.OwnerId; // Update OwnerId from request
+                if (erpIdProvided)
+                {
+                    existingServiceLocation.ErpId = erpId;
+                }
                 if (!string.IsNullOrWhiteSpace(item.AccountId))
                 {
                     existingServiceLocation.AccountId = item.AccountId.Trim();
@@ -474,7 +543,7 @@ public class ServiceLocationBulkInsertService
             // Create new ServiceLocation
             var serviceLocation = new ServiceLocation
             {
-                ToolId = Guid.NewGuid(),
+                ToolId = toolId ?? Guid.NewGuid(),
                 ErpId = erpId,
                 Name = item.Name.Trim(),
                 Address = item.Address?.Trim(),

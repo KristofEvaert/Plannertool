@@ -456,13 +456,6 @@ public class ServiceLocationsController : ControllerBase
         return owner?.Name ?? string.Empty;
     }
 
-    private async Task<int> GetNextErpIdAsync(CancellationToken cancellationToken)
-    {
-        var maxErpId = await _dbContext.ServiceLocations
-            .MaxAsync(sl => (int?)sl.ErpId, cancellationToken);
-        return (maxErpId ?? 0) + 1;
-    }
-
     /// <summary>
     /// Gets paged list of service locations with filters
     /// </summary>
@@ -743,20 +736,24 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
-        var erpId = request.ErpId.HasValue && request.ErpId.Value != 0
-            ? request.ErpId.Value
-            : await GetNextErpIdAsync(cancellationToken);
-
-        // Check ErpId uniqueness
-        var existingByErpId = await _dbContext.ServiceLocations
-            .AnyAsync(sl => sl.ErpId == erpId, cancellationToken);
-        if (existingByErpId)
+        int? erpId = null;
+        if (request.ErpId.HasValue)
         {
-            return Conflict(new ProblemDetails
+            erpId = request.ErpId.Value > 0 ? request.ErpId.Value : null;
+        }
+
+        if (erpId.HasValue)
+        {
+            var existingByErpId = await _dbContext.ServiceLocations
+                .AnyAsync(sl => sl.ErpId == erpId.Value, cancellationToken);
+            if (existingByErpId)
             {
-                Title = "Conflict",
-                Detail = $"Service location with ErpId {erpId} already exists"
-            });
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Conflict",
+                    Detail = $"Service location with ErpId {erpId.Value} already exists"
+                });
+            }
         }
 
         if (request.OwnerId <= 0)
@@ -966,26 +963,26 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
-        var erpId = request.ErpId.HasValue && request.ErpId.Value != 0
-            ? request.ErpId.Value
-            : await GetNextErpIdAsync(cancellationToken);
-
-        // Check ErpId uniqueness (if changed)
-        if (serviceLocation.ErpId != erpId)
+        if (request.ErpId.HasValue)
         {
-            var existingByErpId = await _dbContext.ServiceLocations
-                .AnyAsync(sl => sl.ErpId == erpId && sl.ToolId != toolId, cancellationToken);
-            if (existingByErpId)
-            {
-                return Conflict(new ProblemDetails
-                {
-                    Title = "Conflict",
-                    Detail = $"Service location with ErpId {erpId} already exists"
-                });
-            }
-        }
+            var erpId = request.ErpId.Value > 0 ? request.ErpId.Value : (int?)null;
 
-        serviceLocation.ErpId = erpId;
+            if (serviceLocation.ErpId != erpId && erpId.HasValue)
+            {
+                var existingByErpId = await _dbContext.ServiceLocations
+                    .AnyAsync(sl => sl.ErpId == erpId.Value && sl.ToolId != toolId, cancellationToken);
+                if (existingByErpId)
+                {
+                    return Conflict(new ProblemDetails
+                    {
+                        Title = "Conflict",
+                        Detail = $"Service location with ErpId {erpId.Value} already exists"
+                    });
+                }
+            }
+
+            serviceLocation.ErpId = erpId;
+        }
         serviceLocation.AccountId = string.IsNullOrWhiteSpace(request.AccountId) ? null : request.AccountId.Trim();
         serviceLocation.SerialNumber = string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber.Trim();
         serviceLocation.Name = request.Name.Trim();

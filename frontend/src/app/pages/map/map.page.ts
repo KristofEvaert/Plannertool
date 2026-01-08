@@ -40,7 +40,7 @@ import { firstValueFrom } from 'rxjs';
 
 interface ServiceLocationMapDto {
   toolId: string;
-  erpId: number;
+  erpId?: number | null;
   name: string;
   address?: string;
   latitude: number;
@@ -76,7 +76,8 @@ interface RouteWaypoint {
   latitude: number;
   longitude: number;
   serviceMinutes?: number;
-  erpId?: number;
+  toolId?: string;
+  erpId?: number | null;
   travelMinutesFromPrev?: number;
   travelKmFromPrev?: number;
 }
@@ -1301,7 +1302,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
       // Check if location is in current route and get its order
       const routeWaypoint = currentRoute?.waypoints.find(
-        (w) => w.type === 'location' && w.erpId === item.erpId,
+        (w) => w.type === 'location' && w.toolId === item.toolId,
       );
       const isInRoute = !!routeWaypoint;
       const routeOrder =
@@ -1387,7 +1388,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       const isLocationInAnyRoute = (): boolean => {
         const allRoutes = this.driverRoutes();
         for (const route of allRoutes.values()) {
-          if (route.waypoints.some((w) => w.type === 'location' && w.erpId === item.erpId)) {
+          if (route.waypoints.some((w) => w.type === 'location' && w.toolId === item.toolId)) {
             return true;
           }
         }
@@ -1680,7 +1681,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     const routes = this.driverRoutes();
     for (const route of routes.values()) {
-      if (route.waypoints.some((w) => w.type === 'location' && w.erpId === item.erpId)) {
+      if (route.waypoints.some((w) => w.type === 'location' && w.toolId === item.toolId)) {
         return {
           driverName: route.driver.name,
           date: toYmd(this.selectedDate()),
@@ -1852,18 +1853,18 @@ export class MapPage implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const erpIdsToAdd = new Set(allowedLocations.map((l) => l.erpId));
+    const toolIdsToAdd = new Set(allowedLocations.map((l) => l.toolId));
 
     // Remove from other routes in UI (backend also enforces uniqueness).
-    this.removeLocationsFromOtherDrivers(erpIdsToAdd, selected.driver.toolId);
+    this.removeLocationsFromOtherDrivers(toolIdsToAdd, selected.driver.toolId);
 
-    const existingErpIds = new Set(
-      route.waypoints.filter((w) => w.type === 'location').map((w) => w.erpId),
+    const existingToolIds = new Set(
+      route.waypoints.filter((w) => w.type === 'location').map((w) => w.toolId),
     );
 
     const newLocationWaypoints: RouteWaypoint[] = [];
     for (const loc of allowedLocations) {
-      if (existingErpIds.has(loc.erpId)) {
+      if (loc.toolId && existingToolIds.has(loc.toolId)) {
         continue;
       }
       newLocationWaypoints.push({
@@ -1873,7 +1874,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
         latitude: loc.latitude,
         longitude: loc.longitude,
         serviceMinutes: loc.serviceMinutes,
-        erpId: loc.erpId,
+        toolId: loc.toolId,
+        erpId: loc.erpId ?? undefined,
       });
     }
 
@@ -1938,7 +1940,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   private removeLocationsFromOtherDrivers(
-    locationErpIds: Set<number>,
+    locationToolIds: Set<string>,
     currentDriverToolId: string,
   ): void {
     const routes = new Map(this.driverRoutes());
@@ -1950,14 +1952,15 @@ export class MapPage implements AfterViewInit, OnDestroy {
       }
 
       const remainingLocations = route.waypoints.filter(
-        (w) => w.type === 'location' && w.erpId != null && !locationErpIds.has(w.erpId),
+        (w) =>
+          w.type === 'location' && w.toolId != null && !locationToolIds.has(w.toolId),
       );
 
       const startWaypoint = route.waypoints.find((w) => w.type === 'driver-start');
       const endWaypoint = route.waypoints.find((w) => w.type === 'driver-end');
 
       const hadAnyRemoved = route.waypoints.some(
-        (w) => w.type === 'location' && w.erpId != null && locationErpIds.has(w.erpId),
+        (w) => w.type === 'location' && w.toolId != null && locationToolIds.has(w.toolId),
       );
       if (!hadAnyRemoved) {
         return;
@@ -2449,7 +2452,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   onLocationClick(location: ServiceLocationMapDto): void {
-    console.log('onLocationClick called for:', location.name, location.erpId);
+    console.log('onLocationClick called for:', location.name, location.toolId);
     const selected = this.selectedDriver();
     if (!selected || !selected.availability) {
       console.log('No driver selected or driver unavailable');
@@ -2533,7 +2536,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     for (const [driverToolId, route] of allRoutes.entries()) {
       if (driverToolId !== selected.driver.toolId) {
         const isInRoute = route.waypoints.some(
-          (w) => w.type === 'location' && w.erpId === location.erpId,
+          (w) => w.type === 'location' && w.toolId === location.toolId,
         );
         if (isInRoute) {
           locationWasInOtherRoute = true;
@@ -2554,7 +2557,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
 
     const existingIndex = route.waypoints.findIndex(
-      (w) => w.type === 'location' && w.erpId === location.erpId,
+      (w) => w.type === 'location' && w.toolId === location.toolId,
     );
 
     if (existingIndex !== -1) {
@@ -2604,7 +2607,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
         latitude: location.latitude,
         longitude: location.longitude,
         serviceMinutes: location.serviceMinutes,
-        erpId: location.erpId,
+        toolId: location.toolId,
+        erpId: location.erpId ?? undefined,
       };
 
       const startWaypoint = route.waypoints.find((w) => w.type === 'driver-start');
@@ -2642,7 +2646,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
         return;
       }
 
-      this.removeLocationFromOtherDrivers(location.erpId, selected.driver.toolId);
+      this.removeLocationFromOtherDrivers(location.toolId, selected.driver.toolId);
       const routesAfterRemoval = this.driverRoutes();
       const updatedRoute = routesAfterRemoval.get(selected.driver.toolId);
       if (!updatedRoute) {
@@ -2700,14 +2704,17 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.refreshLocationMarkers();
   }
 
-  private removeLocationFromOtherDrivers(locationErpId: number, currentDriverToolId: string): void {
+  private removeLocationFromOtherDrivers(
+    locationToolId: string,
+    currentDriverToolId: string,
+  ): void {
     const routes = new Map(this.driverRoutes());
     let updated = false;
 
     routes.forEach((route, driverToolId) => {
       if (driverToolId !== currentDriverToolId) {
         const locationIndex = route.waypoints.findIndex(
-          (w) => w.type === 'location' && w.erpId === locationErpId,
+          (w) => w.type === 'location' && w.toolId === locationToolId,
         );
 
         if (locationIndex !== -1) {
@@ -2798,7 +2805,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
       // Check if location is in current route and get its order
       const routeWaypoint = currentRoute?.waypoints.find(
-        (w) => w.type === 'location' && w.erpId === item.erpId,
+        (w) => w.type === 'location' && w.toolId === item.toolId,
       );
       const isInRoute = !!routeWaypoint;
       const routeOrder =
@@ -2884,7 +2891,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       const isLocationInAnyRoute = (): boolean => {
         const allRoutes = this.driverRoutes();
         for (const route of allRoutes.values()) {
-          if (route.waypoints.some((w) => w.type === 'location' && w.erpId === item.erpId)) {
+          if (route.waypoints.some((w) => w.type === 'location' && w.toolId === item.toolId)) {
             return true;
           }
         }
@@ -3128,8 +3135,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private estimateArrivalMinutes(
     waypoints: RouteWaypoint[],
     startMinute: number,
-  ): Map<number, ArrivalWindow> {
-    const arrivals = new Map<number, ArrivalWindow>();
+  ): Map<string, ArrivalWindow> {
+    const arrivals = new Map<string, ArrivalWindow>();
     let currentMinute = startMinute;
 
     for (let i = 1; i < waypoints.length; i++) {
@@ -3144,11 +3151,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
       const travelMinutes = Math.round((distanceKm / 50) * 60);
       currentMinute += travelMinutes;
 
-      if (to.type === 'location' && to.erpId != null) {
+      if (to.type === 'location' && to.toolId) {
         const serviceMinutes = to.serviceMinutes ?? 0;
         const start = currentMinute;
         const end = currentMinute + serviceMinutes;
-        arrivals.set(to.erpId, { startMinute: start, endMinute: end });
+        arrivals.set(to.toolId, { startMinute: start, endMinute: end });
         currentMinute = end;
       }
     }
@@ -3167,7 +3174,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
 
     const arrivals = this.estimateArrivalMinutes(waypoints, startMinute);
-    const arrival = arrivals.get(location.erpId);
+    const arrival = arrivals.get(location.toolId);
     if (!arrival) {
       return true;
     }
@@ -3456,8 +3463,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const before = route.waypoints.length;
     route.waypoints = route.waypoints.filter((w) => {
       if (w.type !== 'location') return true;
-      if (waypoint.erpId != null && w.erpId != null) {
-        return w.erpId !== waypoint.erpId;
+      if (waypoint.toolId && w.toolId) {
+        return w.toolId !== waypoint.toolId;
       }
       return !(
         Math.abs(w.latitude - waypoint.latitude) < 1e-5 &&
@@ -3825,7 +3832,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
                   serviceMinutes: stop.serviceMinutes,
                   travelMinutesFromPrev: stop.travelMinutesFromPrev,
                   travelKmFromPrev: stop.travelKmFromPrev,
-                  erpId: serviceLocation.erpId,
+                  toolId: serviceLocation.toolId,
+                  erpId: serviceLocation.erpId ?? undefined,
                 });
               } else {
                 // If we can't find the service location, still add the waypoint
@@ -3976,7 +3984,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
                 serviceMinutes: stop.serviceMinutes,
                 travelMinutesFromPrev: stop.travelMinutesFromPrev,
                 travelKmFromPrev: stop.travelKmFromPrev,
-                erpId: serviceLocation.erpId,
+                toolId: serviceLocation.toolId,
+                erpId: serviceLocation.erpId ?? undefined,
               });
             } else {
               waypoints.push({
@@ -4500,13 +4509,18 @@ export class MapPage implements AfterViewInit, OnDestroy {
       );
       const travelMinutes = Math.round((distanceKm / 50) * 60); // 50 km/h average
 
-      // Find the service location by erpId to get toolId
       const mapData = this.mapData();
-      const serviceLocation = mapData?.items.find((item) => item.erpId === waypoint.erpId);
+      const serviceLocationToolId =
+        waypoint.toolId ??
+        mapData?.items.find((item) => {
+          const latDiff = Math.abs(item.latitude - Number(waypoint.latitude));
+          const lonDiff = Math.abs(item.longitude - Number(waypoint.longitude));
+          return latDiff < 0.0001 && lonDiff < 0.0001;
+        })?.toolId;
 
       stops.push({
         sequence: i + 1, // Sequence starts at 1
-        serviceLocationToolId: serviceLocation?.toolId,
+        serviceLocationToolId,
         latitude: Number(waypoint.latitude),
         longitude: Number(waypoint.longitude),
         serviceMinutes: waypoint.serviceMinutes || 20,
@@ -4742,11 +4756,17 @@ export class MapPage implements AfterViewInit, OnDestroy {
       const travelMinutes = Math.round((distanceKm / 50) * 60);
 
       const mapData = this.mapData();
-      const serviceLocation = mapData?.items.find((item) => item.erpId === waypoint.erpId);
+      const serviceLocationToolId =
+        waypoint.toolId ??
+        mapData?.items.find((item) => {
+          const latDiff = Math.abs(item.latitude - Number(waypoint.latitude));
+          const lonDiff = Math.abs(item.longitude - Number(waypoint.longitude));
+          return latDiff < 0.0001 && lonDiff < 0.0001;
+        })?.toolId;
 
       stops.push({
         sequence: i + 1,
-        serviceLocationToolId: serviceLocation?.toolId,
+        serviceLocationToolId,
         latitude: Number(waypoint.latitude),
         longitude: Number(waypoint.longitude),
         serviceMinutes: waypoint.serviceMinutes || 20,

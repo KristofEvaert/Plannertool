@@ -1,7 +1,7 @@
 export interface ServiceLocationDto {
   id: number;
   toolId: string; // Guid as string
-  erpId: number;
+  erpId?: number | null;
   accountId?: string;
   serialNumber?: string;
   name: string;
@@ -82,6 +82,7 @@ export interface ServiceLocationListParams {
 
 // Bulk insert types
 export interface BulkServiceLocationInsertDto {
+  toolId?: string;
   erpId?: number | null;
   accountId?: string;
   serialNumber?: string;

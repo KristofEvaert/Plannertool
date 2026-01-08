@@ -574,7 +574,7 @@ export class ServiceLocationsPage {
     const latitude = item.latitude === 0 ? null : item.latitude;
     const longitude = item.longitude === 0 ? null : item.longitude;
     this.form.set({
-      erpId: item.erpId,
+      erpId: item.erpId ?? null,
       accountId: item.accountId || '',
       serialNumber: item.serialNumber || '',
       name: item.name,
