@@ -202,7 +202,7 @@
                   size="small"
                   [outlined]="true"
                   [icon]="isRowExpanded(row) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-                  [label]="'Contributors (' + (row.contributors?.length || 0) + ')'"
+                  [label]="'Contributors (' + (row.contributors.length || 0) + ')'"
                   (onClick)="toggleRow(row)"
                 />
               </div>
@@ -213,10 +213,10 @@
                     <span class="font-semibold">Contributing drivers</span>
                     <span class="text-xs text-gray-500">Top contributors</span>
                   </div>
-                  @if (!row.contributors?.length) {
+                  @if (!row.contributors.length) {
                     <div class="text-sm text-gray-500">No contributors recorded yet.</div>
                   }
-                  @if (row.contributors?.length) {
+                  @if (row.contributors.length) {
                     <div class="tt-contrib-list">
                       @for (contrib of row.contributors; track contrib.driverId) {
                         <div class="tt-contrib-row">
