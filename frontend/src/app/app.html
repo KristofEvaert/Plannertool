@@ -1,7 +1,27 @@
 <div class="min-h-screen flex flex-col">
   <app-navbar />
-  <main class="flex-1 pt-16 px-6 bg-gray-50">
+  <main class="flex-1 pt-16 px-6 bg-linear-to-br from-gray-50 to-gray-100">
     <router-outlet />
   </main>
+
+  <!-- Fixed Help Bookmark -->
+  <div
+    class="fixed top-1/2 right-0 -translate-y-1/2 z-50 bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-2xl rounded-l-2xl border-l-4 border-b-4 border-t-4 border-blue-400 group cursor-pointer"
+    (click)="toggleHelp()"
+  >
+    <div class="relative px-4 py-6 flex flex-col items-center justify-center gap-4">
+      <div style="writing-mode: vertical-rl; text-orientation: mixed">
+        <span class="text-white font-bold text-md tracking-widest">MANUAL</span>
+      </div>
+      <div class="absolute opacity-0 pointer-events-auto">
+        <app-help-manual
+          #help
+          [sections]="manualSections"
+          [showLinks]="true"
+          [title]="'Full Manual'"
+        />
+      </div>
+    </div>
+  </div>
 </div>
 <p-toast />
