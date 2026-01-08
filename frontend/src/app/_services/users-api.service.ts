@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-import type { UserDto } from '@models/user.model';
-import type { AssignRolesRequest, CreateUserRequest } from '@models/user.model';
+import type { UserDto } from '@models';
+import type { AssignRolesRequest, CreateUserRequest } from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class UsersApiService {

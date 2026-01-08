@@ -22,7 +22,7 @@ import { ToastModule } from 'primeng/toast';
 import { catchError, forkJoin, interval, map, of, startWith, Subscription, switchMap } from 'rxjs';
 
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { RouteMessageDto } from '@models/route-message.model';
+import type { RouteMessageDto } from '@models';
 import { DriversApiService } from '@services/drivers-api.service';
 import { RouteMessagesApiService } from '@services/route-messages-api.service';
 import { RouteMessagesHubService } from '@services/route-messages-hub.service';

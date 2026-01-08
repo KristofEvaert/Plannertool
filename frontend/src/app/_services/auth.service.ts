@@ -2,7 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@environments/environment';
-import type { LoginRequest, LoginResponse, CurrentUser } from '@models/auth.model';
+import type { LoginRequest, LoginResponse, CurrentUser } from '@models';
 import { UsersApiService } from './users-api.service';
 
 const TOKEN_KEY = 'tp_token';

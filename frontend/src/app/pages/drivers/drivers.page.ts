@@ -9,8 +9,8 @@ import type {
   DriverDto,
   UpdateDriverRequest,
   UpsertAvailabilityRequest,
-} from '@models/driver.model';
-import type { ServiceTypeDto } from '@models/service-type.model';
+} from '@models';
+import type { ServiceTypeDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';

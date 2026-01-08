@@ -2,7 +2,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { UserDto } from '@models/user.model';
+import type { UserDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
 import { UsersApiService } from '@services/users-api.service';

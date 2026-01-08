@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-import type { SaveWeightTemplateRequest, WeightTemplateDto } from '@models/weight-template.model';
+import type { SaveWeightTemplateRequest, WeightTemplateDto } from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class WeightTemplatesApiService {

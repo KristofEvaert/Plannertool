@@ -5,7 +5,7 @@ import { HelpManualComponent } from '@components/help-manual/help-manual.compone
 import type {
   TravelTimeModelLearnedStatDto,
   TravelTimeModelStatus,
-} from '@models/travel-time-model-admin.model';
+} from '@models';
 import { TravelTimeModelAdminApiService } from '@services/travel-time-model-admin-api.service';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';

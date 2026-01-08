@@ -4,13 +4,29 @@ import { AfterViewInit, Component, OnDestroy, computed, inject, signal } from '@
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import { environment } from '@environments/environment';
-import type { DriverAvailabilityDto, DriverDto } from '@models/driver.model';
 import type {
+  ArrivalWindow,
+  BulkAddRejection,
+  CacheEntry,
+  DriverAvailabilityDto,
+  DriverDto,
+  DriverWithAvailability,
+  LocationHoursDisplay,
+  LocationWindowInfo,
+  MapPagePreferences,
+  MarkerColorKey,
+  RouteInfo,
+  RouteOverride,
+  RouteWaypoint,
   ServiceLocationExceptionDto,
+  ServiceLocationMapDto,
   ServiceLocationOpeningHoursDto,
-} from '@models/service-location.model';
-import type { ServiceTypeDto } from '@models/service-type.model';
-import type { WeightTemplateDto } from '@models/weight-template.model';
+  ServiceLocationsMapResponseDto,
+  ServiceTypeDto,
+  StopSchedule,
+  WeightTemplateDto,
+  WeightTemplateOption
+} from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';
@@ -38,121 +54,6 @@ import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { firstValueFrom } from 'rxjs';
 
-interface ServiceLocationMapDto {
-  toolId: string;
-  erpId: number;
-  name: string;
-  address?: string;
-  latitude: number;
-  longitude: number;
-  dueDate: string;
-  priorityDate?: string;
-  orderDate: string;
-  serviceTypeId: number;
-  status: string; // Open / Planned
-  serviceMinutes: number;
-  plannedDate?: string;
-  plannedDriverName?: string;
-}
-
-interface ServiceLocationsMapResponseDto {
-  from: string;
-  to: string;
-  totalCount: number;
-  minOrderDate?: string;
-  maxOrderDate?: string;
-  items: ServiceLocationMapDto[];
-}
-
-interface DriverWithAvailability {
-  driver: DriverDto;
-  availability: DriverAvailabilityDto | null;
-}
-
-interface RouteWaypoint {
-  type: 'driver-start' | 'location' | 'driver-end';
-  name: string;
-  address?: string;
-  latitude: number;
-  longitude: number;
-  serviceMinutes?: number;
-  erpId?: number;
-  travelMinutesFromPrev?: number;
-  travelKmFromPrev?: number;
-}
-
-interface RouteOverride {
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface RouteInfo {
-  driver: DriverDto;
-  waypoints: RouteWaypoint[];
-  totalDistanceKm: number;
-  totalTimeMinutes: number;
-  roadGeometry?: [number, number][]; // [lat, lng] points for road-following polyline
-  startOverride?: RouteOverride;
-  endOverride?: RouteOverride;
-  isAwaitingBackendTotals?: boolean;
-  distanceSource?: 'local' | 'backend';
-}
-
-interface StopSchedule {
-  label: string;
-  arrivalMinute: number;
-  departureMinute: number;
-  serviceMinutes: number;
-}
-
-interface LocationWindowInfo {
-  isClosed: boolean;
-  openMinute: number;
-  closeMinute: number;
-  label: string;
-}
-
-interface LocationHoursDisplay {
-  label: string;
-  isClosed: boolean;
-  isLoading?: boolean;
-}
-
-interface ArrivalWindow {
-  startMinute: number;
-  endMinute: number;
-}
-
-interface BulkAddRejection {
-  name: string;
-  address?: string;
-  reason: string;
-}
-
-interface CacheEntry<T> {
-  value: T;
-  fetchedAt: number;
-}
-
-interface MapPagePreferences {
-  ownerId?: number;
-  serviceTypeIds?: number[];
-  fromDate?: string;
-  toDate?: string;
-  weightTemplateId?: number | null;
-  normalizeWeights?: boolean;
-  dueCostCapPercent?: number;
-  detourCostCapPercent?: number;
-  detourRefKmPercent?: number;
-  lateRefMinutesPercent?: number;
-}
-
-interface WeightTemplateOption {
-  label: string;
-  value: number;
-}
-type MarkerColorKey = 'green' | 'yellow' | 'orange' | 'red' | 'white' | 'black';
 
 @Component({
   selector: 'app-map',

@@ -16,7 +16,7 @@ import type {
   ServiceLocationConstraintDto,
   ResolveServiceLocationGeoRequest,
   ResolveServiceLocationGeoResponse,
-} from '@models/service-location.model';
+} from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class ServiceLocationsApiService {

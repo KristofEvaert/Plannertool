@@ -6,7 +6,7 @@ import type {
   CreateServiceTypeRequest,
   ServiceTypeDto,
   UpdateServiceTypeRequest,
-} from '@models/service-type.model';
+} from '@models';
 import { AuthService } from '@services/auth.service';
 import {
   ServiceLocationOwnersApiService,

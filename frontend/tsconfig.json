@@ -28,6 +28,9 @@
       "@models/*": [
         "src/app/_models/*"
       ],
+      "@models": [
+        "src/app/_models/index.ts"
+      ],
       "@guards/*": [
         "src/app/_guards/*"
       ],
@@ -42,7 +45,7 @@
       ],
       "@pages/*": [
         "src/app/pages/*"
-      ],
+      ]
     }
   },
   "angularCompilerOptions": {

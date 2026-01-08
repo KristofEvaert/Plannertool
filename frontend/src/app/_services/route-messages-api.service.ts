@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-import type { CreateRouteMessageRequest, RouteMessageDto } from '@models/route-message.model';
+import type { CreateRouteMessageRequest, RouteMessageDto } from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class RouteMessagesApiService {
