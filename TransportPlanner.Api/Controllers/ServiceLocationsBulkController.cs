@@ -438,7 +438,7 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(4, 14).Value = "SerialNumber";
         
         // Instruction row (row 5)
-        sheet.Cell(5, 1).Value = "Required";
+        sheet.Cell(5, 1).Value = "Optional (auto-assigned if blank)";
         sheet.Cell(5, 2).Value = "Required";
         sheet.Cell(5, 3).Value = "Required if no coordinates";
         sheet.Cell(5, 4).Value = "Required if no address (-90 to 90)";
@@ -783,12 +783,16 @@ public class ServiceLocationsBulkController : ControllerBase
                     }
 
                     var erpIdStr = erpIdCell.GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(erpIdStr))
+                    {
+                        continue;
+                    }
                     if (!int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = rowRef,
-                            Message = "Invalid or missing ErpId"
+                            Message = "Invalid ErpId"
                         });
                         hasSheetErrors = true;
                         continue;
@@ -943,12 +947,16 @@ public class ServiceLocationsBulkController : ControllerBase
                     }
 
                     var erpIdStr = erpIdCell.GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(erpIdStr))
+                    {
+                        continue;
+                    }
                     if (!int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = rowRef,
-                            Message = "Invalid or missing ErpId"
+                            Message = "Invalid ErpId"
                         });
                         hasSheetErrors = true;
                         continue;
@@ -1067,25 +1075,29 @@ public class ServiceLocationsBulkController : ControllerBase
                 
                 try
                 {
-                    // Skip empty rows
-                    var erpIdCell = worksheet.Cell(row, 1);
-                    if (erpIdCell.IsEmpty())
-                    {
-                        continue;
-                    }
+                if (IsRowEmpty(worksheet, row, 14))
+                {
+                    continue;
+                }
 
-                    // Parse ErpId
-                    var erpIdStr = erpIdCell.IsEmpty() ? string.Empty : erpIdCell.GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(erpIdStr) || !int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
+                // Parse ErpId (optional)
+                int? erpId = null;
+                var erpIdCell = worksheet.Cell(row, 1);
+                var erpIdStr = erpIdCell.IsEmpty() ? string.Empty : erpIdCell.GetString().Trim();
+                if (!string.IsNullOrWhiteSpace(erpIdStr))
+                {
+                    if (!int.TryParse(erpIdStr, out var parsedErpId) || parsedErpId <= 0)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = rowRef,
-                            Message = "Invalid or missing ErpId"
+                            Message = "Invalid ErpId"
                         });
                         errorRows.Add(row);
                         continue;
                     }
+                    erpId = parsedErpId;
+                }
 
                     // Parse Name
                     var nameCell = worksheet.Cell(row, 2);
@@ -1436,7 +1448,9 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
             }
 
-            var itemsByErpId = request.Items.ToDictionary(item => item.ErpId);
+            var itemsByErpId = request.Items
+                .Where(item => item.ErpId.HasValue && item.ErpId.Value > 0)
+                .ToDictionary(item => item.ErpId!.Value);
 
             foreach (var kvp in openingHoursByErpId)
             {
@@ -1593,6 +1607,20 @@ public class ServiceLocationsBulkController : ControllerBase
             .Select(part => part.Trim())
             .Where(part => !string.IsNullOrWhiteSpace(part))
             .ToList();
+    }
+
+    private static bool IsRowEmpty(IXLWorksheet worksheet, int row, int lastColumn)
+    {
+        for (int column = 1; column <= lastColumn; column++)
+        {
+            var cell = worksheet.Cell(row, column);
+            if (!cell.IsEmpty() && !string.IsNullOrWhiteSpace(cell.GetString()))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool TryParseBoolCell(IXLCell cell, out bool? value)
@@ -1824,7 +1852,7 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(4, 8).Value = "ServiceMinutes";
         sheet.Cell(4, 9).Value = "DriverInstruction";
 
-        sheet.Cell(5, 1).Value = "Required";
+        sheet.Cell(5, 1).Value = "Optional (auto-assigned if blank)";
         sheet.Cell(5, 2).Value = "Required";
         sheet.Cell(5, 3).Value = "Required if no coordinates";
         sheet.Cell(5, 4).Value = "Required if no address (-90 to 90)";

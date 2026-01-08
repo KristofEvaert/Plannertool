@@ -23,7 +23,7 @@ export interface ServiceLocationDto {
 }
 
 export interface CreateServiceLocationRequest {
-  erpId: number;
+  erpId?: number | null;
   accountId?: string;
   serialNumber?: string;
   name: string;
@@ -40,7 +40,7 @@ export interface CreateServiceLocationRequest {
 }
 
 export interface UpdateServiceLocationRequest {
-  erpId: number;
+  erpId?: number | null;
   accountId?: string;
   serialNumber?: string;
   name: string;
@@ -82,7 +82,7 @@ export interface ServiceLocationListParams {
 
 // Bulk insert types
 export interface BulkServiceLocationInsertDto {
-  erpId: number;
+  erpId?: number | null;
   accountId?: string;
   serialNumber?: string;
   name: string;

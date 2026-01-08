@@ -71,8 +71,29 @@ public class ServiceLocationBulkInsertService
             return result;
         }
 
+        var maxExistingErpId = await _dbContext.ServiceLocations
+            .MaxAsync(sl => (int?)sl.ErpId, cancellationToken) ?? 0;
+        var maxRequestedErpId = request.Items
+            .Where(i => i.ErpId.HasValue && i.ErpId.Value > 0)
+            .Select(i => i.ErpId!.Value)
+            .DefaultIfEmpty(0)
+            .Max();
+        var nextErpId = Math.Max(maxExistingErpId, maxRequestedErpId) + 1;
+
+        foreach (var item in request.Items)
+        {
+            if (!item.ErpId.HasValue || item.ErpId.Value == 0)
+            {
+                item.ErpId = nextErpId++;
+            }
+        }
+
         // Preload existing service locations by ERP ID
-        var erpIdsInRequest = request.Items.Select(i => i.ErpId).Distinct().ToList();
+        var erpIdsInRequest = request.Items
+            .Where(i => i.ErpId.HasValue && i.ErpId.Value > 0)
+            .Select(i => i.ErpId!.Value)
+            .Distinct()
+            .ToList();
         var existingServiceLocations = await _dbContext.ServiceLocations
             .Where(sl => erpIdsInRequest.Contains(sl.ErpId))
             .ToDictionaryAsync(sl => sl.ErpId, cancellationToken);
@@ -93,7 +114,7 @@ public class ServiceLocationBulkInsertService
             var rowRef = $"JSON item {i + 1}";
 
             // Validation
-            if (item.ErpId <= 0)
+            if (!item.ErpId.HasValue || item.ErpId.Value <= 0)
             {
                 result.Errors.Add(new BulkErrorDto
                 {
@@ -104,6 +125,8 @@ public class ServiceLocationBulkInsertService
                 result.Skipped++;
                 continue;
             }
+
+            var erpId = item.ErpId.Value;
 
             if (string.IsNullOrWhiteSpace(item.Name))
             {
@@ -335,7 +358,7 @@ public class ServiceLocationBulkInsertService
             }
 
             // Check if ERP ID already exists - update instead of skip
-            if (existingServiceLocations.TryGetValue(item.ErpId, out var existingServiceLocation))
+            if (existingServiceLocations.TryGetValue(erpId, out var existingServiceLocation))
             {
                 var newDueDate = item.DueDate.ToDateTime(TimeOnly.MinValue).Date;
                 var dueDateChanged = existingServiceLocation.DueDate.Date != newDueDate;
@@ -452,7 +475,7 @@ public class ServiceLocationBulkInsertService
             var serviceLocation = new ServiceLocation
             {
                 ToolId = Guid.NewGuid(),
-                ErpId = item.ErpId,
+                ErpId = erpId,
                 Name = item.Name.Trim(),
                 Address = item.Address?.Trim(),
                 Latitude = latitude,
