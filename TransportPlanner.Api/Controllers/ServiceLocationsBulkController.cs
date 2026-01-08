@@ -145,7 +145,8 @@ public class ServiceLocationsBulkController : ControllerBase
         var locations = await _dbContext.ServiceLocations
             .AsNoTracking()
             .Where(sl => sl.OwnerId == ownerId && sl.ServiceTypeId == serviceTypeId && sl.IsActive)
-            .OrderBy(sl => sl.ErpId)
+            .OrderBy(sl => sl.ErpId ?? int.MaxValue)
+            .ThenBy(sl => sl.Name)
             .Include(sl => sl.Constraint)
             .Include(sl => sl.OpeningHours)
             .Include(sl => sl.Exceptions)
@@ -154,6 +155,7 @@ public class ServiceLocationsBulkController : ControllerBase
         var items = locations
             .Select(sl => new BulkServiceLocationInsertDto
             {
+                ToolId = sl.ToolId,
                 ErpId = sl.ErpId,
                 AccountId = sl.AccountId,
                 SerialNumber = sl.SerialNumber,
@@ -422,48 +424,61 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(2, 6).FormulaA1 = $"=IFERROR(VLOOKUP(B2,_Lists!$C$2:$D${allOwners.Count + 1},2,FALSE),\"\")";
         
         // Header row (row 4)
-        sheet.Cell(4, 1).Value = "ErpId";
-        sheet.Cell(4, 2).Value = "Name";
-        sheet.Cell(4, 3).Value = "Address";
-        sheet.Cell(4, 4).Value = "Latitude";
-        sheet.Cell(4, 5).Value = "Longitude";
-        sheet.Cell(4, 6).Value = "DueDate";
-        sheet.Cell(4, 7).Value = "PriorityDate";
-        sheet.Cell(4, 8).Value = "ServiceMinutes";
-        sheet.Cell(4, 9).Value = "DriverInstruction";
-        sheet.Cell(4, 10).Value = "ExtraInstructions";
-        sheet.Cell(4, 11).Value = "MinVisitDurationMinutes";
-        sheet.Cell(4, 12).Value = "MaxVisitDurationMinutes";
-        sheet.Cell(4, 13).Value = "AccountId";
-        sheet.Cell(4, 14).Value = "SerialNumber";
+        sheet.Cell(4, 1).Value = "ToolId";
+        sheet.Cell(4, 2).Value = "ErpId";
+        sheet.Cell(4, 3).Value = "Name";
+        sheet.Cell(4, 4).Value = "Address";
+        sheet.Cell(4, 5).Value = "Latitude";
+        sheet.Cell(4, 6).Value = "Longitude";
+        sheet.Cell(4, 7).Value = "DueDate";
+        sheet.Cell(4, 8).Value = "PriorityDate";
+        sheet.Cell(4, 9).Value = "ServiceMinutes";
+        sheet.Cell(4, 10).Value = "DriverInstruction";
+        sheet.Cell(4, 11).Value = "ExtraInstructions";
+        sheet.Cell(4, 12).Value = "MinVisitDurationMinutes";
+        sheet.Cell(4, 13).Value = "MaxVisitDurationMinutes";
+        sheet.Cell(4, 14).Value = "AccountId";
+        sheet.Cell(4, 15).Value = "SerialNumber";
+        sheet.Cell(4, 11).Value = "ExtraInstructions";
+        sheet.Cell(4, 12).Value = "MinVisitDurationMinutes";
+        sheet.Cell(4, 13).Value = "MaxVisitDurationMinutes";
+        sheet.Cell(4, 14).Value = "AccountId";
+        sheet.Cell(4, 15).Value = "SerialNumber";
         
         // Instruction row (row 5)
-        sheet.Cell(5, 1).Value = "Required";
-        sheet.Cell(5, 2).Value = "Required";
-        sheet.Cell(5, 3).Value = "Required if no coordinates";
-        sheet.Cell(5, 4).Value = "Required if no address (-90 to 90)";
-        sheet.Cell(5, 5).Value = "Required if no address (-180 to 180)";
-        sheet.Cell(5, 6).Value = "Required (yyyy-MM-dd)";
-        sheet.Cell(5, 7).Value = "Optional (yyyy-MM-dd)";
-        sheet.Cell(5, 8).Value = "Optional (1-240, default 20)";
-        sheet.Cell(5, 9).Value = "Optional (shown to driver)";
-        sheet.Cell(5, 10).Value = "Optional (pipe or newline separated)";
-        sheet.Cell(5, 11).Value = "Optional (>= 0)";
+        sheet.Cell(5, 1).Value = "Optional (required for updates)";
+        sheet.Cell(5, 2).Value = "Optional (unique if provided)";
+        sheet.Cell(5, 3).Value = "Required";
+        sheet.Cell(5, 4).Value = "Required if no coordinates";
+        sheet.Cell(5, 5).Value = "Required if no address (-90 to 90)";
+        sheet.Cell(5, 6).Value = "Required if no address (-180 to 180)";
+        sheet.Cell(5, 7).Value = "Required (yyyy-MM-dd)";
+        sheet.Cell(5, 8).Value = "Optional (yyyy-MM-dd)";
+        sheet.Cell(5, 9).Value = "Optional (1-240, default 20)";
+        sheet.Cell(5, 10).Value = "Optional (shown to driver)";
+        sheet.Cell(5, 11).Value = "Optional (pipe or newline separated)";
         sheet.Cell(5, 12).Value = "Optional (>= 0)";
-        sheet.Cell(5, 13).Value = "Optional";
+        sheet.Cell(5, 13).Value = "Optional (>= 0)";
         sheet.Cell(5, 14).Value = "Optional";
+        sheet.Cell(5, 15).Value = "Optional";
+        sheet.Cell(5, 11).Value = "Optional (pipe or newline separated)";
+        sheet.Cell(5, 12).Value = "Optional (>= 0)";
+        sheet.Cell(5, 13).Value = "Optional (>= 0)";
+        sheet.Cell(5, 14).Value = "Optional";
+        sheet.Cell(5, 15).Value = "Optional";
         
         // Format date columns (DueDate and PriorityDate) as text to preserve yyyy-MM-dd format
         // Set the entire column range to text format
-        var dueDateColumn = sheet.Column(6);
-        var priorityDateColumn = sheet.Column(7);
+        var dueDateColumn = sheet.Column(7);
+        var priorityDateColumn = sheet.Column(8);
         dueDateColumn.Style.NumberFormat.Format = "@"; // "@" is the text format in Excel
         priorityDateColumn.Style.NumberFormat.Format = "@"; // "@" is the text format in Excel
 
         var existingLocations = await _dbContext.ServiceLocations
             .AsNoTracking()
             .Where(sl => sl.OwnerId == ownerId && sl.ServiceTypeId == serviceTypeId && sl.IsActive)
-            .OrderBy(sl => sl.ErpId)
+            .OrderBy(sl => sl.ErpId ?? int.MaxValue)
+            .ThenBy(sl => sl.Name)
             .Include(sl => sl.Constraint)
             .Include(sl => sl.OpeningHours)
             .Include(sl => sl.Exceptions)
@@ -476,22 +491,23 @@ public class ServiceLocationsBulkController : ControllerBase
             var location = existingLocations[i];
             var row = startRow + i;
 
-            sheet.Cell(row, 1).Value = location.ErpId;
-            sheet.Cell(row, 2).Value = location.Name;
-            sheet.Cell(row, 3).Value = location.Address ?? string.Empty;
-            sheet.Cell(row, 4).Value = location.Latitude.HasValue ? location.Latitude.Value : string.Empty;
-            sheet.Cell(row, 5).Value = location.Longitude.HasValue ? location.Longitude.Value : string.Empty;
-            sheet.Cell(row, 6).Value = location.DueDate.ToString("yyyy-MM-dd");
-            sheet.Cell(row, 7).Value = location.PriorityDate.HasValue ? location.PriorityDate.Value.ToString("yyyy-MM-dd") : string.Empty;
-            sheet.Cell(row, 8).Value = location.ServiceMinutes;
-            sheet.Cell(row, 9).Value = location.DriverInstruction ?? string.Empty;
-            sheet.Cell(row, 10).Value = location.ExtraInstructions.Count > 0
+            sheet.Cell(row, 1).Value = location.ToolId.ToString();
+            sheet.Cell(row, 2).Value = location.ErpId?.ToString() ?? string.Empty;
+            sheet.Cell(row, 3).Value = location.Name;
+            sheet.Cell(row, 4).Value = location.Address ?? string.Empty;
+            sheet.Cell(row, 5).Value = location.Latitude.HasValue ? location.Latitude.Value : string.Empty;
+            sheet.Cell(row, 6).Value = location.Longitude.HasValue ? location.Longitude.Value : string.Empty;
+            sheet.Cell(row, 7).Value = location.DueDate.ToString("yyyy-MM-dd");
+            sheet.Cell(row, 8).Value = location.PriorityDate.HasValue ? location.PriorityDate.Value.ToString("yyyy-MM-dd") : string.Empty;
+            sheet.Cell(row, 9).Value = location.ServiceMinutes;
+            sheet.Cell(row, 10).Value = location.DriverInstruction ?? string.Empty;
+            sheet.Cell(row, 11).Value = location.ExtraInstructions.Count > 0
                 ? string.Join(" | ", location.ExtraInstructions)
                 : string.Empty;
-            sheet.Cell(row, 11).Value = location.Constraint?.MinVisitDurationMinutes?.ToString() ?? string.Empty;
-            sheet.Cell(row, 12).Value = location.Constraint?.MaxVisitDurationMinutes?.ToString() ?? string.Empty;
-            sheet.Cell(row, 13).Value = location.AccountId ?? string.Empty;
-            sheet.Cell(row, 14).Value = location.SerialNumber ?? string.Empty;
+            sheet.Cell(row, 12).Value = location.Constraint?.MinVisitDurationMinutes?.ToString() ?? string.Empty;
+            sheet.Cell(row, 13).Value = location.Constraint?.MaxVisitDurationMinutes?.ToString() ?? string.Empty;
+            sheet.Cell(row, 14).Value = location.AccountId ?? string.Empty;
+            sheet.Cell(row, 15).Value = location.SerialNumber ?? string.Empty;
         }
         
         // Style service type info rows
@@ -500,12 +516,12 @@ public class ServiceLocationsBulkController : ControllerBase
         infoRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
         
         // Style header
-        var headerRange = sheet.Range(3, 1, 3, 14);
+        var headerRange = sheet.Range(3, 1, 3, 15);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
         
         // Style instruction row
-        var instructionRange = sheet.Range(4, 1, 4, 14);
+        var instructionRange = sheet.Range(4, 1, 4, 15);
         instructionRange.Style.Font.Italic = true;
         instructionRange.Style.Font.FontColor = XLColor.DarkGray;
         
@@ -514,7 +530,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
         // Sheet: OpeningHours
         var openingHoursSheet = workbook.Worksheets.Add("OpeningHours");
-        openingHoursSheet.Cell(1, 1).Value = "ErpId";
+        openingHoursSheet.Cell(1, 1).Value = "ToolId";
         openingHoursSheet.Cell(1, 2).Value = "Day";
         openingHoursSheet.Cell(1, 3).Value = "OpenTime";
         openingHoursSheet.Cell(1, 4).Value = "CloseTime";
@@ -522,7 +538,7 @@ public class ServiceLocationsBulkController : ControllerBase
         openingHoursSheet.Cell(1, 6).Value = "CloseTime2";
         openingHoursSheet.Cell(1, 7).Value = "IsClosed";
 
-        openingHoursSheet.Cell(2, 1).Value = "Required";
+        openingHoursSheet.Cell(2, 1).Value = "Required (matches ServiceLocations ToolId)";
         openingHoursSheet.Cell(2, 2).Value = "Required (Sunday-Saturday)";
         openingHoursSheet.Cell(2, 3).Value = "Required unless closed (HH:mm)";
         openingHoursSheet.Cell(2, 4).Value = "Required unless closed (HH:mm)";
@@ -548,7 +564,7 @@ public class ServiceLocationsBulkController : ControllerBase
         {
             foreach (var hour in location.OpeningHours.OrderBy(x => x.DayOfWeek))
             {
-                openingHoursSheet.Cell(hoursRow, 1).Value = location.ErpId;
+                openingHoursSheet.Cell(hoursRow, 1).Value = location.ToolId.ToString();
                 openingHoursSheet.Cell(hoursRow, 2).Value = DayNames[Math.Clamp(hour.DayOfWeek, 0, 6)];
                 openingHoursSheet.Cell(hoursRow, 3).Value = hour.OpenTime.HasValue ? hour.OpenTime.Value.ToString("hh\\:mm") : string.Empty;
                 openingHoursSheet.Cell(hoursRow, 4).Value = hour.CloseTime.HasValue ? hour.CloseTime.Value.ToString("hh\\:mm") : string.Empty;
@@ -563,14 +579,14 @@ public class ServiceLocationsBulkController : ControllerBase
 
         // Sheet: Exceptions
         var exceptionsSheet = workbook.Worksheets.Add("Exceptions");
-        exceptionsSheet.Cell(1, 1).Value = "ErpId";
+        exceptionsSheet.Cell(1, 1).Value = "ToolId";
         exceptionsSheet.Cell(1, 2).Value = "Date";
         exceptionsSheet.Cell(1, 3).Value = "OpenTime";
         exceptionsSheet.Cell(1, 4).Value = "CloseTime";
         exceptionsSheet.Cell(1, 5).Value = "IsClosed";
         exceptionsSheet.Cell(1, 6).Value = "Note";
 
-        exceptionsSheet.Cell(2, 1).Value = "Required";
+        exceptionsSheet.Cell(2, 1).Value = "Required (matches ServiceLocations ToolId)";
         exceptionsSheet.Cell(2, 2).Value = "Required (yyyy-MM-dd)";
         exceptionsSheet.Cell(2, 3).Value = "Required unless closed (HH:mm)";
         exceptionsSheet.Cell(2, 4).Value = "Required unless closed (HH:mm)";
@@ -590,7 +606,7 @@ public class ServiceLocationsBulkController : ControllerBase
         {
             foreach (var exception in location.Exceptions.OrderBy(x => x.Date))
             {
-                exceptionsSheet.Cell(exceptionRow, 1).Value = location.ErpId;
+                exceptionsSheet.Cell(exceptionRow, 1).Value = location.ToolId.ToString();
                 exceptionsSheet.Cell(exceptionRow, 2).Value = exception.Date.ToString("yyyy-MM-dd");
                 exceptionsSheet.Cell(exceptionRow, 3).Value = exception.OpenTime.HasValue ? exception.OpenTime.Value.ToString("hh\\:mm") : string.Empty;
                 exceptionsSheet.Cell(exceptionRow, 4).Value = exception.CloseTime.HasValue ? exception.CloseTime.Value.ToString("hh\\:mm") : string.Empty;
@@ -644,10 +660,10 @@ public class ServiceLocationsBulkController : ControllerBase
             var itemRowNumbers = new List<int>();
             var errorRows = new HashSet<int>();
             var hasSheetErrors = false;
-            var openingHoursByErpId = new Dictionary<int, List<ServiceLocationOpeningHoursDto>>();
-            var openingHoursRowRefsByErpId = new Dictionary<int, List<int>>();
-            var exceptionsByErpId = new Dictionary<int, List<ServiceLocationExceptionDto>>();
-            var exceptionRowRefsByErpId = new Dictionary<int, List<int>>();
+            var openingHoursByToolId = new Dictionary<Guid, List<ServiceLocationOpeningHoursDto>>();
+            var openingHoursRowRefsByToolId = new Dictionary<Guid, List<int>>();
+            var exceptionsByToolId = new Dictionary<Guid, List<ServiceLocationExceptionDto>>();
+            var exceptionRowRefsByToolId = new Dictionary<Guid, List<int>>();
 
             using var stream = new MemoryStream();
             await file.CopyToAsync(stream, cancellationToken);
@@ -776,19 +792,23 @@ public class ServiceLocationsBulkController : ControllerBase
                 for (int row = 3; row <= lastHoursRow; row++)
                 {
                     var rowRef = $"OpeningHours row {row}";
-                    var erpIdCell = openingHoursSheet.Cell(row, 1);
-                    if (erpIdCell.IsEmpty())
+                    var toolIdCell = openingHoursSheet.Cell(row, 1);
+                    if (toolIdCell.IsEmpty())
                     {
                         continue;
                     }
 
-                    var erpIdStr = erpIdCell.GetString().Trim();
-                    if (!int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
+                    var toolIdStr = toolIdCell.GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(toolIdStr))
+                    {
+                        continue;
+                    }
+                    if (!Guid.TryParse(toolIdStr, out var toolId) || toolId == Guid.Empty)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = rowRef,
-                            Message = "Invalid or missing ErpId"
+                            Message = "Invalid ToolId"
                         });
                         hasSheetErrors = true;
                         continue;
@@ -889,7 +909,7 @@ public class ServiceLocationsBulkController : ControllerBase
                         continue;
                     }
 
-                    var key = $"{erpId}:{dayOfWeek}";
+                    var key = $"{toolId}:{dayOfWeek}";
                     if (!hourKeySet.Add(key))
                     {
                         errors.Add(new BulkErrorDto
@@ -911,18 +931,18 @@ public class ServiceLocationsBulkController : ControllerBase
                         IsClosed = isClosed
                     };
 
-                    if (!openingHoursByErpId.TryGetValue(erpId, out var list))
+                    if (!openingHoursByToolId.TryGetValue(toolId, out var list))
                     {
                         list = new List<ServiceLocationOpeningHoursDto>();
-                        openingHoursByErpId[erpId] = list;
+                        openingHoursByToolId[toolId] = list;
                     }
 
                     list.Add(dto);
 
-                    if (!openingHoursRowRefsByErpId.TryGetValue(erpId, out var rowRefs))
+                    if (!openingHoursRowRefsByToolId.TryGetValue(toolId, out var rowRefs))
                     {
                         rowRefs = new List<int>();
-                        openingHoursRowRefsByErpId[erpId] = rowRefs;
+                        openingHoursRowRefsByToolId[toolId] = rowRefs;
                     }
 
                     rowRefs.Add(row);
@@ -936,19 +956,23 @@ public class ServiceLocationsBulkController : ControllerBase
                 for (int row = 3; row <= lastExceptionRow; row++)
                 {
                     var rowRef = $"Exceptions row {row}";
-                    var erpIdCell = exceptionsSheet.Cell(row, 1);
-                    if (erpIdCell.IsEmpty())
+                    var toolIdCell = exceptionsSheet.Cell(row, 1);
+                    if (toolIdCell.IsEmpty())
                     {
                         continue;
                     }
 
-                    var erpIdStr = erpIdCell.GetString().Trim();
-                    if (!int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
+                    var toolIdStr = toolIdCell.GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(toolIdStr))
+                    {
+                        continue;
+                    }
+                    if (!Guid.TryParse(toolIdStr, out var toolId) || toolId == Guid.Empty)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = rowRef,
-                            Message = "Invalid or missing ErpId"
+                            Message = "Invalid ToolId"
                         });
                         hasSheetErrors = true;
                         continue;
@@ -1023,18 +1047,18 @@ public class ServiceLocationsBulkController : ControllerBase
                             : exceptionsSheet.Cell(row, 6).GetString().Trim()
                     };
 
-                    if (!exceptionsByErpId.TryGetValue(erpId, out var list))
+                    if (!exceptionsByToolId.TryGetValue(toolId, out var list))
                     {
                         list = new List<ServiceLocationExceptionDto>();
-                        exceptionsByErpId[erpId] = list;
+                        exceptionsByToolId[toolId] = list;
                     }
 
                     list.Add(dto);
 
-                    if (!exceptionRowRefsByErpId.TryGetValue(erpId, out var rowRefs))
+                    if (!exceptionRowRefsByToolId.TryGetValue(toolId, out var rowRefs))
                     {
                         rowRefs = new List<int>();
-                        exceptionRowRefsByErpId[erpId] = rowRefs;
+                        exceptionRowRefsByToolId[toolId] = rowRefs;
                     }
 
                     rowRefs.Add(row);
@@ -1062,33 +1086,57 @@ public class ServiceLocationsBulkController : ControllerBase
                     worksheet.Cell(row, 11).GetFormattedString(),
                     worksheet.Cell(row, 12).GetFormattedString(),
                     worksheet.Cell(row, 13).GetFormattedString(),
-                    worksheet.Cell(row, 14).GetFormattedString()
+                    worksheet.Cell(row, 14).GetFormattedString(),
+                    worksheet.Cell(row, 15).GetFormattedString()
                 };
                 
                 try
                 {
-                    // Skip empty rows
-                    var erpIdCell = worksheet.Cell(row, 1);
-                    if (erpIdCell.IsEmpty())
-                    {
-                        continue;
-                    }
+                if (IsRowEmpty(worksheet, row, 15))
+                {
+                    continue;
+                }
 
-                    // Parse ErpId
-                    var erpIdStr = erpIdCell.IsEmpty() ? string.Empty : erpIdCell.GetString().Trim();
-                    if (string.IsNullOrWhiteSpace(erpIdStr) || !int.TryParse(erpIdStr, out var erpId) || erpId <= 0)
+                // Parse ToolId (optional)
+                Guid? toolId = null;
+                var toolIdCell = worksheet.Cell(row, 1);
+                var toolIdStr = toolIdCell.IsEmpty() ? string.Empty : toolIdCell.GetString().Trim();
+                if (!string.IsNullOrWhiteSpace(toolIdStr))
+                {
+                    if (!Guid.TryParse(toolIdStr, out var parsedToolId) || parsedToolId == Guid.Empty)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = rowRef,
-                            Message = "Invalid or missing ErpId"
+                            Message = "Invalid ToolId"
                         });
                         errorRows.Add(row);
                         continue;
                     }
+                    toolId = parsedToolId;
+                }
+
+                // Parse ErpId (optional)
+                int? erpId = null;
+                var erpIdCell = worksheet.Cell(row, 2);
+                var erpIdStr = erpIdCell.IsEmpty() ? string.Empty : erpIdCell.GetString().Trim();
+                if (!string.IsNullOrWhiteSpace(erpIdStr))
+                {
+                    if (!int.TryParse(erpIdStr, out var parsedErpId) || parsedErpId < 0)
+                    {
+                        errors.Add(new BulkErrorDto
+                        {
+                            RowRef = rowRef,
+                            Message = "Invalid ErpId"
+                        });
+                        errorRows.Add(row);
+                        continue;
+                    }
+                    erpId = parsedErpId > 0 ? parsedErpId : null;
+                }
 
                     // Parse Name
-                    var nameCell = worksheet.Cell(row, 2);
+                    var nameCell = worksheet.Cell(row, 3);
                     var name = nameCell.IsEmpty() ? string.Empty : nameCell.GetString().Trim();
                     if (string.IsNullOrWhiteSpace(name))
                     {
@@ -1102,7 +1150,7 @@ public class ServiceLocationsBulkController : ControllerBase
                     }
 
                     // Parse Address (optional)
-                    var addressCell = worksheet.Cell(row, 3);
+                    var addressCell = worksheet.Cell(row, 4);
                     var address = addressCell.IsEmpty() ? string.Empty : addressCell.GetString().Trim();
                     if (string.IsNullOrWhiteSpace(address))
                     {
@@ -1111,7 +1159,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
                 // Parse Latitude (optional if address provided)
                 double? latitude = null;
-                var latitudeCell = worksheet.Cell(row, 4);
+                var latitudeCell = worksheet.Cell(row, 5);
                 if (!latitudeCell.IsEmpty())
                 {
                     var latitudeStr = latitudeCell.GetString().Trim();
@@ -1133,7 +1181,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
                 // Parse Longitude (optional if address provided)
                 double? longitude = null;
-                var longitudeCell = worksheet.Cell(row, 5);
+                var longitudeCell = worksheet.Cell(row, 6);
                 if (!longitudeCell.IsEmpty())
                 {
                     var longitudeStr = longitudeCell.GetString().Trim();
@@ -1185,7 +1233,7 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
 
                 // Parse DueDate
-                var dueDateCell = worksheet.Cell(row, 6);
+                var dueDateCell = worksheet.Cell(row, 7);
                 DateOnly dueDate;
                 if (dueDateCell.IsEmpty())
                 {
@@ -1252,7 +1300,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
                 // Parse PriorityDate (optional)
                 DateOnly? priorityDate = null;
-                var priorityDateCell = worksheet.Cell(row, 7);
+                var priorityDateCell = worksheet.Cell(row, 8);
                 if (!priorityDateCell.IsEmpty())
                 {
                     if (priorityDateCell.DataType == XLDataType.DateTime)
@@ -1305,7 +1353,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
                 // Parse ServiceMinutes (optional)
                 int? serviceMinutes = null;
-                var serviceMinutesCell = worksheet.Cell(row, 8);
+                var serviceMinutesCell = worksheet.Cell(row, 9);
                 var serviceMinutesStr = serviceMinutesCell.IsEmpty() ? string.Empty : serviceMinutesCell.GetString().Trim();
                 if (!string.IsNullOrWhiteSpace(serviceMinutesStr))
                 {
@@ -1317,7 +1365,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
                 // Parse DriverInstruction (optional)
                 string? driverInstruction = null;
-                var driverInstructionCell = worksheet.Cell(row, 9);
+                var driverInstructionCell = worksheet.Cell(row, 10);
                 if (!driverInstructionCell.IsEmpty())
                 {
                     var driverInstructionStr = driverInstructionCell.GetString().Trim();
@@ -1328,14 +1376,14 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
 
                 List<string>? extraInstructions = null;
-                var extraInstructionsCell = worksheet.Cell(row, 10);
+                var extraInstructionsCell = worksheet.Cell(row, 11);
                 if (!extraInstructionsCell.IsEmpty())
                 {
                     extraInstructions = ParseInstructionCell(extraInstructionsCell);
                 }
 
                 int? minVisitDurationMinutes = null;
-                var minVisitDurationCell = worksheet.Cell(row, 11);
+                var minVisitDurationCell = worksheet.Cell(row, 12);
                 if (!minVisitDurationCell.IsEmpty())
                 {
                     var minVisitDurationStr = minVisitDurationCell.GetString().Trim();
@@ -1359,7 +1407,7 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
 
                 int? maxVisitDurationMinutes = null;
-                var maxVisitDurationCell = worksheet.Cell(row, 12);
+                var maxVisitDurationCell = worksheet.Cell(row, 13);
                 if (!maxVisitDurationCell.IsEmpty())
                 {
                     var maxVisitDurationStr = maxVisitDurationCell.GetString().Trim();
@@ -1383,7 +1431,7 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
 
                 string? accountId = null;
-                var accountIdCell = worksheet.Cell(row, 13);
+                var accountIdCell = worksheet.Cell(row, 14);
                 if (!accountIdCell.IsEmpty())
                 {
                     var accountIdStr = accountIdCell.GetString().Trim();
@@ -1394,7 +1442,7 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
 
                 string? serialNumber = null;
-                var serialNumberCell = worksheet.Cell(row, 14);
+                var serialNumberCell = worksheet.Cell(row, 15);
                 if (!serialNumberCell.IsEmpty())
                 {
                     var serialNumberStr = serialNumberCell.GetString().Trim();
@@ -1406,6 +1454,7 @@ public class ServiceLocationsBulkController : ControllerBase
 
                 var item = new BulkServiceLocationInsertDto
                 {
+                    ToolId = toolId,
                     ErpId = erpId,
                     AccountId = accountId,
                     SerialNumber = serialNumber,
@@ -1436,45 +1485,47 @@ public class ServiceLocationsBulkController : ControllerBase
                 }
             }
 
-            var itemsByErpId = request.Items.ToDictionary(item => item.ErpId);
+            var itemsByToolId = request.Items
+                .Where(item => item.ToolId.HasValue)
+                .ToDictionary(item => item.ToolId!.Value);
 
-            foreach (var kvp in openingHoursByErpId)
+            foreach (var kvp in openingHoursByToolId)
             {
-                if (itemsByErpId.TryGetValue(kvp.Key, out var item))
+                if (itemsByToolId.TryGetValue(kvp.Key, out var item))
                 {
                     item.OpeningHours = kvp.Value;
                     continue;
                 }
 
-                if (openingHoursRowRefsByErpId.TryGetValue(kvp.Key, out var rowRefs))
+                if (openingHoursRowRefsByToolId.TryGetValue(kvp.Key, out var rowRefs))
                 {
                     foreach (var row in rowRefs)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = $"OpeningHours row {row}",
-                            Message = $"ErpId {kvp.Key} not found in ServiceLocations sheet"
+                            Message = $"ToolId {kvp.Key} not found in ServiceLocations sheet"
                         });
                     }
                 }
             }
 
-            foreach (var kvp in exceptionsByErpId)
+            foreach (var kvp in exceptionsByToolId)
             {
-                if (itemsByErpId.TryGetValue(kvp.Key, out var item))
+                if (itemsByToolId.TryGetValue(kvp.Key, out var item))
                 {
                     item.Exceptions = kvp.Value;
                     continue;
                 }
 
-                if (exceptionRowRefsByErpId.TryGetValue(kvp.Key, out var rowRefs))
+                if (exceptionRowRefsByToolId.TryGetValue(kvp.Key, out var rowRefs))
                 {
                     foreach (var row in rowRefs)
                     {
                         errors.Add(new BulkErrorDto
                         {
                             RowRef = $"Exceptions row {row}",
-                            Message = $"ErpId {kvp.Key} not found in ServiceLocations sheet"
+                            Message = $"ToolId {kvp.Key} not found in ServiceLocations sheet"
                         });
                     }
                 }
@@ -1593,6 +1644,20 @@ public class ServiceLocationsBulkController : ControllerBase
             .Select(part => part.Trim())
             .Where(part => !string.IsNullOrWhiteSpace(part))
             .ToList();
+    }
+
+    private static bool IsRowEmpty(IXLWorksheet worksheet, int row, int lastColumn)
+    {
+        for (int column = 1; column <= lastColumn; column++)
+        {
+            var cell = worksheet.Cell(row, column);
+            if (!cell.IsEmpty() && !string.IsNullOrWhiteSpace(cell.GetString()))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool TryParseBoolCell(IXLCell cell, out bool? value)
@@ -1814,28 +1879,30 @@ public class ServiceLocationsBulkController : ControllerBase
         sheet.Cell(2, 6).Value = owner.Name;
         sheet.Cell(2, 6).FormulaA1 = $"=IFERROR(VLOOKUP(B2,_Lists!$C$2:$D${allOwners.Count + 1},2,FALSE),\"\")";
 
-        sheet.Cell(4, 1).Value = "ErpId";
-        sheet.Cell(4, 2).Value = "Name";
-        sheet.Cell(4, 3).Value = "Address";
-        sheet.Cell(4, 4).Value = "Latitude";
-        sheet.Cell(4, 5).Value = "Longitude";
-        sheet.Cell(4, 6).Value = "DueDate";
-        sheet.Cell(4, 7).Value = "PriorityDate";
-        sheet.Cell(4, 8).Value = "ServiceMinutes";
-        sheet.Cell(4, 9).Value = "DriverInstruction";
+        sheet.Cell(4, 1).Value = "ToolId";
+        sheet.Cell(4, 2).Value = "ErpId";
+        sheet.Cell(4, 3).Value = "Name";
+        sheet.Cell(4, 4).Value = "Address";
+        sheet.Cell(4, 5).Value = "Latitude";
+        sheet.Cell(4, 6).Value = "Longitude";
+        sheet.Cell(4, 7).Value = "DueDate";
+        sheet.Cell(4, 8).Value = "PriorityDate";
+        sheet.Cell(4, 9).Value = "ServiceMinutes";
+        sheet.Cell(4, 10).Value = "DriverInstruction";
 
-        sheet.Cell(5, 1).Value = "Required";
-        sheet.Cell(5, 2).Value = "Required";
-        sheet.Cell(5, 3).Value = "Required if no coordinates";
-        sheet.Cell(5, 4).Value = "Required if no address (-90 to 90)";
-        sheet.Cell(5, 5).Value = "Required if no address (-180 to 180)";
-        sheet.Cell(5, 6).Value = "Required (yyyy-MM-dd)";
-        sheet.Cell(5, 7).Value = "Optional (yyyy-MM-dd)";
-        sheet.Cell(5, 8).Value = "Optional (1-240, default 20)";
-        sheet.Cell(5, 9).Value = "Optional (shown to driver)";
+        sheet.Cell(5, 1).Value = "Optional (required for updates)";
+        sheet.Cell(5, 2).Value = "Optional (unique if provided)";
+        sheet.Cell(5, 3).Value = "Required";
+        sheet.Cell(5, 4).Value = "Required if no coordinates";
+        sheet.Cell(5, 5).Value = "Required if no address (-90 to 90)";
+        sheet.Cell(5, 6).Value = "Required if no address (-180 to 180)";
+        sheet.Cell(5, 7).Value = "Required (yyyy-MM-dd)";
+        sheet.Cell(5, 8).Value = "Optional (yyyy-MM-dd)";
+        sheet.Cell(5, 9).Value = "Optional (1-240, default 20)";
+        sheet.Cell(5, 10).Value = "Optional (shown to driver)";
 
-        var dueDateColumn = sheet.Column(6);
-        var priorityDateColumn = sheet.Column(7);
+        var dueDateColumn = sheet.Column(7);
+        var priorityDateColumn = sheet.Column(8);
         dueDateColumn.Style.NumberFormat.Format = "@";
         priorityDateColumn.Style.NumberFormat.Format = "@";
 
@@ -1844,7 +1911,7 @@ public class ServiceLocationsBulkController : ControllerBase
         {
             var row = startRow + i;
             var values = rows[i];
-            for (int col = 1; col <= 14; col++)
+            for (int col = 1; col <= 15; col++)
             {
                 sheet.Cell(row, col).Value = values.Length >= col ? values[col - 1] : string.Empty;
             }
@@ -1854,11 +1921,11 @@ public class ServiceLocationsBulkController : ControllerBase
         infoRange.Style.Font.Bold = true;
         infoRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
 
-        var headerRange = sheet.Range(3, 1, 3, 14);
+        var headerRange = sheet.Range(3, 1, 3, 15);
         headerRange.Style.Font.Bold = true;
         headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
         
-        var instructionRange = sheet.Range(4, 1, 4, 14);
+        var instructionRange = sheet.Range(4, 1, 4, 15);
         instructionRange.Style.Font.Italic = true;
         instructionRange.Style.Font.FontColor = XLColor.DarkGray;
 

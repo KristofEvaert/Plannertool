@@ -899,7 +899,7 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ErpId")
+                    b.Property<int?>("ErpId")
                         .HasColumnType("int");
 
                     b.Property<string>("AccountId")
@@ -954,7 +954,8 @@ namespace TransportPlanner.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ErpId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[ErpId] IS NOT NULL");
 
                     b.HasIndex("ToolId")
                         .IsUnique();

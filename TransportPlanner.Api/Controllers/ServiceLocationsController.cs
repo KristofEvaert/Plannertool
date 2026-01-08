@@ -712,6 +712,15 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
+        if (request.ErpId.HasValue && request.ErpId.Value < 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = "ErpId must be greater than or equal to 0"
+            });
+        }
+
         var (address, latitude, longitude, geoError) = await ResolveGeoAsync(
             request.Address,
             request.Latitude,
@@ -727,16 +736,24 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
-        // Check ErpId uniqueness
-        var existingByErpId = await _dbContext.ServiceLocations
-            .AnyAsync(sl => sl.ErpId == request.ErpId, cancellationToken);
-        if (existingByErpId)
+        int? erpId = null;
+        if (request.ErpId.HasValue)
         {
-            return Conflict(new ProblemDetails
+            erpId = request.ErpId.Value > 0 ? request.ErpId.Value : null;
+        }
+
+        if (erpId.HasValue)
+        {
+            var existingByErpId = await _dbContext.ServiceLocations
+                .AnyAsync(sl => sl.ErpId == erpId.Value, cancellationToken);
+            if (existingByErpId)
             {
-                Title = "Conflict",
-                Detail = $"Service location with ErpId {request.ErpId} already exists"
-            });
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Conflict",
+                    Detail = $"Service location with ErpId {erpId.Value} already exists"
+                });
+            }
         }
 
         if (request.OwnerId <= 0)
@@ -791,7 +808,7 @@ public class ServiceLocationsController : ControllerBase
         var serviceLocation = new ServiceLocation
         {
             ToolId = Guid.NewGuid(),
-            ErpId = request.ErpId,
+            ErpId = erpId,
             AccountId = string.IsNullOrWhiteSpace(request.AccountId) ? null : request.AccountId.Trim(),
             SerialNumber = string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber.Trim(),
             Name = request.Name.Trim(),
@@ -897,6 +914,15 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
+        if (request.ErpId.HasValue && request.ErpId.Value < 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Validation Error",
+                Detail = "ErpId must be greater than or equal to 0"
+            });
+        }
+
         var (address, latitude, longitude, geoError) = await ResolveGeoAsync(
             request.Address,
             request.Latitude,
@@ -937,22 +963,26 @@ public class ServiceLocationsController : ControllerBase
             });
         }
 
-        // Check ErpId uniqueness (if changed)
-        if (serviceLocation.ErpId != request.ErpId)
+        if (request.ErpId.HasValue)
         {
-            var existingByErpId = await _dbContext.ServiceLocations
-                .AnyAsync(sl => sl.ErpId == request.ErpId && sl.ToolId != toolId, cancellationToken);
-            if (existingByErpId)
-            {
-                return Conflict(new ProblemDetails
-                {
-                    Title = "Conflict",
-                    Detail = $"Service location with ErpId {request.ErpId} already exists"
-                });
-            }
-        }
+            var erpId = request.ErpId.Value > 0 ? request.ErpId.Value : (int?)null;
 
-        serviceLocation.ErpId = request.ErpId;
+            if (serviceLocation.ErpId != erpId && erpId.HasValue)
+            {
+                var existingByErpId = await _dbContext.ServiceLocations
+                    .AnyAsync(sl => sl.ErpId == erpId.Value && sl.ToolId != toolId, cancellationToken);
+                if (existingByErpId)
+                {
+                    return Conflict(new ProblemDetails
+                    {
+                        Title = "Conflict",
+                        Detail = $"Service location with ErpId {erpId.Value} already exists"
+                    });
+                }
+            }
+
+            serviceLocation.ErpId = erpId;
+        }
         serviceLocation.AccountId = string.IsNullOrWhiteSpace(request.AccountId) ? null : request.AccountId.Trim();
         serviceLocation.SerialNumber = string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber.Trim();
         serviceLocation.Name = request.Name.Trim();

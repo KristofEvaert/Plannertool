@@ -2,7 +2,8 @@ namespace TransportPlanner.Application.DTOs;
 
 public class BulkServiceLocationInsertDto
 {
-    public int ErpId { get; set; }
+    public Guid? ToolId { get; set; }
+    public int? ErpId { get; set; }
     public string? AccountId { get; set; }
     public string? SerialNumber { get; set; }
     public string Name { get; set; } = string.Empty;

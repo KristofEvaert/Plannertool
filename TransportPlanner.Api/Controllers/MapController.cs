@@ -187,7 +187,7 @@ public class ServiceLocationsMapResponseDto
 public class ServiceLocationMapDto
 {
     public Guid ToolId { get; set; }
-    public int ErpId { get; set; }
+    public int? ErpId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
     public double Latitude { get; set; }

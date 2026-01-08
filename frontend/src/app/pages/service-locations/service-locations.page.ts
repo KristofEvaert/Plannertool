@@ -43,7 +43,7 @@ type OpeningHoursFormRow = ServiceLocationOpeningHoursDto & {
 };
 type ExceptionFormRow = ServiceLocationExceptionDto & { note?: string };
 interface ServiceLocationFormState {
-  erpId: number;
+  erpId: number | null;
   accountId?: string;
   serialNumber?: string;
   name: string;
@@ -132,7 +132,7 @@ export class ServiceLocationsPage {
   bulkResult = signal<BulkInsertResultDto | null>(null);
 
   form = signal<ServiceLocationFormState>({
-    erpId: 0,
+    erpId: null,
     accountId: '',
     serialNumber: '',
     name: '',
@@ -539,7 +539,7 @@ export class ServiceLocationsPage {
     this.selectedItem.set(null);
     const defaultOwnerId = this.owners().length > 0 ? this.owners()[0].id : 0;
     this.form.set({
-      erpId: 0,
+      erpId: null,
       accountId: '',
       serialNumber: '',
       name: '',
@@ -574,7 +574,7 @@ export class ServiceLocationsPage {
     const latitude = item.latitude === 0 ? null : item.latitude;
     const longitude = item.longitude === 0 ? null : item.longitude;
     this.form.set({
-      erpId: item.erpId,
+      erpId: item.erpId ?? null,
       accountId: item.accountId || '',
       serialNumber: item.serialNumber || '',
       name: item.name,
@@ -967,11 +967,11 @@ export class ServiceLocationsPage {
       return;
     }
 
-    if (form.erpId <= 0) {
+    if (form.erpId !== null && form.erpId < 0) {
       this.messageService.add({
         severity: 'error',
         summary: 'Validation Error',
-        detail: 'ErpId must be greater than 0',
+        detail: 'ErpId must be 0 or greater',
       });
       return;
     }
@@ -1021,8 +1021,9 @@ export class ServiceLocationsPage {
     const extraInstructions = this.normalizeInstructions(form.extraInstructions);
 
     this.loading.set(true);
+    const erpId = form.erpId && form.erpId > 0 ? form.erpId : undefined;
     const request: CreateServiceLocationRequest | UpdateServiceLocationRequest = {
-      erpId: form.erpId,
+      erpId,
       accountId: form.accountId?.trim() || undefined,
       serialNumber: form.serialNumber?.trim() || undefined,
       name: form.name.trim(),

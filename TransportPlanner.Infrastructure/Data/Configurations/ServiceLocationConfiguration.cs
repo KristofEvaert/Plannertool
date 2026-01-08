@@ -23,10 +23,11 @@ public class ServiceLocationConfiguration : IEntityTypeConfiguration<ServiceLoca
             .IsUnique();
 
         builder.Property(sl => sl.ErpId)
-            .IsRequired();
+            .IsRequired(false);
         
         builder.HasIndex(sl => sl.ErpId)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("[ErpId] IS NOT NULL");
 
         builder.Property(sl => sl.AccountId)
             .HasMaxLength(100);

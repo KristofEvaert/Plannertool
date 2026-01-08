@@ -37,7 +37,8 @@ export interface RouteWaypoint {
   latitude: number;
   longitude: number;
   serviceMinutes?: number;
-  erpId?: number;
+  erpId?: number | null;
+  toolId?: string;
   travelMinutesFromPrev?: number;
   travelKmFromPrev?: number;
 }
