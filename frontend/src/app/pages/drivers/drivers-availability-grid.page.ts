@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import type {
@@ -7,8 +7,8 @@ import type {
   DriverDto,
   UpdateDriverRequest,
   UpsertAvailabilityRequest,
-} from '@models/driver.model';
-import type { ServiceTypeDto } from '@models/service-type.model';
+} from '@models';
+import type { ServiceTypeDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';
@@ -22,14 +22,16 @@ import {
 } from '@services/service-location-owners-api.service';
 import { ServiceTypesApiService } from '@services/service-types-api.service';
 import { toYmd } from '@utils/date.utils';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DatePickerModule } from 'primeng/datepicker';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
+import { MenuModule } from 'primeng/menu';
 import { MultiSelectModule } from 'primeng/multiselect';
+import { PopoverModule } from 'primeng/popover';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
@@ -57,11 +59,20 @@ interface GridCell {
     InputTextModule,
     InputNumberModule,
     TooltipModule,
+    MenuModule,
     HelpManualComponent,
+    PopoverModule,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './drivers-availability-grid.page.html',
   standalone: true,
+  styles: [
+    `
+      ::ng-deep .p-popover {
+        transform: translateX(30px);
+      }
+    `,
+  ],
 })
 export class DriversAvailabilityGridPage {
   private readonly driversApi = inject(DriversApiService);
@@ -84,6 +95,47 @@ export class DriversAvailabilityGridPage {
   pendingUploadKind: 'availability' | 'serviceTypes' | null = null;
   availabilityConflicts = signal<AvailabilityBulkConflictDto[]>([]);
   showConflictDialog = signal(false);
+
+  fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+
+  bulkMenuItems: MenuItem[] = [
+    {
+      label: 'Templates',
+      items: [
+        {
+          label: 'Availability Template',
+          icon: 'pi pi-download',
+          command: () => this.downloadTemplate(),
+        },
+        {
+          label: 'Service Types Template',
+          icon: 'pi pi-download',
+          command: () => this.downloadServiceTypesTemplate(),
+        },
+      ],
+    },
+    {
+      label: 'Bulk Upload',
+      items: [
+        {
+          label: 'Upload Availability',
+          icon: 'pi pi-upload',
+          command: () => {
+            const input = this.fileInput();
+            if (input) this.triggerUpload('availability', input.nativeElement);
+          },
+        },
+        {
+          label: 'Upload Service Types',
+          icon: 'pi pi-upload',
+          command: () => {
+            const input = this.fileInput();
+            if (input) this.triggerUpload('serviceTypes', input.nativeElement);
+          },
+        },
+      ],
+    },
+  ];
 
   // Filters
   ownerFilterId = signal<number | null>(null); // null = all owners

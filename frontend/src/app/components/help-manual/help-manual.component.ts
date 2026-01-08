@@ -24,6 +24,7 @@ import { InputTextModule } from 'primeng/inputtext';
 
     <p-dialog
       [modal]="true"
+      [dismissableMask]="true"
       [style]="{ width: '720px' }"
       [appendTo]="'body'"
       [baseZIndex]="10000"

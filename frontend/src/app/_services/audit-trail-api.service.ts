@@ -6,7 +6,7 @@ import type {
   AuditTrailEntryDto,
   AuditTrailQueryParams,
   PagedResult,
-} from '@models/audit-trail.model';
+} from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class AuditTrailApiService {

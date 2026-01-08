@@ -5,7 +5,7 @@ import { environment } from '@environments/environment';
 import type {
   TravelTimeModelLearnedStatDto,
   TravelTimeModelStatus,
-} from '@models/travel-time-model-admin.model';
+} from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class TravelTimeModelAdminApiService {

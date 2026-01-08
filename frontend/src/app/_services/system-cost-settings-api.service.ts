@@ -5,7 +5,7 @@ import { environment } from '@environments/environment';
 import type {
   SystemCostSettingsDto,
   SystemCostSettingsOverviewDto,
-} from '@models/system-cost-settings.model';
+} from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class SystemCostSettingsApiService {

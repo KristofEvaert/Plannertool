@@ -12,7 +12,7 @@ import { SystemCostSettingsApiService } from '@services/system-cost-settings-api
 import type {
   SystemCostSettingsDto,
   SystemCostSettingsOverviewDto,
-} from '@models/system-cost-settings.model';
+} from '@models';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import {
   ServiceLocationOwnersApiService,

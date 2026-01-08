@@ -15,8 +15,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { RouteChangeNotificationDto } from '@models/route-change-notification.model';
-import type { RouteMessageDto } from '@models/route-message.model';
+import type { RouteChangeNotificationDto } from '@models';
+import type { RouteMessageDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriversApiService } from '@services/drivers-api.service';
 import { RouteChangeNotificationsApiService } from '@services/route-change-notifications-api.service';
@@ -44,6 +44,7 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { ToastModule } from 'primeng/toast';
+import { firstValueFrom } from 'rxjs';
 
 interface DriverOption {
   label: string;
@@ -354,12 +355,12 @@ export class DriverPage implements AfterViewInit {
     }
     this.error.set(null);
     try {
-      const dto = await this.routesApi
-        .updateRouteStop(stop.id, {
+      const dto = await firstValueFrom(
+        this.routesApi.updateRouteStop(stop.id, {
           status: 'NotVisited',
           note: stop.note.trim(),
-        })
-        .toPromise();
+        }),
+      );
       if (dto) {
         this.reloadRoute();
         this.selectedStopId.set(dto.id);

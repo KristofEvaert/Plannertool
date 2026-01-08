@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import type { ApiError, ProblemDetails } from '@models/problem-details.model';
+import type { ApiError, ProblemDetails } from '@models';
 
 export function authInterceptor(
   req: HttpRequest<unknown>,

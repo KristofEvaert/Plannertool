@@ -4,13 +4,29 @@ import { AfterViewInit, Component, OnDestroy, computed, inject, signal } from '@
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components/help-manual/help-manual.component';
 import { environment } from '@environments/environment';
-import type { DriverAvailabilityDto, DriverDto } from '@models/driver.model';
 import type {
+  ArrivalWindow,
+  BulkAddRejection,
+  CacheEntry,
+  DriverAvailabilityDto,
+  DriverDto,
+  DriverWithAvailability,
+  LocationHoursDisplay,
+  LocationWindowInfo,
+  MapPagePreferences,
+  MarkerColorKey,
+  RouteInfo,
+  RouteOverride,
+  RouteWaypoint,
   ServiceLocationExceptionDto,
+  ServiceLocationMapDto,
   ServiceLocationOpeningHoursDto,
-} from '@models/service-location.model';
-import type { ServiceTypeDto } from '@models/service-type.model';
-import type { WeightTemplateDto } from '@models/weight-template.model';
+  ServiceLocationsMapResponseDto,
+  ServiceTypeDto,
+  StopSchedule,
+  WeightTemplateDto,
+  WeightTemplateOption
+} from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';
@@ -36,124 +52,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 
-interface ServiceLocationMapDto {
-  toolId: string;
-  erpId?: number | null;
-  name: string;
-  address?: string;
-  latitude: number;
-  longitude: number;
-  dueDate: string;
-  priorityDate?: string;
-  orderDate: string;
-  serviceTypeId: number;
-  status: string; // Open / Planned
-  serviceMinutes: number;
-  plannedDate?: string;
-  plannedDriverName?: string;
-}
-
-interface ServiceLocationsMapResponseDto {
-  from: string;
-  to: string;
-  totalCount: number;
-  minOrderDate?: string;
-  maxOrderDate?: string;
-  items: ServiceLocationMapDto[];
-}
-
-interface DriverWithAvailability {
-  driver: DriverDto;
-  availability: DriverAvailabilityDto | null;
-}
-
-interface RouteWaypoint {
-  type: 'driver-start' | 'location' | 'driver-end';
-  name: string;
-  address?: string;
-  latitude: number;
-  longitude: number;
-  serviceMinutes?: number;
-  toolId?: string;
-  erpId?: number | null;
-  travelMinutesFromPrev?: number;
-  travelKmFromPrev?: number;
-}
-
-interface RouteOverride {
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface RouteInfo {
-  driver: DriverDto;
-  waypoints: RouteWaypoint[];
-  totalDistanceKm: number;
-  totalTimeMinutes: number;
-  roadGeometry?: [number, number][]; // [lat, lng] points for road-following polyline
-  startOverride?: RouteOverride;
-  endOverride?: RouteOverride;
-  isAwaitingBackendTotals?: boolean;
-  distanceSource?: 'local' | 'backend';
-}
-
-interface StopSchedule {
-  label: string;
-  arrivalMinute: number;
-  departureMinute: number;
-  serviceMinutes: number;
-}
-
-interface LocationWindowInfo {
-  isClosed: boolean;
-  openMinute: number;
-  closeMinute: number;
-  label: string;
-}
-
-interface LocationHoursDisplay {
-  label: string;
-  isClosed: boolean;
-  isLoading?: boolean;
-}
-
-interface ArrivalWindow {
-  startMinute: number;
-  endMinute: number;
-}
-
-interface BulkAddRejection {
-  name: string;
-  address?: string;
-  reason: string;
-}
-
-interface CacheEntry<T> {
-  value: T;
-  fetchedAt: number;
-}
-
-interface MapPagePreferences {
-  ownerId?: number;
-  serviceTypeIds?: number[];
-  fromDate?: string;
-  toDate?: string;
-  weightTemplateId?: number | null;
-  normalizeWeights?: boolean;
-  dueCostCapPercent?: number;
-  detourCostCapPercent?: number;
-  detourRefKmPercent?: number;
-  lateRefMinutesPercent?: number;
-}
-
-interface WeightTemplateOption {
-  label: string;
-  value: number;
-}
-type MarkerColorKey = 'green' | 'yellow' | 'orange' | 'red' | 'white' | 'black';
 
 @Component({
   selector: 'app-map',
@@ -294,8 +194,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (selected && selected.availability) {
       this.autoGenerateLoading.set(true);
       try {
-        const result = await this.routesApi
-          .autoGenerateRoute(
+        const result = await lastValueFrom(
+          this.routesApi.autoGenerateRoute(
             this.selectedDate(),
             selected.driver.toolId,
             ownerId,
@@ -311,8 +211,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
             this.enforceServiceTypeMatch(),
             this.normalizeWeights(),
             this.selectedWeightTemplateId() ?? undefined,
-          )
-          .toPromise();
+          ),
+        );
         if (result) {
           this.messageService.add({
             severity: 'success',
@@ -346,8 +246,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const toolIds = mapItems.map((m) => m.toolId);
     this.autoGenerateLoading.set(true);
     try {
-      const result = await this.routesApi
-        .autoGenerateRoutesForAll(
+      const result = await lastValueFrom(
+        this.routesApi.autoGenerateRoutesForAll(
           this.selectedDate(),
           ownerId,
           toolIds,
@@ -362,8 +262,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
           this.enforceServiceTypeMatch(),
           this.normalizeWeights(),
           this.selectedWeightTemplateId() ?? undefined,
-        )
-        .toPromise();
+        ),
+      );
       const updated = result?.routes?.length ?? 0;
       const skipped = result?.skippedDrivers?.length ?? 0;
       this.messageService.add({
@@ -443,8 +343,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
         }
 
         try {
-          const result = await this.routesApi
-            .autoGenerateRoutesForAll(
+          const result = await lastValueFrom(
+            this.routesApi.autoGenerateRoutesForAll(
               this.selectedDate(),
               ownerId,
               toolIds,
@@ -459,8 +359,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
               this.enforceServiceTypeMatch(),
               this.normalizeWeights(),
               this.selectedWeightTemplateId() ?? undefined,
-            )
-            .toPromise();
+            ),
+          );
           totalUpdated += result?.routes?.length ?? 0;
           totalSkipped += result?.skippedDrivers?.length ?? 0;
           lastProcessedDate = new Date(current);
@@ -738,7 +638,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   private async loadInitialData(): Promise<void> {
     try {
-      const owners = await this.ownersApi.getAll().toPromise();
+      const owners = await lastValueFrom(this.ownersApi.getAll());
       const currentOwnerId = this.auth.currentUser()?.ownerId ?? null;
       const isSuperAdmin = (this.auth.currentUser()?.roles ?? []).includes('SuperAdmin');
       const filteredOwners =
@@ -764,7 +664,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   private async loadServiceTypesAsync(ownerId: number | null): Promise<void> {
-    const types = await this.serviceTypesApi.getAll(false, ownerId ?? undefined).toPromise();
+    const types = await lastValueFrom(this.serviceTypesApi.getAll(false, ownerId ?? undefined));
     const list = types || [];
     this.serviceTypes.set(list);
     const selected = this.selectedServiceTypeIds().filter((id) => list.some((t) => t.id === id));
@@ -3749,7 +3649,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     // Load routes for all drivers (no serviceTypeId - routes are identified by date, driver, owner only)
     const routePromises = drivers.map((driver) =>
-      this.routesApi.getRoutes(date, driver.driver.toolId, ownerId).toPromise(),
+      firstValueFrom(this.routesApi.getRoutes(date, driver.driver.toolId, ownerId)),
     );
 
     Promise.all(routePromises)
@@ -3908,7 +3808,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
 
     const routePromises = drivers.map((driver) =>
-      this.routesApi.getRoutes(date, driver.driver.toolId, ownerId).toPromise(),
+      firstValueFrom(this.routesApi.getRoutes(date, driver.driver.toolId, ownerId)),
     );
 
     try {
@@ -4051,7 +3951,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       }
 
       // Get all active drivers
-      const drivers = await this.driversApi.getDrivers(false).toPromise();
+      const drivers = await firstValueFrom(this.driversApi.getDrivers(false));
       const filteredDrivers = (drivers || []).filter((d) => d.ownerId === ownerId);
 
       if (!filteredDrivers || filteredDrivers.length === 0) {
@@ -4063,9 +3963,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
       const driversWithAvail = await Promise.all(
         filteredDrivers.map(async (driver) => {
           try {
-            const availabilities = await this.driverAvailabilityApi
-              .getAvailability(driver.toolId, dateYmd, dateYmd)
-              .toPromise();
+            const availabilities = await firstValueFrom(
+              this.driverAvailabilityApi.getAvailability(driver.toolId, dateYmd, dateYmd),
+            );
 
             const availability =
               availabilities && availabilities.length > 0 ? availabilities[0] : null;

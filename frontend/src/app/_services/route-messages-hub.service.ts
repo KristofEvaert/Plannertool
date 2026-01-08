@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import * as signalR from '@microsoft/signalr';
 import { environment } from '@environments/environment';
-import type { RouteMessageDto } from '@models/route-message.model';
+import type { RouteMessageDto } from '@models';
 import { AuthService } from '@services/auth.service';
 
 @Injectable({ providedIn: 'root' })

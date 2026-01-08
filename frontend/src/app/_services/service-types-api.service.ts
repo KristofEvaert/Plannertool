@@ -6,7 +6,7 @@ import type {
   ServiceTypeDto,
   CreateServiceTypeRequest,
   UpdateServiceTypeRequest,
-} from '@models/service-type.model';
+} from '@models';
 
 @Injectable({ providedIn: 'root' })
 export class ServiceTypesApiService {

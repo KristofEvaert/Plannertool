@@ -13,8 +13,8 @@ import type {
   ServiceLocationListParams,
   ServiceLocationOpeningHoursDto,
   UpdateServiceLocationRequest,
-} from '@models/service-location.model';
-import type { ServiceTypeDto } from '@models/service-type.model';
+} from '@models';
+import type { ServiceTypeDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import {
   ServiceLocationOwnersApiService,

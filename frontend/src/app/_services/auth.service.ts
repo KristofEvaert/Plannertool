@@ -1,8 +1,9 @@
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { environment } from '@environments/environment';
-import type { LoginRequest, LoginResponse, CurrentUser } from '@models/auth.model';
+import type { CurrentUser, LoginRequest, LoginResponse } from '@models';
+import { lastValueFrom } from 'rxjs';
 import { UsersApiService } from './users-api.service';
 
 const TOKEN_KEY = 'tp_token';
@@ -55,9 +56,9 @@ export class AuthService {
   }
 
   async login(request: LoginRequest): Promise<void> {
-    const response = await this.http
-      .post<LoginResponse>(`${this.baseUrl}/login`, request)
-      .toPromise();
+    const response = await lastValueFrom(
+      this.http.post<LoginResponse>(`${this.baseUrl}/login`, request),
+    );
     if (!response) throw new Error('Login failed');
     const expires = new Date(response.expiresAtUtc).getTime();
     localStorage.setItem(TOKEN_KEY, response.token);
@@ -67,7 +68,7 @@ export class AuthService {
 
   async refreshCurrentUser(): Promise<void> {
     try {
-      const user = await this.usersApi.getMe().toPromise();
+      const user = await lastValueFrom(this.usersApi.getMe());
       if (user) {
         this.currentUser.set({
           id: user.id,

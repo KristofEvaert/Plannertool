@@ -1,6 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { email, Field, form, required } from '@angular/forms/signals';
 
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@services/auth.service';
 import { MessageService } from 'primeng/api';
@@ -12,7 +12,7 @@ import { ToastModule } from 'primeng/toast';
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [FormsModule, InputTextModule, PasswordModule, ButtonModule, ToastModule],
+  imports: [Field, InputTextModule, PasswordModule, ButtonModule, ToastModule],
   providers: [MessageService],
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.css'],
@@ -22,38 +22,48 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
 
-  email = '';
-  password = '';
-  loading = false;
+  protected loginModel = signal({ email: '', password: '' });
 
-  async login(): Promise<void> {
-    if (!this.email || !this.password) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Validation',
-        detail: 'Email and password are required',
-      });
+  public loginForm = form(this.loginModel, (schemaPath) => {
+    required(schemaPath.email, { message: 'Email is required' });
+    email(schemaPath.email, { message: 'Enter a valid email address' });
+    required(schemaPath.password, { message: 'Password is required' });
+  });
+  public loading = signal(false);
+
+  async login(event: Event) {
+    event.preventDefault();
+    this.loading.set(true);
+
+    const { email, password } = this.loginModel();
+
+    if (this.loginForm.password().invalid() || this.loginForm.email().invalid()) {
+      this.loginForm.password().markAsTouched();
+      this.loginForm.email().markAsTouched();
+      this.loading.set(false);
       return;
     }
 
-    this.loading = true;
     try {
-      await this.auth.login({ email: this.email, password: this.password });
+      await this.auth.login({ email, password });
+
       this.messageService.add({ severity: 'success', summary: 'Logged in' });
-      const user = this.auth.currentUser();
-      const roles = user?.roles ?? [];
+
+      const roles = this.auth.currentUser()?.roles ?? [];
       const isDriverOnly =
         roles.includes('Driver') &&
         !roles.some((r) => r === 'SuperAdmin' || r === 'Admin' || r === 'Planner');
+
       this.router.navigate([isDriverOnly ? '/driver' : '/start']);
     } catch (err: any) {
       this.messageService.add({
         severity: 'error',
         summary: 'Login failed',
         detail: err?.error?.message || err?.message || 'Invalid credentials',
+        life: 5000,
       });
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 }

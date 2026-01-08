@@ -8,17 +8,16 @@
       </div>
       <div class="flex items-center gap-2">
         <p-button
-          label="Download Availability Template"
-          icon="pi pi-download"
+          label="Bulk Upload"
+          icon="pi pi-file-excel"
           [outlined]="true"
-          (onClick)="downloadTemplate()"
+          (onClick)="menu.toggle($event)"
+          (focus)="excelUpload.show($event)"
+          (blur)="excelUpload.hide()"
+          (mouseover)="excelUpload.show($event)"
+          (mouseleave)="excelUpload.hide()"
         />
-        <p-button
-          label="Download Service Types Template"
-          icon="pi pi-download"
-          [outlined]="true"
-          (onClick)="downloadServiceTypesTemplate()"
-        />
+        <p-menu #menu appendTo="body" [model]="bulkMenuItems" [popup]="true" />
         <input
           #fileInput
           type="file"
@@ -26,60 +25,52 @@
           style="display: none"
           (change)="onFileSelected($event)"
         />
-        <p-button
-          label="Upload Availability Excel"
-          icon="pi pi-upload"
-          [outlined]="true"
-          (onClick)="triggerUpload('availability', fileInput)"
-        />
-        <p-button
-          label="Upload Service Types Excel"
-          icon="pi pi-upload"
-          [outlined]="true"
-          (onClick)="triggerUpload('serviceTypes', fileInput)"
-        />
+        <p-popover #excelUpload>
+          <div class="text-sm font-semibold mb-2">Excel upload</div>
+          <div class="text-xs text-gray-500 max-w-100">
+            Use the template. The system reads dates from the header until the first empty date, and
+            rows until the first empty email. <br />
+            Availability cells use "start;end" minutes (e.g. 480;960). <br />
+            Empty cells clear availability for that date.
+          </div>
+        </p-popover>
       </div>
     </div>
-    <div class="mb-4 p-3 border border-gray-200 rounded-md bg-white">
-      <div class="text-sm font-semibold mb-2">Excel upload</div>
-      <div class="text-xs text-gray-500">
-        Use the template. The system reads dates from the header until the first empty date, and
-        rows until the first empty email. Availability cells use "start;end" minutes (e.g. 480;960).
-        Empty cells clear availability for that date.
-      </div>
-    </div>
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-4">
-        <label class="text-sm font-medium">Owner:</label>
+    <div class="flex items-center justify-start mb-4 gap-4">
+      <div class="flex items-center justify-between gap-2">
+        <label class="text-sm font-medium">Owner</label>
         <p-select
           optionLabel="name"
           optionValue="id"
           placeholder="All owners"
-          styleClass="w-56"
+          class="w-56"
           [options]="owners()"
           [showClear]="true"
           [(ngModel)]="ownerFilterId"
         />
-        <label class="flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" [(ngModel)]="showOnlyDriversWithAvailability" />
-          <span>Only drivers with availability</span>
-        </label>
-        <label class="text-sm font-medium">Start date:</label>
-        <p-datepicker
-          styleClass="w-40"
-          [dateFormat]="'yy-mm-dd'"
-          [showIcon]="true"
-          [(ngModel)]="startDate"
-        />
-        <label class="text-sm font-medium">Range:</label>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" [(ngModel)]="showOnlyDriversWithAvailability" />
+        <span>Only drivers with availability</span>
+      </label>
+
+      <div class="flex items-center justify-between gap-2">
+        <label class="text-sm font-medium">Start date</label>
+        <p-datepicker [dateFormat]="'yy-mm-dd'" [showIcon]="true" [(ngModel)]="startDate" />
+      </div>
+
+      <div class="flex items-center justify-between gap-2">
+        <label class="text-sm font-medium">Range</label>
         <p-select
           optionLabel="label"
           optionValue="value"
-          styleClass="w-32"
           [options]="rangeOptions"
           (onChange)="onRangeChange()"
           [(ngModel)]="visibleDays"
         />
+      </div>
+      <div class="flex items-center justify-end gap-2 ml-auto">
         <p-button label="Prev" icon="pi pi-chevron-left" [text]="true" (onClick)="goToPrev()" />
         <p-button label="Today" icon="pi pi-calendar" [text]="true" (onClick)="goToToday()" />
         <p-button
@@ -90,10 +81,11 @@
           (onClick)="goToNext()"
         />
       </div>
-      <div class="text-sm text-gray-600">
-        Showing: {{ availableDrivers().length }} drivers | {{ formatDateFull(startDate()) }} ->
-        {{ formatDateFull(endDate()) }}
-      </div>
+    </div>
+
+    <div class="text-sm text-right text-gray-600">
+      Showing: {{ availableDrivers().length }} drivers | {{ formatDateFull(startDate()) }} ->
+      {{ formatDateFull(endDate()) }}
     </div>
   </div>
 
@@ -105,7 +97,7 @@
       <div class="grid pb-8" [style.grid-template-columns]="gridTemplateColumns()">
         <!-- Top-left corner (empty) -->
         <div
-          class="sticky top-0 left-0 z-20 bg-gray-100 border-r border-b border-gray-300 p-2 font-semibold relative select-none"
+          class="sticky top-0 left-0 z-20 bg-gray-100 border-r border-b border-gray-300 p-2 font-semibold select-none"
         >
           Driver
           <div
