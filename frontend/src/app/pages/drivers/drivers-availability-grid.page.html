@@ -372,6 +372,43 @@
     </ng-template>
   </p-dialog>
 
+  <p-dialog
+    [header]="'Availability conflicts'"
+    [modal]="true"
+    [style]="{ width: '720px' }"
+    [appendTo]="'body'"
+    (onHide)="showConflictDialog.set(false)"
+    [(visible)]="showConflictDialogValue"
+  >
+    @if (availabilityConflicts().length === 0) {
+      <div class="text-sm text-gray-600">No conflicts to show.</div>
+    } @else {
+      <div class="max-h-[420px] overflow-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-600">
+              <th class="pb-2 pr-4">Driver</th>
+              <th class="pb-2 pr-4">Date</th>
+              <th class="pb-2">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (conflict of availabilityConflicts(); track conflict.rowRef ?? conflict.date ?? conflict.driverName ?? conflict.email) {
+              <tr class="border-t border-gray-200 align-top">
+                <td class="py-2 pr-4">{{ getConflictDriverLabel(conflict) }}</td>
+                <td class="py-2 pr-4">{{ getConflictDateLabel(conflict) }}</td>
+                <td class="py-2">{{ conflict.reason || 'Conflict detected.' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <ng-template pTemplate="footer">
+      <p-button label="Close" severity="secondary" (onClick)="showConflictDialog.set(false)" />
+    </ng-template>
+  </p-dialog>
+
   <p-confirmDialog />
   <p-toast />
 </div>

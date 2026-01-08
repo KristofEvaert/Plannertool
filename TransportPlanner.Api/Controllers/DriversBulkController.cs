@@ -806,8 +806,8 @@ public class DriversBulkController : ControllerBase
         var dbDrivers = await driversQuery.ToListAsync(cancellationToken);
         var driverByUserId = dbDrivers.ToDictionary(d => d.UserId!.Value, d => d);
 
-        var parsedEntries = new List<(int driverId, DateTime date, int startMinute, int endMinute)>();
-        var deleteEntries = new List<(int driverId, DateTime date)>();
+        var parsedEntries = new List<ParsedAvailabilityEntry>();
+        var deleteEntries = new List<ParsedAvailabilityDeleteEntry>();
 
         foreach (var kvp in drivers)
         {
@@ -830,9 +830,10 @@ public class DriversBulkController : ControllerBase
             for (var i = 0; i < entries.Count; i++)
             {
                 var entry = entries[i];
+                var rowRef = $"{emailKey}#{i + 1}";
                 if (!DateTime.TryParse(entry.Date, out var date))
                 {
-                    AddFailed(emailKey, entry, $"{emailKey}#{i + 1}", "Invalid date.");
+                    AddFailed(emailKey, entry, rowRef, "Invalid date.");
                     continue;
                 }
 
@@ -841,13 +842,18 @@ public class DriversBulkController : ControllerBase
 
                 if (!start.HasValue && !end.HasValue)
                 {
-                    deleteEntries.Add((driver.Id, date.Date));
+                    deleteEntries.Add(new ParsedAvailabilityDeleteEntry(
+                        driver.Id,
+                        date.Date,
+                        emailKey,
+                        driver.Name,
+                        rowRef));
                     continue;
                 }
 
                 if (!start.HasValue || !end.HasValue)
                 {
-                    AddFailed(emailKey, entry, $"{emailKey}#{i + 1}", "Both start and end minutes are required.");
+                    AddFailed(emailKey, entry, rowRef, "Both start and end minutes are required.");
                     continue;
                 }
 
@@ -855,11 +861,18 @@ public class DriversBulkController : ControllerBase
                     end.Value < 1 || end.Value > 1440 ||
                     end.Value <= start.Value)
                 {
-                    AddFailed(emailKey, entry, $"{emailKey}#{i + 1}", "Invalid start/end minutes.");
+                    AddFailed(emailKey, entry, rowRef, "Invalid start/end minutes.");
                     continue;
                 }
 
-                parsedEntries.Add((driver.Id, date.Date, start.Value, end.Value));
+                parsedEntries.Add(new ParsedAvailabilityEntry(
+                    driver.Id,
+                    date.Date,
+                    start.Value,
+                    end.Value,
+                    emailKey,
+                    driver.Name,
+                    rowRef));
             }
         }
 
@@ -868,12 +881,12 @@ public class DriversBulkController : ControllerBase
             return result;
         }
 
-        var driverIds = parsedEntries.Select(p => p.driverId)
-            .Concat(deleteEntries.Select(p => p.driverId))
+        var driverIds = parsedEntries.Select(p => p.DriverId)
+            .Concat(deleteEntries.Select(p => p.DriverId))
             .Distinct()
             .ToList();
-        var dates = parsedEntries.Select(p => p.date)
-            .Concat(deleteEntries.Select(p => p.date))
+        var dates = parsedEntries.Select(p => p.Date)
+            .Concat(deleteEntries.Select(p => p.Date))
             .Distinct()
             .ToList();
 
@@ -883,12 +896,127 @@ public class DriversBulkController : ControllerBase
 
         var existingMap = existing.ToDictionary(a => (a.DriverId, a.Date));
 
+        var conflictKeys = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Where(rs => driverIds.Contains(rs.Route.DriverId) && dates.Contains(rs.Route.Date))
+            .Select(rs => new { rs.Route.DriverId, Date = rs.Route.Date.Date })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var conflictSet = new HashSet<(int driverId, DateTime date)>(
+            conflictKeys.Select(k => (k.DriverId, k.Date)));
+
+        void AddConflict(
+            int driverId,
+            string driverName,
+            string email,
+            DateTime date,
+            string rowRef,
+            DriverAvailability? existingAvailability,
+            int? newStartMinute,
+            int? newEndMinute,
+            string reason)
+        {
+            result.Conflicts.Add(new DriverAvailabilityBulkConflictEntry
+            {
+                Email = string.IsNullOrWhiteSpace(email) ? null : email,
+                DriverName = string.IsNullOrWhiteSpace(driverName) ? null : driverName,
+                Date = date.ToString("yyyy-MM-dd"),
+                ExistingStartMinuteOfDay = existingAvailability?.StartMinuteOfDay,
+                ExistingEndMinuteOfDay = existingAvailability?.EndMinuteOfDay,
+                NewStartMinuteOfDay = newStartMinute,
+                NewEndMinuteOfDay = newEndMinute,
+                RowRef = rowRef,
+                Reason = reason
+            });
+        }
+
+        var entriesToApply = new List<ParsedAvailabilityEntry>();
         foreach (var entry in parsedEntries)
         {
-            if (existingMap.TryGetValue((entry.driverId, entry.date), out var availability))
+            var key = (entry.DriverId, entry.Date);
+            var hasConflict = conflictSet.Contains(key);
+            if (existingMap.TryGetValue(key, out var availability))
             {
-                availability.StartMinuteOfDay = entry.startMinute;
-                availability.EndMinuteOfDay = entry.endMinute;
+                if (availability.StartMinuteOfDay == entry.StartMinute
+                    && availability.EndMinuteOfDay == entry.EndMinute)
+                {
+                    continue; // no change
+                }
+
+                if (hasConflict)
+                {
+                    var existingRange = $"{FormatMinutes(availability.StartMinuteOfDay)}-{FormatMinutes(availability.EndMinuteOfDay)}";
+                    var newRange = $"{FormatMinutes(entry.StartMinute)}-{FormatMinutes(entry.EndMinute)}";
+                    AddConflict(
+                        entry.DriverId,
+                        entry.DriverName,
+                        entry.Email,
+                        entry.Date,
+                        entry.RowRef,
+                        availability,
+                        entry.StartMinute,
+                        entry.EndMinute,
+                        $"Availability change blocked ({existingRange} -> {newRange}) because driver has a route with stops.");
+                    continue;
+                }
+            }
+            else
+            {
+                if (hasConflict)
+                {
+                    var newRange = $"{FormatMinutes(entry.StartMinute)}-{FormatMinutes(entry.EndMinute)}";
+                    AddConflict(
+                        entry.DriverId,
+                        entry.DriverName,
+                        entry.Email,
+                        entry.Date,
+                        entry.RowRef,
+                        null,
+                        entry.StartMinute,
+                        entry.EndMinute,
+                        $"Availability create blocked ({newRange}) because driver has a route with stops.");
+                    continue;
+                }
+            }
+
+            entriesToApply.Add(entry);
+        }
+
+        var deletesToApply = new List<ParsedAvailabilityDeleteEntry>();
+        foreach (var entry in deleteEntries)
+        {
+            var key = (entry.DriverId, entry.Date);
+            if (!existingMap.TryGetValue(key, out var availability))
+            {
+                continue;
+            }
+
+            if (conflictSet.Contains(key))
+            {
+                var existingRange = $"{FormatMinutes(availability.StartMinuteOfDay)}-{FormatMinutes(availability.EndMinuteOfDay)}";
+                AddConflict(
+                    entry.DriverId,
+                    entry.DriverName,
+                    entry.Email,
+                    entry.Date,
+                    entry.RowRef,
+                    availability,
+                    null,
+                    null,
+                    $"Availability removal blocked ({existingRange}) because driver has a route with stops.");
+                continue;
+            }
+
+            deletesToApply.Add(entry);
+        }
+
+        foreach (var entry in entriesToApply)
+        {
+            if (existingMap.TryGetValue((entry.DriverId, entry.Date), out var availability))
+            {
+                availability.StartMinuteOfDay = entry.StartMinute;
+                availability.EndMinuteOfDay = entry.EndMinute;
                 availability.UpdatedAtUtc = nowUtc;
                 result.Updated++;
             }
@@ -896,10 +1024,10 @@ public class DriversBulkController : ControllerBase
             {
                 _dbContext.DriverAvailabilities.Add(new DriverAvailability
                 {
-                    DriverId = entry.driverId,
-                    Date = entry.date,
-                    StartMinuteOfDay = entry.startMinute,
-                    EndMinuteOfDay = entry.endMinute,
+                    DriverId = entry.DriverId,
+                    Date = entry.Date,
+                    StartMinuteOfDay = entry.StartMinute,
+                    EndMinuteOfDay = entry.EndMinute,
                     CreatedAtUtc = nowUtc,
                     UpdatedAtUtc = nowUtc
                 });
@@ -907,9 +1035,9 @@ public class DriversBulkController : ControllerBase
             }
         }
 
-        foreach (var entry in deleteEntries)
+        foreach (var entry in deletesToApply)
         {
-            if (existingMap.TryGetValue((entry.driverId, entry.date), out var availability))
+            if (existingMap.TryGetValue((entry.DriverId, entry.Date), out var availability))
             {
                 _dbContext.DriverAvailabilities.Remove(availability);
                 result.Deleted++;
@@ -943,6 +1071,29 @@ public class DriversBulkController : ControllerBase
 
         return DateTime.TryParse(text, out date);
     }
+
+    private static string FormatMinutes(int minutes)
+    {
+        var hours = minutes / 60;
+        var mins = minutes % 60;
+        return $"{hours:00}:{mins:00}";
+    }
+
+    private sealed record ParsedAvailabilityEntry(
+        int DriverId,
+        DateTime Date,
+        int StartMinute,
+        int EndMinute,
+        string Email,
+        string DriverName,
+        string RowRef);
+
+    private sealed record ParsedAvailabilityDeleteEntry(
+        int DriverId,
+        DateTime Date,
+        string Email,
+        string DriverName,
+        string RowRef);
 
     private static string FormatServiceTypeIds(IEnumerable<int> serviceTypeIds)
     {

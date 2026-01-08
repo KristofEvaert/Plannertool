@@ -12,7 +12,10 @@ import type { ServiceTypeDto } from '@models/service-type.model';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';
-import { DriversBulkApiService } from '@services/drivers-bulk-api.service';
+import {
+  DriversBulkApiService,
+  type AvailabilityBulkConflictDto,
+} from '@services/drivers-bulk-api.service';
 import {
   ServiceLocationOwnerDto,
   ServiceLocationOwnersApiService,
@@ -79,6 +82,8 @@ export class DriversAvailabilityGridPage {
   availabilityMap = signal<AvailabilityMap>({});
   driverColumnWidth = signal(200);
   pendingUploadKind: 'availability' | 'serviceTypes' | null = null;
+  availabilityConflicts = signal<AvailabilityBulkConflictDto[]>([]);
+  showConflictDialog = signal(false);
 
   // Filters
   ownerFilterId = signal<number | null>(null); // null = all owners
@@ -130,6 +135,13 @@ export class DriversAvailabilityGridPage {
   }
   set showDriverDialogValue(value: boolean) {
     this.showDriverDialog.set(value);
+  }
+
+  get showConflictDialogValue(): boolean {
+    return this.showConflictDialog();
+  }
+  set showConflictDialogValue(value: boolean) {
+    this.showConflictDialog.set(value);
   }
 
   // Range options
@@ -307,6 +319,18 @@ export class DriversAvailabilityGridPage {
       month: 'long',
       day: 'numeric',
     });
+  }
+
+  getConflictDriverLabel(conflict: AvailabilityBulkConflictDto): string {
+    return conflict.driverName || conflict.email || '-';
+  }
+
+  getConflictDateLabel(conflict: AvailabilityBulkConflictDto): string {
+    if (!conflict.date) {
+      return '-';
+    }
+    const parsed = new Date(conflict.date);
+    return Number.isNaN(parsed.getTime()) ? conflict.date : this.formatDateFull(parsed);
   }
 
   // Data loading
@@ -712,6 +736,8 @@ export class DriversAvailabilityGridPage {
 
   uploadExcel(file: File): void {
     this.loading.set(true);
+    this.availabilityConflicts.set([]);
+    this.showConflictDialog.set(false);
     this.bulkApi
       .uploadAvailabilityExcel(file)
       .pipe(
@@ -740,6 +766,12 @@ export class DriversAvailabilityGridPage {
             detail: message + (result.errors.length > 0 ? ` (${result.errors.length} errors)` : ''),
             life: 5000,
           });
+
+          const conflicts = result.conflicts ?? [];
+          if (conflicts.length > 0) {
+            this.availabilityConflicts.set(conflicts);
+            this.showConflictDialog.set(true);
+          }
 
           // Show errors if any
           if (result.errors.length > 0) {

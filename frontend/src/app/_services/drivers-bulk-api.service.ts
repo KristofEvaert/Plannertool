@@ -70,6 +70,19 @@ export interface AvailabilityBulkUpsertResultDto {
   updated: number;
   deleted: number;
   errors: BulkErrorDto[];
+  conflicts: AvailabilityBulkConflictDto[];
+}
+
+export interface AvailabilityBulkConflictDto {
+  email?: string;
+  driverName?: string;
+  date?: string;
+  existingStartMinuteOfDay?: number;
+  existingEndMinuteOfDay?: number;
+  newStartMinuteOfDay?: number;
+  newEndMinuteOfDay?: number;
+  rowRef?: string;
+  reason?: string;
 }
 
 export interface BulkErrorDto {
