@@ -201,16 +201,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
             ownerId,
             mapItems.map((m) => m.toolId),
             {
-              time: this.weightTime(),
-              distance: this.weightDistance(),
-              date: this.weightDate(),
-              cost: this.weightCost(),
-              overtime: this.weightOvertime(),
+              template: this.routeTemplate(),
+              dueDatePriority: this.dueDatePriority(),
+              worktimeDeviationPercent: this.worktimeDeviationPercent(),
+              requireServiceTypeMatch: this.enforceServiceTypeMatch(),
             },
-            this.buildSolverCaps(),
-            this.enforceServiceTypeMatch(),
-            this.normalizeWeights(),
-            this.selectedWeightTemplateId() ?? undefined,
           ),
         );
         if (result) {
@@ -252,16 +247,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
           ownerId,
           toolIds,
           {
-            time: this.weightTime(),
-            distance: this.weightDistance(),
-            date: this.weightDate(),
-            cost: this.weightCost(),
-            overtime: this.weightOvertime(),
+            template: this.routeTemplate(),
+            dueDatePriority: this.dueDatePriority(),
+            worktimeDeviationPercent: this.worktimeDeviationPercent(),
+            requireServiceTypeMatch: this.enforceServiceTypeMatch(),
           },
-          this.buildSolverCaps(),
-          this.enforceServiceTypeMatch(),
-          this.normalizeWeights(),
-          this.selectedWeightTemplateId() ?? undefined,
         ),
       );
       const updated = result?.routes?.length ?? 0;
@@ -271,6 +261,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
         summary: 'Routes generated',
         detail: `Updated ${updated} driver(s)` + (skipped > 0 ? `, skipped ${skipped}` : ''),
       });
+      if (skipped > 0 && result?.skippedDrivers?.length) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'Drivers skipped',
+          detail: this.formatSkippedDrivers(result.skippedDrivers),
+        });
+      }
       await this.loadExistingRoutes();
       this.refreshMapDataAfterRouteSave(); // refresh statuses/markers
     } catch (err: any) {
@@ -349,21 +346,23 @@ export class MapPage implements AfterViewInit, OnDestroy {
               ownerId,
               toolIds,
               {
-                time: this.weightTime(),
-                distance: this.weightDistance(),
-                date: this.weightDate(),
-                cost: this.weightCost(),
-                overtime: this.weightOvertime(),
+                template: this.routeTemplate(),
+                dueDatePriority: this.dueDatePriority(),
+                worktimeDeviationPercent: this.worktimeDeviationPercent(),
+                requireServiceTypeMatch: this.enforceServiceTypeMatch(),
               },
-              this.buildSolverCaps(),
-              this.enforceServiceTypeMatch(),
-              this.normalizeWeights(),
-              this.selectedWeightTemplateId() ?? undefined,
             ),
           );
           totalUpdated += result?.routes?.length ?? 0;
           totalSkipped += result?.skippedDrivers?.length ?? 0;
           lastProcessedDate = new Date(current);
+          if (result?.skippedDrivers?.length) {
+            this.messageService.add({
+              severity: 'warn',
+              summary: `Drivers skipped ${toYmd(current)}`,
+              detail: this.formatSkippedDrivers(result.skippedDrivers),
+            });
+          }
         } catch (err: any) {
           this.messageService.add({
             severity: 'warn',
@@ -457,6 +456,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
   serviceTypes = signal<ServiceTypeDto[]>([]);
   owners = signal<ServiceLocationOwnerDto[]>([]);
   selectedServiceTypeIds = signal<number[]>([]);
+  routeTemplate = signal('Lollipop');
+  routeTemplateOptions = [{ label: 'Lollipop', value: 'Lollipop' }];
+  dueDatePriority = signal(50);
+  worktimeDeviationPercent = signal(10);
   weightTime = signal(1);
   weightDistance = signal(1);
   weightDate = signal(1);
@@ -3237,16 +3240,22 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private getRouteColor(driverToolId: string): string {
     // Generate a consistent color for each driver based on their toolId
     const colors = [
-      '#3b82f6', // blue
-      '#ef4444', // red
-      '#10b981', // green
-      '#f59e0b', // amber
-      '#8b5cf6', // purple
-      '#ec4899', // pink
-      '#06b6d4', // cyan
-      '#84cc16', // lime
-      '#f97316', // orange
-      '#6366f1', // indigo
+      '#1f77b4', // blue
+      '#ff7f0e', // orange
+      '#2ca02c', // green
+      '#d62728', // red
+      '#9467bd', // purple
+      '#8c564b', // brown
+      '#e377c2', // pink
+      '#17becf', // cyan
+      '#bcbd22', // olive
+      '#7f7f7f', // gray
+      '#1b9e77', // teal
+      '#d95f02', // burnt orange
+      '#7570b3', // violet
+      '#e7298a', // magenta
+      '#66a61e', // lime
+      '#e6ab02', // mustard
     ];
 
     // Use a simple hash to consistently assign colors
@@ -3303,14 +3312,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
           if (waypoint.type === 'driver-start') {
             icon = L.divIcon({
               className: 'route-marker route-marker-start',
-              html: `<p class="route-number" style="color: red; padding-left: 10px; padding-top: 3px;">S</p>`,
+              html: `<p class="route-number" style="color: ${color}; padding-left: 10px; padding-top: 3px;">S</p>`,
               iconSize: [24, 24],
               iconAnchor: [12, 12],
             });
           } else if (waypoint.type === 'driver-end') {
             icon = L.divIcon({
               className: 'route-marker route-marker-end',
-              html: `<p class="route-number" style="color: red; padding-left: 10px; padding-top: 3px;">E</p>`,
+              html: `<p class="route-number" style="color: ${color}; padding-left: 10px; padding-top: 3px;">E</p>`,
               iconSize: [24, 24],
               iconAnchor: [12, 12],
             });
@@ -3320,7 +3329,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
               route.waypoints.slice(0, index).filter((w) => w.type === 'location').length + 1;
             icon = L.divIcon({
               className: 'route-marker route-marker-location',
-              html: `<p class="route-number" style="color: red; padding-left: 10px; padding-top: 3px;">${locationIndex}</p>`,
+              html: `<p class="route-number" style="color: ${color}; padding-left: 10px; padding-top: 3px;">${locationIndex}</p>`,
               iconSize: [24, 24],
               iconAnchor: [12, 12],
             });
@@ -3345,6 +3354,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
         this.routeMarkers.set(driverToolId, markers);
       }
     });
+  }
+
+  private formatSkippedDrivers(skipped: string[], limit = 5): string {
+    if (skipped.length <= limit) {
+      return skipped.join(', ');
+    }
+    const shown = skipped.slice(0, limit).join(', ');
+    return `${shown} (+${skipped.length - limit} more)`;
   }
 
   private isServiceTypeAllowed(driver: DriverDto, location: ServiceLocationMapDto): boolean {

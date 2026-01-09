@@ -234,34 +234,22 @@ export class RoutesApiService {
     driverToolId: string,
     ownerId: number,
     serviceLocationToolIds: string[],
-    weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
-    solverCaps?: {
-      dueCostCapPercent: number;
-      detourCostCapPercent: number;
-      detourRefKmPercent: number;
-      lateRefMinutesPercent: number;
+    options?: {
+      template?: string;
+      dueDatePriority?: number;
+      worktimeDeviationPercent?: number;
+      requireServiceTypeMatch?: boolean;
     },
-    requireServiceTypeMatch?: boolean,
-    normalizeWeights?: boolean,
-    weightTemplateId?: number,
   ): Observable<RouteDto> {
     const body = {
       date: toYmd(date),
       driverToolId,
       ownerId,
       serviceLocationToolIds,
-      weightTime: weights?.time,
-      weightDistance: weights?.distance,
-      weightDate: weights?.date,
-      weightCost: weights?.cost,
-      weightOvertime: weights?.overtime,
-      dueCostCapPercent: solverCaps?.dueCostCapPercent,
-      detourCostCapPercent: solverCaps?.detourCostCapPercent,
-      detourRefKmPercent: solverCaps?.detourRefKmPercent,
-      lateRefMinutesPercent: solverCaps?.lateRefMinutesPercent,
-      weightTemplateId,
-      requireServiceTypeMatch,
-      normalizeWeights,
+      template: options?.template,
+      dueDatePriority: options?.dueDatePriority,
+      worktimeDeviationPercent: options?.worktimeDeviationPercent,
+      requireServiceTypeMatch: options?.requireServiceTypeMatch,
     };
     return this.http.post<RouteDto>(`${this.baseUrl}/auto-generate`, body);
   }
@@ -270,33 +258,21 @@ export class RoutesApiService {
     date: Date,
     ownerId: number,
     serviceLocationToolIds: string[],
-    weights?: { time: number; distance: number; date: number; cost: number; overtime: number },
-    solverCaps?: {
-      dueCostCapPercent: number;
-      detourCostCapPercent: number;
-      detourRefKmPercent: number;
-      lateRefMinutesPercent: number;
+    options?: {
+      template?: string;
+      dueDatePriority?: number;
+      worktimeDeviationPercent?: number;
+      requireServiceTypeMatch?: boolean;
     },
-    requireServiceTypeMatch?: boolean,
-    normalizeWeights?: boolean,
-    weightTemplateId?: number,
   ): Observable<AutoGenerateAllResponse> {
     const body = {
       date: toYmd(date),
       ownerId,
       serviceLocationToolIds,
-      weightTime: weights?.time,
-      weightDistance: weights?.distance,
-      weightDate: weights?.date,
-      weightCost: weights?.cost,
-      weightOvertime: weights?.overtime,
-      dueCostCapPercent: solverCaps?.dueCostCapPercent,
-      detourCostCapPercent: solverCaps?.detourCostCapPercent,
-      detourRefKmPercent: solverCaps?.detourRefKmPercent,
-      lateRefMinutesPercent: solverCaps?.lateRefMinutesPercent,
-      weightTemplateId,
-      requireServiceTypeMatch,
-      normalizeWeights,
+      template: options?.template,
+      dueDatePriority: options?.dueDatePriority,
+      worktimeDeviationPercent: options?.worktimeDeviationPercent,
+      requireServiceTypeMatch: options?.requireServiceTypeMatch,
     };
     return this.http.post<AutoGenerateAllResponse>(`${this.baseUrl}/auto-generate/all`, body);
   }

@@ -9,7 +9,6 @@ using TransportPlanner.Domain.Entities;
 using TransportPlanner.Infrastructure.Data;
 using TransportPlanner.Infrastructure.Identity;
 using TransportPlanner.Infrastructure.Services;
-using TransportPlanner.Infrastructure.Services.Vrp;
 using RouteEntity = TransportPlanner.Domain.Entities.Route;
 
 namespace TransportPlanner.Api.Controllers;
@@ -21,6 +20,9 @@ public class AutoGenerateRouteRequest
     public int OwnerId { get; set; }
     public int? MaxStops { get; set; }
     public List<Guid>? ServiceLocationToolIds { get; set; } // explicit candidate list from map
+    public string? Template { get; set; }
+    public int? DueDatePriority { get; set; }
+    public int? WorktimeDeviationPercent { get; set; }
     public double? WeightTime { get; set; }
     public double? WeightDistance { get; set; }
     public double? WeightDate { get; set; }
@@ -41,6 +43,9 @@ public class AutoGenerateAllRequest
     public int OwnerId { get; set; }
     public int? MaxStopsPerDriver { get; set; }
     public List<Guid>? ServiceLocationToolIds { get; set; } // optional candidate list from map
+    public string? Template { get; set; }
+    public int? DueDatePriority { get; set; }
+    public int? WorktimeDeviationPercent { get; set; }
     public double? WeightTime { get; set; }
     public double? WeightDistance { get; set; }
     public double? WeightDate { get; set; }
@@ -69,7 +74,6 @@ public class AutoRoutesController : ControllerBase
     private readonly TransportPlannerDbContext _dbContext;
     private readonly IRoutingService _routing;
     private readonly ITravelTimeModelService _travelTimeModel;
-    private readonly IVrpRouteSolverService _vrpSolver;
     private readonly ILogger<AutoRoutesController> _logger;
     private bool IsSuperAdmin => User.IsInRole(AppRoles.SuperAdmin);
     private int? CurrentOwnerId => int.TryParse(User.FindFirstValue("ownerId"), out var id) ? id : null;
@@ -79,13 +83,11 @@ public class AutoRoutesController : ControllerBase
         TransportPlannerDbContext dbContext,
         IRoutingService routing,
         ITravelTimeModelService travelTimeModel,
-        IVrpRouteSolverService vrpSolver,
         ILogger<AutoRoutesController> logger)
     {
         _dbContext = dbContext;
         _routing = routing;
         _travelTimeModel = travelTimeModel;
-        _vrpSolver = vrpSolver;
         _logger = logger;
     }
 
@@ -126,57 +128,55 @@ public class AutoRoutesController : ControllerBase
             return BadRequest(new { message = "Driver is not available on this date." });
         }
 
-        var costSettings = await GetCostSettingsAsync(request.OwnerId, cancellationToken);
-        var weightTemplateResult = await ResolveWeightTemplateAsync(request.WeightTemplateId, request.OwnerId, cancellationToken);
-        if (!string.IsNullOrEmpty(weightTemplateResult.Error))
+        var template = NormalizeTemplate(request.Template);
+        if (!IsSupportedTemplate(template))
         {
-            return BadRequest(new { message = weightTemplateResult.Error });
+            return BadRequest(new { message = $"Unsupported template '{request.Template}'." });
         }
+
+        var dueDatePriority = ClampPercent(request.DueDatePriority ?? 50, 0, 100);
+        var worktimeDeviationPercent = ClampPercent(request.WorktimeDeviationPercent ?? 10, 0, 50);
+        var requireServiceTypeMatch = request.RequireServiceTypeMatch == true;
 
         await ClearTempRoutesForDayAsync(date, request.OwnerId, cancellationToken);
 
-        var weights = ResolveWeights(weightTemplateResult.Template, request.WeightTime, request.WeightDistance, request.WeightDate, request.WeightCost, request.WeightOvertime);
-        var solverCaps = ResolveSolverCaps(
-            weightTemplateResult.Template,
-            request.DueCostCapPercent,
-            request.DetourCostCapPercent,
-            request.DetourRefKmPercent,
-            request.LateRefMinutesPercent);
-        var vrpRequest = new VrpSolveRequest(
-            date,
-            request.OwnerId,
-            request.ServiceLocationToolIds,
-            request.MaxStops,
-            new VrpWeightSet(weights.Time, weights.Distance, weights.Date, weights.Cost, weights.Overtime),
-            new VrpCostSettings(costSettings.FuelCostPerKm, costSettings.PersonnelCostPerHour, costSettings.CurrencyCode),
-            request.RequireServiceTypeMatch == true,
-            request.NormalizeWeights ?? true,
-            weightTemplateResult.Template?.Id,
-            solverCaps.DueCostCapPercent,
-            solverCaps.DetourCostCapPercent,
-            solverCaps.DetourRefKmPercent,
-            solverCaps.LateRefMinutesPercent);
+        var candidates = await LoadCandidateLocationsAsync(date, request.OwnerId, request.ServiceLocationToolIds, cancellationToken);
+        if (candidates.Count == 0)
+        {
+            return BadRequest(new { message = "No service locations available for auto-generate." });
+        }
 
-        VrpSolveResult result;
-        try
-        {
-            result = await _vrpSolver.SolveDayAsync(vrpRequest, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Auto-generate failed for DriverId={DriverId}", driver.Id);
-            return BadRequest(new { message = "Auto-generate failed." });
-        }
+        var locationIds = candidates.Select(c => c.Id).ToList();
+        var locationWindows = await LoadLocationWindowsAsync(locationIds, date, cancellationToken);
+        var locationConstraints = await LoadLocationConstraintsAsync(locationIds, cancellationToken);
+
+        var capacityMinutes = Math.Min(availability.AvailableMinutes, driver.MaxWorkMinutesPerDay);
+        var result = await GenerateRouteForDriverAsync(
+            date,
+            driver,
+            request.OwnerId,
+            candidates,
+            request.MaxStops,
+            capacityMinutes,
+            availability.StartMinuteOfDay,
+            availability.EndMinuteOfDay,
+            dueDatePriority,
+            worktimeDeviationPercent,
+            locationWindows,
+            locationConstraints,
+            null,
+            requireServiceTypeMatch,
+            null,
+            cancellationToken);
 
         await SyncPlannedStatusesAsync(request.OwnerId, cancellationToken);
 
-        var dto = result.Routes.FirstOrDefault(r => r.DriverId == driver.Id);
-        if (dto == null)
+        if (result.dto == null)
         {
-            return BadRequest(new { message = "No route generated for this driver." });
+            return BadRequest(new { message = result.reason ?? "No route generated for this driver." });
         }
 
-        return Ok(dto);
+        return Ok(result.dto);
     }
 
     [HttpPost("all")]
@@ -195,49 +195,175 @@ public class AutoRoutesController : ControllerBase
             return Forbid();
         }
 
-        // Load all active drivers for owner with availability on this date
-        var costSettings = await GetCostSettingsAsync(request.OwnerId, cancellationToken);
-        var weightTemplateResult = await ResolveWeightTemplateAsync(request.WeightTemplateId, request.OwnerId, cancellationToken);
-        if (!string.IsNullOrEmpty(weightTemplateResult.Error))
+        var template = NormalizeTemplate(request.Template);
+        if (!IsSupportedTemplate(template))
         {
-            return BadRequest(new { message = weightTemplateResult.Error });
+            return BadRequest(new { message = $"Unsupported template '{request.Template}'." });
         }
+
+        var dueDatePriority = ClampPercent(request.DueDatePriority ?? 50, 0, 100);
+        var worktimeDeviationPercent = ClampPercent(request.WorktimeDeviationPercent ?? 10, 0, 50);
+        var requireServiceTypeMatch = request.RequireServiceTypeMatch == true;
 
         await ClearTempRoutesForDayAsync(date, request.OwnerId, cancellationToken);
-        var weights = ResolveWeights(weightTemplateResult.Template, request.WeightTime, request.WeightDistance, request.WeightDate, request.WeightCost, request.WeightOvertime);
-        var solverCaps = ResolveSolverCaps(
-            weightTemplateResult.Template,
-            request.DueCostCapPercent,
-            request.DetourCostCapPercent,
-            request.DetourRefKmPercent,
-            request.LateRefMinutesPercent);
-        var vrpRequest = new VrpSolveRequest(
+
+        var candidates = await LoadCandidateLocationsAsync(date, request.OwnerId, request.ServiceLocationToolIds, cancellationToken);
+        if (candidates.Count == 0)
+        {
+            return BadRequest(new { message = "No service locations available for auto-generate." });
+        }
+
+        var locationIds = candidates.Select(c => c.Id).ToList();
+        var locationWindows = await LoadLocationWindowsAsync(locationIds, date, cancellationToken);
+        var locationConstraints = await LoadLocationConstraintsAsync(locationIds, cancellationToken);
+
+        var drivers = await _dbContext.Drivers
+            .AsNoTracking()
+            .Where(d => d.OwnerId == request.OwnerId && d.IsActive)
+            .ToListAsync(cancellationToken);
+
+        var driverIds = drivers.Select(d => d.Id).ToList();
+        var availabilities = await _dbContext.DriverAvailabilities
+            .AsNoTracking()
+            .Where(a => a.Date == date && driverIds.Contains(a.DriverId))
+            .ToDictionaryAsync(a => a.DriverId, cancellationToken);
+
+        var fixedRouteDrivers = await _dbContext.Routes
+            .AsNoTracking()
+            .Where(r => r.OwnerId == request.OwnerId && r.Date.Date == date && r.Status == RouteStatus.Fixed)
+            .Select(r => r.DriverId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var fixedDriverIds = fixedRouteDrivers.ToHashSet();
+
+        var driverServiceTypes = await _dbContext.DriverServiceTypes
+            .AsNoTracking()
+            .Where(dst => driverIds.Contains(dst.DriverId))
+            .GroupBy(dst => dst.DriverId)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.ServiceTypeId).Distinct().ToList(), cancellationToken);
+
+        var driverContexts = new List<LollipopDriverContext>();
+        var skippedDrivers = new List<string>();
+
+        foreach (var driver in drivers)
+        {
+            if (fixedDriverIds.Contains(driver.Id))
+            {
+                skippedDrivers.Add($"{driver.Name}: Existing route is fixed.");
+                continue;
+            }
+
+            if (!availabilities.TryGetValue(driver.Id, out var availability))
+            {
+                skippedDrivers.Add($"{driver.Name}: Driver is not available on this date.");
+                continue;
+            }
+
+            if (!driver.StartLatitude.HasValue || !driver.StartLongitude.HasValue
+                || (driver.StartLatitude.Value == 0 && driver.StartLongitude.Value == 0))
+            {
+                skippedDrivers.Add($"{driver.Name}: Driver start coordinates are missing.");
+                continue;
+            }
+
+            var capacityMinutes = Math.Min(availability.AvailableMinutes, driver.MaxWorkMinutesPerDay);
+            if (capacityMinutes <= 0)
+            {
+                skippedDrivers.Add($"{driver.Name}: Driver has no available minutes.");
+                continue;
+            }
+
+            var serviceTypeIds = driverServiceTypes.TryGetValue(driver.Id, out var ids)
+                ? ids
+                : new List<int>();
+
+            if (requireServiceTypeMatch && serviceTypeIds.Count == 0)
+            {
+                skippedDrivers.Add($"{driver.Name}: Driver has no service types assigned.");
+                continue;
+            }
+
+            driverContexts.Add(new LollipopDriverContext(
+                driver,
+                availability.StartMinuteOfDay,
+                availability.EndMinuteOfDay,
+                capacityMinutes,
+                serviceTypeIds));
+        }
+
+        if (driverContexts.Count == 0)
+        {
+            return Ok(new AutoGenerateAllResponse
+            {
+                Routes = new List<RouteDto>(),
+                SkippedDrivers = skippedDrivers
+            });
+        }
+
+        var seedAssignments = await AssignSeedsAsync(
             date,
-            request.OwnerId,
-            request.ServiceLocationToolIds,
-            request.MaxStopsPerDriver,
-            new VrpWeightSet(weights.Time, weights.Distance, weights.Date, weights.Cost, weights.Overtime),
-            new VrpCostSettings(costSettings.FuelCostPerKm, costSettings.PersonnelCostPerHour, costSettings.CurrencyCode),
-            request.RequireServiceTypeMatch == true,
-            request.NormalizeWeights ?? true,
-            weightTemplateResult.Template?.Id,
-            solverCaps.DueCostCapPercent,
-            solverCaps.DetourCostCapPercent,
-            solverCaps.DetourRefKmPercent,
-            solverCaps.LateRefMinutesPercent);
+            driverContexts,
+            candidates,
+            locationWindows,
+            locationConstraints,
+            dueDatePriority,
+            worktimeDeviationPercent,
+            requireServiceTypeMatch,
+            cancellationToken);
 
-        VrpSolveResult result;
-        try
+        var reservedSeedIds = seedAssignments.Values.ToHashSet();
+        var usedLocationIds = new HashSet<int>();
+        var routes = new List<RouteDto>();
+
+        foreach (var context in driverContexts)
         {
-            result = await _vrpSolver.SolveDayAsync(vrpRequest, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Auto-generate failed for owner {OwnerId}", request.OwnerId);
-            return BadRequest(new { message = "Auto-generate failed." });
+            if (!seedAssignments.TryGetValue(context.Driver.Id, out var seedLocationId))
+            {
+                skippedDrivers.Add($"{context.Driver.Name}: No feasible seed location.");
+                continue;
+            }
+
+            var reservedForDriver = new HashSet<int>(usedLocationIds);
+            foreach (var seedId in reservedSeedIds)
+            {
+                if (seedId != seedLocationId)
+                {
+                    reservedForDriver.Add(seedId);
+                }
+            }
+
+            var routeResult = await GenerateRouteForDriverAsync(
+                date,
+                context.Driver,
+                request.OwnerId,
+                candidates,
+                request.MaxStopsPerDriver,
+                context.CapacityMinutes,
+                context.StartMinuteOfDay,
+                context.EndMinuteOfDay,
+                dueDatePriority,
+                worktimeDeviationPercent,
+                locationWindows,
+                locationConstraints,
+                seedLocationId,
+                requireServiceTypeMatch,
+                reservedForDriver,
+                cancellationToken);
+
+            if (routeResult.dto == null)
+            {
+                skippedDrivers.Add($"{context.Driver.Name}: {routeResult.reason ?? "No route generated."}");
+                continue;
+            }
+
+            routes.Add(routeResult.dto);
+            foreach (var id in routeResult.usedLocationIds)
+            {
+                usedLocationIds.Add(id);
+            }
         }
 
-        if (!result.Routes.Any())
+        if (routes.Count == 0)
         {
             return BadRequest(new { message = "No routes generated for any driver." });
         }
@@ -246,8 +372,8 @@ public class AutoRoutesController : ControllerBase
 
         return Ok(new AutoGenerateAllResponse
         {
-            Routes = result.Routes.ToList(),
-            SkippedDrivers = result.SkippedDrivers.ToList()
+            Routes = routes,
+            SkippedDrivers = skippedDrivers
         });
     }
 
@@ -260,13 +386,13 @@ public class AutoRoutesController : ControllerBase
         int capacityMinutes,
         int startMinuteOfDay,
         int endMinuteOfDay,
-        WeightSet weights,
-        CostSettings costSettings,
+        int dueDatePriority,
+        int worktimeDeviationPercent,
         Dictionary<int, TimeWindow> locationWindows,
         Dictionary<int, ServiceLocationConstraint> locationConstraints,
-        int? weightTemplateId,
+        int? seedLocationId,
         bool requireServiceTypeMatch,
-        bool normalizeWeights,
+        ISet<int>? reservedLocationIds,
         CancellationToken cancellationToken)
     {
         var existingRoute = await _dbContext.Routes
@@ -286,12 +412,16 @@ public class AutoRoutesController : ControllerBase
 
         // Don't double-plan locations already planned for any driver on this date
         var plannedLocationIdsForDate = await _dbContext.RouteStops
-            .Where(rs => rs.Route.DriverId == driver.Id && rs.Route.OwnerId == ownerId && rs.Route.Date == date && rs.ServiceLocationId != null)
+            .Where(rs => rs.Route.OwnerId == ownerId && rs.Route.Date == date && rs.ServiceLocationId != null)
             .Select(rs => rs.ServiceLocationId!.Value)
             .ToListAsync(cancellationToken);
 
         var candidates = candidatePool
-            .Where(sl => sl.OwnerId == ownerId && sl.Status == ServiceLocationStatus.Open && sl.IsActive && !plannedLocationIdsForDate.Contains(sl.Id))
+            .Where(sl => sl.OwnerId == ownerId
+                && sl.Status == ServiceLocationStatus.Open
+                && sl.IsActive
+                && !plannedLocationIdsForDate.Contains(sl.Id)
+                && (reservedLocationIds == null || !reservedLocationIds.Contains(sl.Id)))
             .ToList();
 
         if (requireServiceTypeMatch)
@@ -321,124 +451,126 @@ public class AutoRoutesController : ControllerBase
 
         var stopLimit = maxStops ?? 30;
 
-        // Greedy OSRM scoring
         var remaining = new List<ServiceLocation>(candidates);
         var selected = new List<ServiceLocation>();
 
         var startPoint = ResolveRouteStart(existingRoute, driver);
+        var endPoint = ResolveRouteEnd(existingRoute, driver);
         double currentLat = startPoint.Lat;
         double currentLng = startPoint.Lng;
-        var normalizedWeights = BuildNormalizedWeights(weights, normalizeWeights);
-        var normalizationRefs = await BuildNormalizationReferencesAsync(
-            date,
-            startMinuteOfDay,
-            startPoint.Lat,
-            startPoint.Lng,
-            remaining,
-            locationWindows,
-            locationConstraints,
-            driver,
-            costSettings,
-            cancellationToken);
-        var usedMinutes = 0;
         var currentMinute = startMinuteOfDay;
-        var capacity = capacityMinutes <= 0 ? driver.MaxWorkMinutesPerDay : capacityMinutes;
+        var allowedMinutes = (int)Math.Round(
+            capacityMinutes * (1 + (worktimeDeviationPercent / 100.0)),
+            MidpointRounding.AwayFromZero);
+        var allowedEndMinute = startMinuteOfDay + allowedMinutes;
+        var dueWeight = dueDatePriority <= 0 ? 0 : dueDatePriority / 100.0;
+
+        async Task<(ServiceLocation Location, int TravelMinutes, int WaitMinutes, int StartServiceMinute, int EndServiceMinute, double Score)?> TryBuildCandidateAsync(
+            ServiceLocation loc,
+            int fromMinute,
+            double fromLat,
+            double fromLng)
+        {
+            if (!locationWindows.TryGetValue(loc.Id, out var window))
+            {
+                window = TimeWindow.AlwaysOpen;
+            }
+
+            if (window.IsClosed)
+            {
+                return null;
+            }
+
+            var lat = loc.Latitude ?? 0;
+            var lng = loc.Longitude ?? 0;
+            var travelKm = HaversineKm(fromLat, fromLng, lat, lng);
+            var travelMinutes = await _travelTimeModel.EstimateMinutesAsync(
+                date,
+                fromMinute,
+                travelKm,
+                fromLat,
+                fromLng,
+                lat,
+                lng,
+                cancellationToken);
+            var travelMinutesRounded = (int)Math.Round(travelMinutes, MidpointRounding.AwayFromZero);
+
+            var serviceMinutes = ResolveServiceMinutes(loc, locationConstraints, driver);
+            var arrivalMinute = fromMinute + travelMinutesRounded;
+            if (!TimeWindowHelper.TrySchedule(
+                    window,
+                    arrivalMinute,
+                    serviceMinutes,
+                    out var waitMinutes,
+                    out var startServiceMinute,
+                    out var endServiceMinute))
+            {
+                return null;
+            }
+
+            var returnMinutes = EstimateMinutes(lat, lng, endPoint.Lat, endPoint.Lng);
+            if (endServiceMinute + returnMinutes > allowedEndMinute)
+            {
+                return null;
+            }
+
+            var duePenalty = dueWeight > 0 ? 1 - ComputeDueUrgencyNormalized(date, loc, travelMinutes) : 0;
+            var score = travelMinutesRounded + (dueWeight * 100.0 * duePenalty);
+
+            return (loc, travelMinutesRounded, waitMinutes, startServiceMinute, endServiceMinute, score);
+        }
+
+        if (seedLocationId.HasValue)
+        {
+            var seed = remaining.FirstOrDefault(loc => loc.Id == seedLocationId.Value);
+            if (seed == null)
+            {
+                await ClearExistingRouteAsync(existingRoute, previousServiceLocationIds, cancellationToken);
+                return (null, new List<int>(), "Seed location not available.");
+            }
+
+            var seedPlan = await TryBuildCandidateAsync(seed, currentMinute, currentLat, currentLng);
+            if (seedPlan == null)
+            {
+                await ClearExistingRouteAsync(existingRoute, previousServiceLocationIds, cancellationToken);
+                return (null, new List<int>(), "Seed location is not feasible for this driver.");
+            }
+
+            selected.Add(seedPlan.Value.Location);
+            remaining.Remove(seedPlan.Value.Location);
+            currentMinute = seedPlan.Value.EndServiceMinute;
+            currentLat = seedPlan.Value.Location.Latitude ?? 0;
+            currentLng = seedPlan.Value.Location.Longitude ?? 0;
+        }
 
         while (remaining.Any() && selected.Count < stopLimit)
         {
-            ServiceLocation? best = null;
-            double bestScore = double.MaxValue;
-            int bestTravelMinutes = 0;
+            (ServiceLocation Location, int TravelMinutes, int WaitMinutes, int StartServiceMinute, int EndServiceMinute, double Score)? bestPlan = null;
 
             foreach (var loc in remaining)
             {
-                if (!locationWindows.TryGetValue(loc.Id, out var window))
-                {
-                    window = TimeWindow.AlwaysOpen;
-                }
-
-                if (window.IsClosed)
+                var plan = await TryBuildCandidateAsync(loc, currentMinute, currentLat, currentLng);
+                if (plan == null)
                 {
                     continue;
                 }
 
-                // Fast estimate (haversine) to keep selection loop O(n^2) but cheap
-                var travelKm = HaversineKm(currentLat, currentLng, loc.Latitude ?? 0, loc.Longitude ?? 0);
-                var travelMinutes = await _travelTimeModel.EstimateMinutesAsync(
-                    date,
-                    currentMinute,
-                    travelKm,
-                    currentLat,
-                    currentLng,
-                    loc.Latitude ?? 0,
-                    loc.Longitude ?? 0,
-                    cancellationToken);
-                var travelMinutesRounded = (int)Math.Round(travelMinutes, MidpointRounding.AwayFromZero);
-
-                var serviceMinutes = ResolveServiceMinutes(loc, locationConstraints, driver);
-                var arrivalMinute = currentMinute + travelMinutesRounded;
-                if (!TimeWindowHelper.TrySchedule(
-                        window,
-                        arrivalMinute,
-                        serviceMinutes,
-                        out var waitMinutes,
-                        out var startServiceMinute,
-                        out var endServiceMinute))
+                if (bestPlan == null || plan.Value.Score < bestPlan.Value.Score)
                 {
-                    continue;
-                }
-
-                var timeCost = travelMinutesRounded + waitMinutes + serviceMinutes;
-                var projectedUsedMinutes = usedMinutes + travelMinutesRounded + waitMinutes + serviceMinutes;
-                var projectedEndMinute = startMinuteOfDay + projectedUsedMinutes;
-                var overtimeMinutes = Math.Max(0, projectedEndMinute - endMinuteOfDay);
-                var costTravel = CostCalculator.CalculateTravelCost(
-                    travelKm,
-                    travelMinutes,
-                    costSettings.FuelCostPerKm,
-                    costSettings.PersonnelCostPerHour);
-                var dueUrgency = ComputeDueUrgencyNormalized(date, loc, travelMinutes);
-                var duePenalty = 1 - dueUrgency;
-
-                var normDistance = Clamp01(travelKm / normalizationRefs.DistanceKm);
-                var normTime = Clamp01(timeCost / normalizationRefs.TimeMinutes);
-                var normOvertime = Clamp01(overtimeMinutes / normalizationRefs.OvertimeMinutes);
-                var normCost = Clamp01(costTravel / normalizationRefs.CostEuro);
-
-                var score = (normalizedWeights.Time * normTime)
-                            + (normalizedWeights.Distance * normDistance)
-                            + (normalizedWeights.Date * duePenalty)
-                            + (normalizedWeights.Cost * normCost)
-                            + (normalizedWeights.Overtime * normOvertime);
-
-                if (score < bestScore)
-                {
-                    best = loc;
-                    bestScore = score;
-                    bestTravelMinutes = travelMinutesRounded;
+                    bestPlan = plan;
                 }
             }
 
-            if (best == null) break;
-
-            var bestWindow = locationWindows.TryGetValue(best.Id, out var bw) ? bw : TimeWindow.AlwaysOpen;
-            var bestServiceMinutes = ResolveServiceMinutes(best, locationConstraints, driver);
-            var bestArrivalMinute = currentMinute + bestTravelMinutes;
-            var bestWaitMinutes = bestArrivalMinute < bestWindow.OpenMinute ? bestWindow.OpenMinute - bestArrivalMinute : 0;
-            var projected = usedMinutes + bestTravelMinutes + bestWaitMinutes + bestServiceMinutes;
-            if (projected > capacity * 1.05) // allow small buffer
+            if (bestPlan == null)
             {
-                // skip this best; remove it to avoid loop
-                remaining.Remove(best);
-                continue;
+                break;
             }
 
-            selected.Add(best);
-            remaining.Remove(best);
-            usedMinutes += bestTravelMinutes + bestWaitMinutes + bestServiceMinutes;
-            currentMinute = startMinuteOfDay + usedMinutes;
-            currentLat = best.Latitude ?? 0;
-            currentLng = best.Longitude ?? 0;
+            selected.Add(bestPlan.Value.Location);
+            remaining.Remove(bestPlan.Value.Location);
+            currentMinute = bestPlan.Value.EndServiceMinute;
+            currentLat = bestPlan.Value.Location.Latitude ?? 0;
+            currentLng = bestPlan.Value.Location.Longitude ?? 0;
         }
 
         if (!selected.Any())
@@ -520,7 +652,6 @@ public class AutoRoutesController : ControllerBase
         }
 
         // Add final leg back to the route end (driver default or override).
-        var endPoint = ResolveRouteEnd(existingRoute, driver);
         if (selected.Any())
         {
             DrivingRouteResult? endTravel = null;
@@ -569,7 +700,7 @@ public class AutoRoutesController : ControllerBase
         routeEntity.TotalKm = (float)totalKm;
         routeEntity.TotalMinutes = totalTravelMinutes + totalWaitMinutes + stops.Sum(s => s.ServiceMinutes);
         routeEntity.Status = RouteStatus.Temp;
-        routeEntity.WeightTemplateId = weightTemplateId;
+        routeEntity.WeightTemplateId = null;
 
         if (existingRoute == null)
         {
@@ -682,6 +813,13 @@ public class AutoRoutesController : ControllerBase
 
         return (dto, locationIds, null);
     }
+
+    private sealed record LollipopDriverContext(
+        Driver Driver,
+        int StartMinuteOfDay,
+        int EndMinuteOfDay,
+        int CapacityMinutes,
+        IReadOnlyList<int> ServiceTypeIds);
 
     private sealed record WeightTemplateResult(WeightTemplate? Template, string? Error);
 
@@ -797,6 +935,23 @@ public class AutoRoutesController : ControllerBase
             NormalizePercent(detourCostCapPercent ?? 50),
             NormalizePercent(detourRefKmPercent ?? 50),
             NormalizePercent(lateRefMinutesPercent ?? 50));
+    }
+
+    private static string NormalizeTemplate(string? template)
+    {
+        return string.IsNullOrWhiteSpace(template) ? "Lollipop" : template.Trim();
+    }
+
+    private static bool IsSupportedTemplate(string template)
+    {
+        return string.Equals(template, "Lollipop", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int ClampPercent(int value, int min, int max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
     }
 
     private static NormalizedWeightSet BuildNormalizedWeights(WeightSet weights, bool normalizeWeights)
@@ -1039,6 +1194,43 @@ public class AutoRoutesController : ControllerBase
         return new WeightTemplateResult(template, null);
     }
 
+    private async Task<List<ServiceLocation>> LoadCandidateLocationsAsync(
+        DateTime date,
+        int ownerId,
+        List<Guid>? serviceLocationToolIds,
+        CancellationToken cancellationToken)
+    {
+        var fixedLocationIds = await _dbContext.RouteStops
+            .AsNoTracking()
+            .Where(rs => rs.ServiceLocationId.HasValue
+                && rs.Route.OwnerId == ownerId
+                && rs.Route.Date.Date == date.Date
+                && rs.Route.Status == RouteStatus.Fixed)
+            .Select(rs => rs.ServiceLocationId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        IQueryable<ServiceLocation> query = _dbContext.ServiceLocations
+            .AsNoTracking()
+            .Where(sl => sl.OwnerId == ownerId
+                && sl.Status == ServiceLocationStatus.Open
+                && sl.IsActive
+                && sl.Latitude.HasValue
+                && sl.Longitude.HasValue);
+
+        if (serviceLocationToolIds != null && serviceLocationToolIds.Count > 0)
+        {
+            query = query.Where(sl => serviceLocationToolIds.Contains(sl.ToolId));
+        }
+
+        if (fixedLocationIds.Count > 0)
+        {
+            query = query.Where(sl => !fixedLocationIds.Contains(sl.Id));
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
+
     private async Task<Dictionary<int, TimeWindow>> LoadLocationWindowsAsync(
         List<int> locationIds,
         DateTime date,
@@ -1126,6 +1318,110 @@ public class AutoRoutesController : ControllerBase
         }
 
         return Math.Max(1, minutes);
+    }
+
+    private async Task<Dictionary<int, int>> AssignSeedsAsync(
+        DateTime date,
+        IReadOnlyList<LollipopDriverContext> drivers,
+        IReadOnlyList<ServiceLocation> candidates,
+        Dictionary<int, TimeWindow> locationWindows,
+        Dictionary<int, ServiceLocationConstraint> locationConstraints,
+        int dueDatePriority,
+        int worktimeDeviationPercent,
+        bool requireServiceTypeMatch,
+        CancellationToken cancellationToken)
+    {
+        var assignments = new List<(int DriverId, int LocationId, double Score)>();
+        var dueWeight = dueDatePriority <= 0 ? 0 : dueDatePriority / 100.0;
+
+        foreach (var context in drivers)
+        {
+            var driver = context.Driver;
+            var fromLat = driver.StartLatitude ?? 0;
+            var fromLng = driver.StartLongitude ?? 0;
+            var allowedMinutes = (int)Math.Round(
+                context.CapacityMinutes * (1 + (worktimeDeviationPercent / 100.0)),
+                MidpointRounding.AwayFromZero);
+            var allowedEndMinute = context.StartMinuteOfDay + allowedMinutes;
+
+            foreach (var loc in candidates)
+            {
+                if (requireServiceTypeMatch && !context.ServiceTypeIds.Contains(loc.ServiceTypeId))
+                {
+                    continue;
+                }
+
+                if (!locationWindows.TryGetValue(loc.Id, out var window))
+                {
+                    window = TimeWindow.AlwaysOpen;
+                }
+
+                if (window.IsClosed)
+                {
+                    continue;
+                }
+
+                var lat = loc.Latitude ?? 0;
+                var lng = loc.Longitude ?? 0;
+                var travelKm = HaversineKm(fromLat, fromLng, lat, lng);
+                var travelMinutes = await _travelTimeModel.EstimateMinutesAsync(
+                    date,
+                    context.StartMinuteOfDay,
+                    travelKm,
+                    fromLat,
+                    fromLng,
+                    lat,
+                    lng,
+                    cancellationToken);
+                var travelMinutesRounded = (int)Math.Round(travelMinutes, MidpointRounding.AwayFromZero);
+                var serviceMinutes = ResolveServiceMinutes(loc, locationConstraints, driver);
+                var arrivalMinute = context.StartMinuteOfDay + travelMinutesRounded;
+
+                if (!TimeWindowHelper.TrySchedule(
+                        window,
+                        arrivalMinute,
+                        serviceMinutes,
+                        out _,
+                        out _,
+                        out var endServiceMinute))
+                {
+                    continue;
+                }
+
+                var returnMinutes = EstimateMinutes(lat, lng, fromLat, fromLng);
+                if (endServiceMinute + returnMinutes > allowedEndMinute)
+                {
+                    continue;
+                }
+
+                var duePenalty = dueWeight > 0 ? 1 - ComputeDueUrgencyNormalized(date, loc, travelMinutes) : 0;
+                var score = travelMinutesRounded + (dueWeight * 100.0 * duePenalty);
+                assignments.Add((driver.Id, loc.Id, score));
+            }
+        }
+
+        var result = new Dictionary<int, int>();
+        var assignedDrivers = new HashSet<int>();
+        var assignedLocations = new HashSet<int>();
+
+        foreach (var candidate in assignments.OrderBy(item => item.Score))
+        {
+            if (assignedDrivers.Contains(candidate.DriverId) || assignedLocations.Contains(candidate.LocationId))
+            {
+                continue;
+            }
+
+            result[candidate.DriverId] = candidate.LocationId;
+            assignedDrivers.Add(candidate.DriverId);
+            assignedLocations.Add(candidate.LocationId);
+
+            if (assignedDrivers.Count == drivers.Count)
+            {
+                break;
+            }
+        }
+
+        return result;
     }
 
     private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)

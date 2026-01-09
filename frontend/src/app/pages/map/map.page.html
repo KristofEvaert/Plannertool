@@ -201,113 +201,33 @@
         </div>
 
         <div class="auto-generate-weights">
-          <div class="auto-generate-title">Auto-generate weights</div>
+          <div class="auto-generate-title">Auto-generate settings</div>
           <div class="weight-row">
             <label class="weight-label">Template</label>
             <p-select
               optionLabel="label"
               optionValue="value"
-              placeholder="Manual weights"
               styleClass="w-full"
-              [options]="weightTemplateOptions()"
-              [ngModel]="selectedWeightTemplateId()"
-              [showClear]="true"
+              [options]="routeTemplateOptions"
+              [ngModel]="routeTemplate()"
               [appendTo]="'body'"
-              (ngModelChange)="onWeightTemplateChange($event)"
+              (ngModelChange)="routeTemplate.set($event)"
             />
           </div>
-          @if (canManageTemplates()) {
-            <div class="weight-actions">
-              <p-button
-                label="Save as new"
-                icon="pi pi-save"
-                size="small"
-                severity="secondary"
-                (onClick)="openNewTemplateDialog()"
-              />
-              <p-button
-                label="Update template"
-                icon="pi pi-refresh"
-                size="small"
-                severity="secondary"
-                [disabled]="!canUpdateSelectedTemplate()"
-                (onClick)="openRenameTemplateDialog()"
-              />
-            </div>
-          }
-          @if (weightCost() === 0 || showInactiveWeights()) {
-            <div class="weight-row">
-              <label class="weight-label">
-                Driver Time
-                @if (weightCost() > 0) {
-                  <span class="weight-muted">(suppressed)</span>
-                }
-              </label>
-              <input type="range" min="0" max="100" step="1" [(ngModel)]="weightTime" />
-              <span class="weight-value">{{ activeWeightTime() }}%</span>
-            </div>
-          }
-          @if (weightCost() === 0 || showInactiveWeights()) {
-            <div class="weight-row">
-              <label class="weight-label">
-                Distance
-                @if (weightCost() > 0) {
-                  <span class="weight-muted">(suppressed)</span>
-                }
-              </label>
-              <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDistance" />
-              <span class="weight-value">{{ activeWeightDistance() }}%</span>
-            </div>
-          }
           <div class="weight-row">
-            <label class="weight-label">Due Date</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDate" />
-            <span class="weight-value">{{ activeWeightDate() }}%</span>
+            <label class="weight-label">Due date priority</label>
+            <input type="range" min="0" max="100" step="1" [(ngModel)]="dueDatePriority" />
+            <span class="weight-value">{{ dueDatePriority() }}%</span>
           </div>
           <div class="weight-row">
-            <label class="weight-label">Cost</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightCost" />
-            <span class="weight-value">{{ activeWeightCost() }}%</span>
-          </div>
-          <div class="weight-row">
-            <label class="weight-label">Overtime</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="weightOvertime" />
-            <span class="weight-value">{{ activeWeightOvertime() }}%</span>
-          </div>
-          <div class="solver-caps-title">Solver caps</div>
-          <div class="weight-row">
-            <label class="weight-label">Due cap</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="dueCostCapPercent" />
-            <span class="weight-value">{{ dueCostCapPercent() }}%</span>
-          </div>
-          <div class="weight-row">
-            <label class="weight-label">Detour cap</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="detourCostCapPercent" />
-            <span class="weight-value">{{ detourCostCapPercent() }}%</span>
-          </div>
-          <div class="weight-row">
-            <label class="weight-label">Detour ref</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="detourRefKmPercent" />
-            <span class="weight-value">{{ detourRefKmPercent() }}%</span>
-          </div>
-          <div class="weight-row">
-            <label class="weight-label">Late ref</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="lateRefMinutesPercent" />
-            <span class="weight-value">{{ lateRefMinutesPercent() }}%</span>
+            <label class="weight-label">Worktime deviation</label>
+            <input type="range" min="0" max="50" step="1" [(ngModel)]="worktimeDeviationPercent" />
+            <span class="weight-value">{{ worktimeDeviationPercent() }}%</span>
           </div>
           <label class="weight-checkbox">
             <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
             <span>Enforce service type match</span>
           </label>
-          @if (hasInactiveWeights()) {
-            <button
-              type="button"
-              class="weight-toggle"
-              (click)="showInactiveWeights.set(!showInactiveWeights())"
-            >
-              {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
-            </button>
-          }
         </div>
 
         @if (!loadingDrivers()) {
