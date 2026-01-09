@@ -16,6 +16,11 @@ public class WeightTemplateConfiguration : IEntityTypeConfiguration<WeightTempla
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(x => x.AlgorithmType)
+            .HasMaxLength(50)
+            .IsRequired()
+            .HasDefaultValue("Lollipop");
+
         builder.Property(x => x.WeightDistance)
             .HasColumnType("decimal(18,4)");
         builder.Property(x => x.WeightTravelTime)

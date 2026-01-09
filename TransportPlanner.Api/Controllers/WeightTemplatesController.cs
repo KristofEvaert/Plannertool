@@ -32,8 +32,6 @@ public class WeightTemplatesController : ControllerBase
     [ProducesResponseType(typeof(List<WeightTemplateDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<WeightTemplateDto>>> GetAll(
         [FromQuery] int? ownerId,
-        [FromQuery] int? serviceTypeId,
-        [FromQuery] bool includeGlobal = true,
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
@@ -42,48 +40,24 @@ public class WeightTemplatesController : ControllerBase
             ownerId = CurrentOwnerId;
         }
 
+        if (!IsSuperAdmin && !ownerId.HasValue)
+        {
+            return Forbid();
+        }
+
         if (ownerId.HasValue && ownerId.Value > 0 && !CanAccessOwner(ownerId.Value))
         {
             return Forbid();
         }
 
-        if (serviceTypeId.HasValue && serviceTypeId.Value > 0)
-        {
-            var serviceType = await _dbContext.ServiceTypes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(st => st.Id == serviceTypeId.Value && st.IsActive, cancellationToken);
-            if (serviceType == null)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {serviceTypeId.Value} does not exist or is inactive." });
-            }
-            if (ownerId.HasValue && ownerId.Value > 0 && serviceType.OwnerId != ownerId.Value)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {serviceTypeId.Value} does not belong to OwnerId {ownerId.Value}." });
-            }
-        }
-
         var query = _dbContext.WeightTemplates
             .AsNoTracking()
-            .Include(t => t.LocationLinks)
+            .Where(t => t.OwnerId != null && t.ScopeType == WeightTemplateScopeType.Owner)
             .AsQueryable();
 
         if (ownerId.HasValue && ownerId.Value > 0)
         {
-            query = includeGlobal
-                ? query.Where(t => t.OwnerId == null || t.OwnerId == ownerId.Value)
-                : query.Where(t => t.OwnerId == ownerId.Value);
-        }
-
-        if (serviceTypeId.HasValue && serviceTypeId.Value > 0)
-        {
-            query = includeGlobal
-                ? query.Where(t => t.ServiceTypeId == null || t.ServiceTypeId == serviceTypeId.Value)
-                : query.Where(t => t.ServiceTypeId == serviceTypeId.Value);
-        }
-
-        if (!includeGlobal)
-        {
-            query = query.Where(t => t.ScopeType != WeightTemplateScopeType.Global);
+            query = query.Where(t => t.OwnerId == ownerId.Value);
         }
 
         if (!includeInactive)
@@ -97,20 +71,11 @@ public class WeightTemplatesController : ControllerBase
             {
                 Id = t.Id,
                 Name = t.Name,
-                ScopeType = t.ScopeType.ToString(),
                 OwnerId = t.OwnerId,
-                ServiceTypeId = t.ServiceTypeId,
                 IsActive = t.IsActive,
-                WeightDistance = t.WeightDistance,
-                WeightTravelTime = t.WeightTravelTime,
-                WeightOvertime = t.WeightOvertime,
-                WeightCost = t.WeightCost,
-                WeightDate = t.WeightDate,
-                DueCostCapPercent = t.DueCostCapPercent,
-                DetourCostCapPercent = t.DetourCostCapPercent,
-                DetourRefKmPercent = t.DetourRefKmPercent,
-                LateRefMinutesPercent = t.LateRefMinutesPercent,
-                ServiceLocationIds = t.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
+                AlgorithmType = t.AlgorithmType,
+                DueDatePriority = ClampInt(t.WeightDate, 0, 100),
+                WorktimeDeviationPercent = ClampInt(t.WeightOvertime, 0, 50),
             })
             .ToListAsync(cancellationToken);
 
@@ -126,10 +91,9 @@ public class WeightTemplatesController : ControllerBase
     {
         var template = await _dbContext.WeightTemplates
             .AsNoTracking()
-            .Include(t => t.LocationLinks)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (template == null)
+        if (template == null || template.OwnerId == null || template.ScopeType != WeightTemplateScopeType.Owner)
         {
             return NotFound();
         }
@@ -143,25 +107,16 @@ public class WeightTemplatesController : ControllerBase
         {
             Id = template.Id,
             Name = template.Name,
-            ScopeType = template.ScopeType.ToString(),
             OwnerId = template.OwnerId,
-            ServiceTypeId = template.ServiceTypeId,
             IsActive = template.IsActive,
-            WeightDistance = template.WeightDistance,
-            WeightTravelTime = template.WeightTravelTime,
-            WeightOvertime = template.WeightOvertime,
-            WeightCost = template.WeightCost,
-            WeightDate = template.WeightDate,
-            DueCostCapPercent = template.DueCostCapPercent,
-            DetourCostCapPercent = template.DetourCostCapPercent,
-            DetourRefKmPercent = template.DetourRefKmPercent,
-            LateRefMinutesPercent = template.LateRefMinutesPercent,
-            ServiceLocationIds = template.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
+            AlgorithmType = template.AlgorithmType,
+            DueDatePriority = ClampInt(template.WeightDate, 0, 100),
+            WorktimeDeviationPercent = ClampInt(template.WeightOvertime, 0, 50),
         });
     }
 
     [HttpPost]
-    [Authorize(Policy = "RequireAdmin")]
+    [Authorize(Policy = "RequireStaff")]
     [ProducesResponseType(typeof(WeightTemplateDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<WeightTemplateDto>> Create(
         [FromBody] SaveWeightTemplateRequest request,
@@ -172,75 +127,35 @@ public class WeightTemplatesController : ControllerBase
             return BadRequest(new { message = "Name is required." });
         }
 
-        if (!TryParseScopeType(request.ScopeType, out var scopeType, out var scopeError))
-        {
-            return BadRequest(new { message = scopeError });
-        }
-
-        if (scopeType is WeightTemplateScopeType.Owner or WeightTemplateScopeType.Location)
-        {
-            return BadRequest(new { message = "Only Global and ServiceType scopes are supported." });
-        }
-
-        if (scopeType == WeightTemplateScopeType.Global && !IsSuperAdmin)
-        {
-            return Forbid();
-        }
-
-        if (!ValidateScopeRequirements(scopeType, request, out var validationError))
-        {
-            return BadRequest(new { message = validationError });
-        }
-
         var ownerId = ResolveOwnerId(request.OwnerId);
-        if (request.OwnerId.HasValue && ownerId == null)
+        if (IsSuperAdmin && !request.OwnerId.HasValue)
+        {
+            return BadRequest(new { message = "OwnerId is required." });
+        }
+
+        if (ownerId == null)
         {
             return Forbid();
         }
 
-        if (request.ServiceTypeId.HasValue)
+        var algorithmType = NormalizeAlgorithmType(request.AlgorithmType);
+        if (!IsSupportedAlgorithmType(algorithmType))
         {
-            var serviceType = await _dbContext.ServiceTypes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(st => st.Id == request.ServiceTypeId.Value && st.IsActive, cancellationToken);
-            if (serviceType == null)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not exist or is inactive." });
-            }
-            if (!serviceType.OwnerId.HasValue)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} is not assigned to an owner." });
-            }
-            if (ownerId.HasValue && serviceType.OwnerId.Value != ownerId.Value)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not belong to OwnerId {ownerId.Value}." });
-            }
-            ownerId ??= serviceType.OwnerId.Value;
+            return BadRequest(new { message = $"Unsupported algorithm '{request.AlgorithmType}'." });
         }
 
-        var locationIds = await ValidateServiceLocationsAsync(ownerId, request.ServiceLocationIds, cancellationToken);
-        if (locationIds.Count != request.ServiceLocationIds.Count)
-        {
-            return BadRequest(new { message = "One or more service locations were not found." });
-        }
-
+        var dueDatePriority = ClampInt(request.DueDatePriority, 0, 100);
+        var worktimeDeviationPercent = ClampInt(request.WorktimeDeviationPercent, 0, 50);
         var nowUtc = DateTime.UtcNow;
         var template = new WeightTemplate
         {
             Name = request.Name.Trim(),
-            ScopeType = scopeType,
+            ScopeType = WeightTemplateScopeType.Owner,
             OwnerId = ownerId,
-            ServiceTypeId = request.ServiceTypeId,
             IsActive = request.IsActive,
-            WeightDistance = NormalizeWeight(request.WeightDistance),
-            WeightTravelTime = NormalizeWeight(request.WeightTravelTime),
-            WeightOvertime = NormalizeWeight(request.WeightOvertime),
-            WeightCost = NormalizeWeight(request.WeightCost),
-            WeightDate = NormalizeWeight(request.WeightDate),
-            DueCostCapPercent = NormalizePercent(request.DueCostCapPercent),
-            DetourCostCapPercent = NormalizePercent(request.DetourCostCapPercent),
-            DetourRefKmPercent = NormalizePercent(request.DetourRefKmPercent),
-            LateRefMinutesPercent = NormalizePercent(request.LateRefMinutesPercent),
+            AlgorithmType = algorithmType,
+            WeightDate = dueDatePriority,
+            WeightOvertime = worktimeDeviationPercent,
             CreatedUtc = nowUtc,
             UpdatedUtc = nowUtc,
             CreatedBy = CurrentUserId ?? Guid.Empty
@@ -249,23 +164,11 @@ public class WeightTemplatesController : ControllerBase
         _dbContext.WeightTemplates.Add(template);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        if (locationIds.Count > 0)
-        {
-            var links = locationIds.Select(id => new WeightTemplateLocationLink
-            {
-                WeightTemplateId = template.Id,
-                ServiceLocationId = id
-            });
-            _dbContext.WeightTemplateLocationLinks.AddRange(links);
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
         return Ok(await BuildDtoAsync(template.Id, cancellationToken));
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = "RequireAdmin")]
+    [Authorize(Policy = "RequireStaff")]
     [ProducesResponseType(typeof(WeightTemplateDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WeightTemplateDto>> Update(
@@ -278,30 +181,10 @@ public class WeightTemplatesController : ControllerBase
             return BadRequest(new { message = "Name is required." });
         }
 
-        if (!TryParseScopeType(request.ScopeType, out var scopeType, out var scopeError))
-        {
-            return BadRequest(new { message = scopeError });
-        }
-
-        if (scopeType is WeightTemplateScopeType.Owner or WeightTemplateScopeType.Location)
-        {
-            return BadRequest(new { message = "Only Global and ServiceType scopes are supported." });
-        }
-
-        if (scopeType == WeightTemplateScopeType.Global && !IsSuperAdmin)
-        {
-            return Forbid();
-        }
-
-        if (!ValidateScopeRequirements(scopeType, request, out var validationError))
-        {
-            return BadRequest(new { message = validationError });
-        }
-
         var template = await _dbContext.WeightTemplates
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (template == null)
+        if (template == null || template.OwnerId == null || template.ScopeType != WeightTemplateScopeType.Owner)
         {
             return NotFound();
         }
@@ -312,70 +195,29 @@ public class WeightTemplatesController : ControllerBase
         }
 
         var ownerId = ResolveOwnerId(request.OwnerId) ?? template.OwnerId;
-        if (request.OwnerId.HasValue && ownerId == null)
+        if (ownerId == null)
         {
             return Forbid();
         }
 
-        if (request.ServiceTypeId.HasValue)
+        var algorithmType = string.IsNullOrWhiteSpace(request.AlgorithmType)
+            ? template.AlgorithmType
+            : NormalizeAlgorithmType(request.AlgorithmType);
+        if (!IsSupportedAlgorithmType(algorithmType))
         {
-            var serviceType = await _dbContext.ServiceTypes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(st => st.Id == request.ServiceTypeId.Value && st.IsActive, cancellationToken);
-            if (serviceType == null)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not exist or is inactive." });
-            }
-            if (!serviceType.OwnerId.HasValue)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} is not assigned to an owner." });
-            }
-            if (ownerId.HasValue && serviceType.OwnerId.Value != ownerId.Value)
-            {
-                return BadRequest(new { message = $"ServiceTypeId {request.ServiceTypeId.Value} does not belong to OwnerId {ownerId.Value}." });
-            }
-            ownerId ??= serviceType.OwnerId.Value;
+            return BadRequest(new { message = $"Unsupported algorithm '{request.AlgorithmType}'." });
         }
 
-        var locationIds = await ValidateServiceLocationsAsync(ownerId, request.ServiceLocationIds, cancellationToken);
-        if (locationIds.Count != request.ServiceLocationIds.Count)
-        {
-            return BadRequest(new { message = "One or more service locations were not found." });
-        }
-
+        var dueDatePriority = ClampInt(request.DueDatePriority, 0, 100);
+        var worktimeDeviationPercent = ClampInt(request.WorktimeDeviationPercent, 0, 50);
         template.Name = request.Name.Trim();
-        template.ScopeType = scopeType;
+        template.ScopeType = WeightTemplateScopeType.Owner;
         template.OwnerId = ownerId;
-        template.ServiceTypeId = request.ServiceTypeId;
         template.IsActive = request.IsActive;
-        template.WeightDistance = NormalizeWeight(request.WeightDistance);
-        template.WeightTravelTime = NormalizeWeight(request.WeightTravelTime);
-        template.WeightOvertime = NormalizeWeight(request.WeightOvertime);
-        template.WeightCost = NormalizeWeight(request.WeightCost);
-        template.WeightDate = NormalizeWeight(request.WeightDate);
-        template.DueCostCapPercent = NormalizePercent(request.DueCostCapPercent);
-        template.DetourCostCapPercent = NormalizePercent(request.DetourCostCapPercent);
-        template.DetourRefKmPercent = NormalizePercent(request.DetourRefKmPercent);
-        template.LateRefMinutesPercent = NormalizePercent(request.LateRefMinutesPercent);
+        template.AlgorithmType = algorithmType;
+        template.WeightDate = dueDatePriority;
+        template.WeightOvertime = worktimeDeviationPercent;
         template.UpdatedUtc = DateTime.UtcNow;
-
-        var existingLinks = await _dbContext.WeightTemplateLocationLinks
-            .Where(l => l.WeightTemplateId == template.Id)
-            .ToListAsync(cancellationToken);
-        if (existingLinks.Count > 0)
-        {
-            _dbContext.WeightTemplateLocationLinks.RemoveRange(existingLinks);
-        }
-
-        if (locationIds.Count > 0)
-        {
-            var links = locationIds.Select(id => new WeightTemplateLocationLink
-            {
-                WeightTemplateId = template.Id,
-                ServiceLocationId = id
-            });
-            _dbContext.WeightTemplateLocationLinks.AddRange(links);
-        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -393,7 +235,7 @@ public class WeightTemplatesController : ControllerBase
         var template = await _dbContext.WeightTemplates
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (template == null)
+        if (template == null || template.OwnerId == null || template.ScopeType != WeightTemplateScopeType.Owner)
         {
             return NotFound();
         }
@@ -428,102 +270,44 @@ public class WeightTemplatesController : ControllerBase
         return CurrentOwnerId.Value;
     }
 
-    private static decimal NormalizeWeight(decimal value)
+    private static int ClampInt(int value, int min, int max)
     {
-        if (value < 1) return 1;
-        if (value > 100) return 100;
+        if (value < min) return min;
+        if (value > max) return max;
         return value;
     }
 
-    private static decimal NormalizePercent(decimal value)
+    private static int ClampInt(decimal value, int min, int max)
     {
-        if (value < 0) return 0;
-        if (value > 100) return 100;
-        return value;
-    }
-
-    private async Task<List<int>> ValidateServiceLocationsAsync(
-        int? ownerId,
-        List<int> serviceLocationIds,
-        CancellationToken cancellationToken)
-    {
-        if (serviceLocationIds.Count == 0)
-        {
-            return new List<int>();
-        }
-
-        var query = _dbContext.ServiceLocations.AsNoTracking().Where(sl => serviceLocationIds.Contains(sl.Id));
-        if (ownerId.HasValue)
-        {
-            query = query.Where(sl => sl.OwnerId == ownerId.Value);
-        }
-
-        var validIds = await query.Select(sl => sl.Id).ToListAsync(cancellationToken);
-        return validIds;
-    }
-
-    private static bool TryParseScopeType(string scopeType, out WeightTemplateScopeType parsed, out string? error)
-    {
-        if (Enum.TryParse<WeightTemplateScopeType>(scopeType, ignoreCase: true, out parsed))
-        {
-            error = null;
-            return true;
-        }
-
-        parsed = WeightTemplateScopeType.Global;
-        error = "Invalid scope type.";
-        return false;
-    }
-
-    private static bool ValidateScopeRequirements(
-        WeightTemplateScopeType scopeType,
-        SaveWeightTemplateRequest request,
-        out string? error)
-    {
-        error = null;
-        return scopeType switch
-        {
-            WeightTemplateScopeType.Owner when !request.OwnerId.HasValue =>
-                Fail("OwnerId is required for Owner scope.", out error),
-            WeightTemplateScopeType.ServiceType when !request.ServiceTypeId.HasValue =>
-                Fail("ServiceTypeId is required for ServiceType scope.", out error),
-            WeightTemplateScopeType.Location when request.ServiceLocationIds.Count == 0 =>
-                Fail("ServiceLocationIds are required for Location scope.", out error),
-            _ => true
-        };
-    }
-
-    private static bool Fail(string message, out string? error)
-    {
-        error = message;
-        return false;
+        var rounded = (int)Math.Round(value, MidpointRounding.AwayFromZero);
+        return ClampInt(rounded, min, max);
     }
 
     private async Task<WeightTemplateDto> BuildDtoAsync(int templateId, CancellationToken cancellationToken)
     {
         var template = await _dbContext.WeightTemplates
             .AsNoTracking()
-            .Include(t => t.LocationLinks)
             .FirstAsync(t => t.Id == templateId, cancellationToken);
 
         return new WeightTemplateDto
         {
             Id = template.Id,
             Name = template.Name,
-            ScopeType = template.ScopeType.ToString(),
             OwnerId = template.OwnerId,
-            ServiceTypeId = template.ServiceTypeId,
             IsActive = template.IsActive,
-            WeightDistance = template.WeightDistance,
-            WeightTravelTime = template.WeightTravelTime,
-            WeightOvertime = template.WeightOvertime,
-            WeightCost = template.WeightCost,
-            WeightDate = template.WeightDate,
-            DueCostCapPercent = template.DueCostCapPercent,
-            DetourCostCapPercent = template.DetourCostCapPercent,
-            DetourRefKmPercent = template.DetourRefKmPercent,
-            LateRefMinutesPercent = template.LateRefMinutesPercent,
-            ServiceLocationIds = template.LocationLinks.Select(l => l.ServiceLocationId).ToList(),
+            AlgorithmType = template.AlgorithmType,
+            DueDatePriority = ClampInt(template.WeightDate, 0, 100),
+            WorktimeDeviationPercent = ClampInt(template.WeightOvertime, 0, 50),
         };
+    }
+
+    private static string NormalizeAlgorithmType(string? algorithmType)
+    {
+        return string.IsNullOrWhiteSpace(algorithmType) ? "Lollipop" : algorithmType.Trim();
+    }
+
+    private static bool IsSupportedAlgorithmType(string algorithmType)
+    {
+        return string.Equals(algorithmType, "Lollipop", StringComparison.OrdinalIgnoreCase);
     }
 }

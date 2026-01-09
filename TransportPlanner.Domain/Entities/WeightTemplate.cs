@@ -11,6 +11,7 @@ public class WeightTemplate
     public DateTime CreatedUtc { get; set; }
     public DateTime UpdatedUtc { get; set; }
     public bool IsActive { get; set; } = true;
+    public string AlgorithmType { get; set; } = "Lollipop";
 
     public decimal WeightDistance { get; set; } = 1;
     public decimal WeightTravelTime { get; set; } = 1;

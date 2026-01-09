@@ -102,11 +102,6 @@ export interface MapPagePreferences {
   fromDate?: string;
   toDate?: string;
   weightTemplateId?: number | null;
-  normalizeWeights?: boolean;
-  dueCostCapPercent?: number;
-  detourCostCapPercent?: number;
-  detourRefKmPercent?: number;
-  lateRefMinutesPercent?: number;
 }
 
 export interface WeightTemplateOption {

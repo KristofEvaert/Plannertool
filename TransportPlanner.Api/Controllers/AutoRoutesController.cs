@@ -20,21 +20,8 @@ public class AutoGenerateRouteRequest
     public int OwnerId { get; set; }
     public int? MaxStops { get; set; }
     public List<Guid>? ServiceLocationToolIds { get; set; } // explicit candidate list from map
-    public string? Template { get; set; }
-    public int? DueDatePriority { get; set; }
-    public int? WorktimeDeviationPercent { get; set; }
-    public double? WeightTime { get; set; }
-    public double? WeightDistance { get; set; }
-    public double? WeightDate { get; set; }
-    public double? WeightCost { get; set; }
-    public double? WeightOvertime { get; set; }
-    public double? DueCostCapPercent { get; set; }
-    public double? DetourCostCapPercent { get; set; }
-    public double? DetourRefKmPercent { get; set; }
-    public double? LateRefMinutesPercent { get; set; }
     public int? WeightTemplateId { get; set; }
     public bool? RequireServiceTypeMatch { get; set; }
-    public bool? NormalizeWeights { get; set; }
 }
 
 public class AutoGenerateAllRequest
@@ -43,21 +30,8 @@ public class AutoGenerateAllRequest
     public int OwnerId { get; set; }
     public int? MaxStopsPerDriver { get; set; }
     public List<Guid>? ServiceLocationToolIds { get; set; } // optional candidate list from map
-    public string? Template { get; set; }
-    public int? DueDatePriority { get; set; }
-    public int? WorktimeDeviationPercent { get; set; }
-    public double? WeightTime { get; set; }
-    public double? WeightDistance { get; set; }
-    public double? WeightDate { get; set; }
-    public double? WeightCost { get; set; }
-    public double? WeightOvertime { get; set; }
-    public double? DueCostCapPercent { get; set; }
-    public double? DetourCostCapPercent { get; set; }
-    public double? DetourRefKmPercent { get; set; }
-    public double? LateRefMinutesPercent { get; set; }
     public int? WeightTemplateId { get; set; }
     public bool? RequireServiceTypeMatch { get; set; }
-    public bool? NormalizeWeights { get; set; }
 }
 
 public class AutoGenerateAllResponse
@@ -128,14 +102,31 @@ public class AutoRoutesController : ControllerBase
             return BadRequest(new { message = "Driver is not available on this date." });
         }
 
-        var template = NormalizeTemplate(request.Template);
-        if (!IsSupportedTemplate(template))
+        if (!request.WeightTemplateId.HasValue)
         {
-            return BadRequest(new { message = $"Unsupported template '{request.Template}'." });
+            return BadRequest(new { message = "Weight template is required." });
         }
 
-        var dueDatePriority = ClampPercent(request.DueDatePriority ?? 50, 0, 100);
-        var worktimeDeviationPercent = ClampPercent(request.WorktimeDeviationPercent ?? 10, 0, 50);
+        var weightTemplateResult = await ResolveWeightTemplateAsync(request.WeightTemplateId, request.OwnerId, cancellationToken);
+        if (weightTemplateResult.Error != null || weightTemplateResult.Template == null)
+        {
+            return BadRequest(new { message = weightTemplateResult.Error ?? "Weight template not found." });
+        }
+
+        var algorithmType = NormalizeAlgorithmType(weightTemplateResult.Template.AlgorithmType);
+        if (!IsSupportedAlgorithmType(algorithmType))
+        {
+            return BadRequest(new { message = $"Unsupported algorithm '{weightTemplateResult.Template.AlgorithmType}'." });
+        }
+
+        var dueDatePriority = ClampPercent(
+            (int)Math.Round(weightTemplateResult.Template.WeightDate, MidpointRounding.AwayFromZero),
+            0,
+            100);
+        var worktimeDeviationPercent = ClampPercent(
+            (int)Math.Round(weightTemplateResult.Template.WeightOvertime, MidpointRounding.AwayFromZero),
+            0,
+            50);
         var requireServiceTypeMatch = request.RequireServiceTypeMatch == true;
 
         await ClearTempRoutesForDayAsync(date, request.OwnerId, cancellationToken);
@@ -160,6 +151,7 @@ public class AutoRoutesController : ControllerBase
             capacityMinutes,
             availability.StartMinuteOfDay,
             availability.EndMinuteOfDay,
+            weightTemplateResult.Template.Id,
             dueDatePriority,
             worktimeDeviationPercent,
             locationWindows,
@@ -195,14 +187,31 @@ public class AutoRoutesController : ControllerBase
             return Forbid();
         }
 
-        var template = NormalizeTemplate(request.Template);
-        if (!IsSupportedTemplate(template))
+        if (!request.WeightTemplateId.HasValue)
         {
-            return BadRequest(new { message = $"Unsupported template '{request.Template}'." });
+            return BadRequest(new { message = "Weight template is required." });
         }
 
-        var dueDatePriority = ClampPercent(request.DueDatePriority ?? 50, 0, 100);
-        var worktimeDeviationPercent = ClampPercent(request.WorktimeDeviationPercent ?? 10, 0, 50);
+        var weightTemplateResult = await ResolveWeightTemplateAsync(request.WeightTemplateId, request.OwnerId, cancellationToken);
+        if (weightTemplateResult.Error != null || weightTemplateResult.Template == null)
+        {
+            return BadRequest(new { message = weightTemplateResult.Error ?? "Weight template not found." });
+        }
+
+        var algorithmType = NormalizeAlgorithmType(weightTemplateResult.Template.AlgorithmType);
+        if (!IsSupportedAlgorithmType(algorithmType))
+        {
+            return BadRequest(new { message = $"Unsupported algorithm '{weightTemplateResult.Template.AlgorithmType}'." });
+        }
+
+        var dueDatePriority = ClampPercent(
+            (int)Math.Round(weightTemplateResult.Template.WeightDate, MidpointRounding.AwayFromZero),
+            0,
+            100);
+        var worktimeDeviationPercent = ClampPercent(
+            (int)Math.Round(weightTemplateResult.Template.WeightOvertime, MidpointRounding.AwayFromZero),
+            0,
+            50);
         var requireServiceTypeMatch = request.RequireServiceTypeMatch == true;
 
         await ClearTempRoutesForDayAsync(date, request.OwnerId, cancellationToken);
@@ -341,6 +350,7 @@ public class AutoRoutesController : ControllerBase
                 context.CapacityMinutes,
                 context.StartMinuteOfDay,
                 context.EndMinuteOfDay,
+                weightTemplateResult.Template.Id,
                 dueDatePriority,
                 worktimeDeviationPercent,
                 locationWindows,
@@ -386,6 +396,7 @@ public class AutoRoutesController : ControllerBase
         int capacityMinutes,
         int startMinuteOfDay,
         int endMinuteOfDay,
+        int weightTemplateId,
         int dueDatePriority,
         int worktimeDeviationPercent,
         Dictionary<int, TimeWindow> locationWindows,
@@ -700,7 +711,7 @@ public class AutoRoutesController : ControllerBase
         routeEntity.TotalKm = (float)totalKm;
         routeEntity.TotalMinutes = totalTravelMinutes + totalWaitMinutes + stops.Sum(s => s.ServiceMinutes);
         routeEntity.Status = RouteStatus.Temp;
-        routeEntity.WeightTemplateId = null;
+        routeEntity.WeightTemplateId = weightTemplateId;
 
         if (existingRoute == null)
         {
@@ -937,14 +948,14 @@ public class AutoRoutesController : ControllerBase
             NormalizePercent(lateRefMinutesPercent ?? 50));
     }
 
-    private static string NormalizeTemplate(string? template)
+    private static string NormalizeAlgorithmType(string? algorithmType)
     {
-        return string.IsNullOrWhiteSpace(template) ? "Lollipop" : template.Trim();
+        return string.IsNullOrWhiteSpace(algorithmType) ? "Lollipop" : algorithmType.Trim();
     }
 
-    private static bool IsSupportedTemplate(string template)
+    private static bool IsSupportedAlgorithmType(string algorithmType)
     {
-        return string.Equals(template, "Lollipop", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(algorithmType, "Lollipop", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int ClampPercent(int value, int min, int max)
@@ -1174,19 +1185,19 @@ public class AutoRoutesController : ControllerBase
     {
         if (!weightTemplateId.HasValue)
         {
-            return new WeightTemplateResult(null, null);
+            return new WeightTemplateResult(null, "Weight template is required.");
         }
 
         var template = await _dbContext.WeightTemplates
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == weightTemplateId.Value, cancellationToken);
 
-        if (template == null || !template.IsActive)
+        if (template == null || template.OwnerId == null || !template.IsActive)
         {
             return new WeightTemplateResult(null, "Weight template not found or inactive.");
         }
 
-        if (!IsSuperAdmin && template.OwnerId.HasValue && template.OwnerId.Value != ownerId)
+        if (template.OwnerId.Value != ownerId)
         {
             return new WeightTemplateResult(null, "Weight template is not available for this owner.");
         }

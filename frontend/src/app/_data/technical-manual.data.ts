@@ -85,11 +85,11 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
   {
     id: 'planning',
     title: 'Routing and auto-generate',
-    summary: 'Auto-generate creates routes per day or period with weighted scoring.',
+    summary: 'Auto-generate creates routes per day or period with lollipop scoring.',
     businessLogic: [
       'Auto-generate for a driver: /api/routes/auto-generate.',
       'Auto-generate for all drivers: /api/routes/auto-generate/all.',
-      'Weights include time, distance, due date, cost, and overtime.',
+      'Templates store the algorithm plus due date priority and worktime deviation (Lollipop today).',
       'Service type matching can be enforced on planning and manual additions.',
       'Recalculations clear planned stops for the selected day before rebuilding.',
     ],
@@ -97,7 +97,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
       'Routes, RouteStops store the day plan.',
       'PlanningClusters and PlanningClusterItems group candidates.',
       'DriverAvailabilities, DayPlanLocks, DriverDayOverrides set day capacity.',
-      'WeightTemplates and WeightTemplateLocationLinks store reusable weights.',
+      'WeightTemplates store owner-scoped lollipop settings.',
       'ServiceTypes include OwnerId for owner-scoped selection.',
     ],
     api: [
@@ -106,7 +106,7 @@ export const TECHNICAL_SECTIONS: TechnicalSection[] = [
     ],
     notes: [
       'Route start and end fall back to the driver default if no override exists.',
-      'Weight templates are ServiceType-scoped; Global templates are reserved for SuperAdmin.',
+      'Weight templates are owner-only; planners can create/update from the map and admins manage full CRUD.',
       'ServiceLocation status switches between Open and Planned during route changes.',
       'Service type filters are scoped to the selected owner.',
       'SuperAdmin can query templates across all owners on the admin screen.',

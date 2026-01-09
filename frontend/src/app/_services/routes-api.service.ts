@@ -235,9 +235,7 @@ export class RoutesApiService {
     ownerId: number,
     serviceLocationToolIds: string[],
     options?: {
-      template?: string;
-      dueDatePriority?: number;
-      worktimeDeviationPercent?: number;
+      weightTemplateId?: number;
       requireServiceTypeMatch?: boolean;
     },
   ): Observable<RouteDto> {
@@ -246,9 +244,7 @@ export class RoutesApiService {
       driverToolId,
       ownerId,
       serviceLocationToolIds,
-      template: options?.template,
-      dueDatePriority: options?.dueDatePriority,
-      worktimeDeviationPercent: options?.worktimeDeviationPercent,
+      weightTemplateId: options?.weightTemplateId,
       requireServiceTypeMatch: options?.requireServiceTypeMatch,
     };
     return this.http.post<RouteDto>(`${this.baseUrl}/auto-generate`, body);
@@ -259,9 +255,7 @@ export class RoutesApiService {
     ownerId: number,
     serviceLocationToolIds: string[],
     options?: {
-      template?: string;
-      dueDatePriority?: number;
-      worktimeDeviationPercent?: number;
+      weightTemplateId?: number;
       requireServiceTypeMatch?: boolean;
     },
   ): Observable<AutoGenerateAllResponse> {
@@ -269,9 +263,7 @@ export class RoutesApiService {
       date: toYmd(date),
       ownerId,
       serviceLocationToolIds,
-      template: options?.template,
-      dueDatePriority: options?.dueDatePriority,
-      worktimeDeviationPercent: options?.worktimeDeviationPercent,
+      weightTemplateId: options?.weightTemplateId,
       requireServiceTypeMatch: options?.requireServiceTypeMatch,
     };
     return this.http.post<AutoGenerateAllResponse>(`${this.baseUrl}/auto-generate/all`, body);

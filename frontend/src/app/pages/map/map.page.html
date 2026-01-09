@@ -203,27 +203,93 @@
         <div class="auto-generate-weights">
           <div class="auto-generate-title">Auto-generate settings</div>
           <div class="weight-row">
-            <label class="weight-label">Template</label>
-            <p-select
-              optionLabel="label"
-              optionValue="value"
-              styleClass="w-full"
-              [options]="routeTemplateOptions"
-              [ngModel]="routeTemplate()"
-              [appendTo]="'body'"
-              (ngModelChange)="routeTemplate.set($event)"
-            />
+            <label class="weight-label">Weight template</label>
+            <div class="flex items-center gap-2 w-full">
+              <p-select
+                optionLabel="label"
+                optionValue="value"
+                styleClass="w-full"
+                placeholder="Select template"
+                [options]="weightTemplateOptions()"
+                [showClear]="true"
+                [appendTo]="'body'"
+                [ngModel]="selectedWeightTemplateId()"
+                (ngModelChange)="onWeightTemplateChange($event)"
+              />
+              @if (canManageTemplates()) {
+                <p-button
+                  label="New"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="openTemplateCreate()"
+                />
+                <p-button
+                  label="Edit"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  [disabled]="!selectedWeightTemplate()"
+                  (onClick)="startTemplateEdit()"
+                />
+              }
+            </div>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Due date priority</label>
-            <input type="range" min="0" max="100" step="1" [(ngModel)]="dueDatePriority" />
-            <span class="weight-value">{{ dueDatePriority() }}%</span>
-          </div>
-          <div class="weight-row">
-            <label class="weight-label">Worktime deviation</label>
-            <input type="range" min="0" max="50" step="1" [(ngModel)]="worktimeDeviationPercent" />
-            <span class="weight-value">{{ worktimeDeviationPercent() }}%</span>
-          </div>
+          @if (selectedWeightTemplate(); as template) {
+            <div class="weight-row">
+              <label class="weight-label">Algorithm</label>
+              <span class="weight-value">{{ template.algorithmType }}</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Due date priority</label>
+              @if (templateEditMode()) {
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  [(ngModel)]="templateEditDueDatePriority"
+                />
+                <span class="weight-value">{{ templateEditDueDatePriority() }}%</span>
+              } @else {
+                <span class="weight-value">{{ template.dueDatePriority }}%</span>
+              }
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Worktime deviation</label>
+              @if (templateEditMode()) {
+                <input
+                  type="range"
+                  min="0"
+                  max="50"
+                  step="1"
+                  [(ngModel)]="templateEditWorktimeDeviationPercent"
+                />
+                <span class="weight-value">{{ templateEditWorktimeDeviationPercent() }}%</span>
+              } @else {
+                <span class="weight-value">{{ template.worktimeDeviationPercent }}%</span>
+              }
+            </div>
+            @if (templateEditMode()) {
+              <div class="flex items-center gap-2">
+                <p-button
+                  label="Cancel"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="cancelTemplateEdit()"
+                />
+                <p-button
+                  label="Save"
+                  size="small"
+                  [loading]="templateSaveLoading()"
+                  (onClick)="saveTemplateEdits()"
+                />
+              </div>
+            }
+          } @else {
+            <div class="text-xs text-gray-500">Select a weight template to run auto-generate.</div>
+          }
           <label class="weight-checkbox">
             <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
             <span>Enforce service type match</span>
@@ -538,31 +604,80 @@
 <p-toast />
 
 <p-dialog
+  header="New weight template"
   [modal]="true"
   [closable]="true"
-  [style]="{ width: '420px' }"
-  [header]="templateDialogMode() === 'update' ? 'Update weight template' : 'Save weight template'"
-  [(visible)]="showTemplateNameDialogValue"
+  [style]="{ width: '640px' }"
+  [(visible)]="showTemplateDialogValue"
 >
-  <div class="flex flex-col gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="md:col-span-2">
+      <label class="block text-sm font-semibold mb-1">Name</label>
+      <input pInputText class="w-full" [(ngModel)]="templateDialogName" />
+    </div>
+
+    @if (canManageTemplateAlgorithm()) {
+      <div class="md:col-span-2">
+        <label class="block text-sm font-semibold mb-1">Algorithm</label>
+        <p-select
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select algorithm"
+          [options]="algorithmOptions"
+          [(ngModel)]="templateDialogAlgorithm"
+        />
+      </div>
+    }
+
     <div>
-      <label class="block text-sm font-semibold mb-1">Template name</label>
-      <input pInputText class="w-full" placeholder="Enter a name" [(ngModel)]="newTemplateName" />
+      <label class="block text-sm font-semibold mb-1">Due date priority</label>
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          class="w-full"
+          [(ngModel)]="templateDialogDueDatePriority"
+        />
+        <span class="text-sm font-semibold w-12 text-right"
+          >{{ templateDialogDueDatePriority() }}%</span
+        >
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Worktime deviation</label>
+      <div class="flex items-center gap-3">
+        <input
+          type="range"
+          min="0"
+          max="50"
+          step="1"
+          class="w-full"
+          [(ngModel)]="templateDialogWorktimeDeviationPercent"
+        />
+        <span class="text-sm font-semibold w-12 text-right"
+          >{{ templateDialogWorktimeDeviationPercent() }}%</span
+        >
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 md:col-span-2 mt-2">
+      <input type="checkbox" [(ngModel)]="templateDialogIsActive" />
+      <label class="text-sm">Active</label>
     </div>
   </div>
+
   <ng-template pTemplate="footer">
     <div class="flex justify-end gap-2">
       <p-button
         label="Cancel"
         severity="secondary"
         [outlined]="true"
-        (onClick)="showTemplateNameDialog.set(false)"
+        (onClick)="showTemplateDialog.set(false)"
       />
-      <p-button
-        label="Save"
-        [loading]="templateSaveLoading()"
-        (onClick)="saveTemplateFromDialog()"
-      />
+      <p-button label="Save" [loading]="templateSaveLoading()" (onClick)="saveTemplateCreate()" />
     </div>
   </ng-template>
 </p-dialog>

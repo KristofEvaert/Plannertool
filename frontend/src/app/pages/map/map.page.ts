@@ -172,6 +172,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const ownerId = this.selectedOwnerId();
     const mapItems = this.mapData()?.items ?? [];
     const selected = this.selectedDriver();
+    const weightTemplateId = this.selectedWeightTemplateId();
 
     if (!ownerId) {
       this.messageService.add({
@@ -191,6 +192,15 @@ export class MapPage implements AfterViewInit, OnDestroy {
       return;
     }
 
+    if (!weightTemplateId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Select template',
+        detail: 'Select a weight template first.',
+      });
+      return;
+    }
+
     if (selected && selected.availability) {
       this.autoGenerateLoading.set(true);
       try {
@@ -201,9 +211,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
             ownerId,
             mapItems.map((m) => m.toolId),
             {
-              template: this.routeTemplate(),
-              dueDatePriority: this.dueDatePriority(),
-              worktimeDeviationPercent: this.worktimeDeviationPercent(),
+              weightTemplateId: weightTemplateId,
               requireServiceTypeMatch: this.enforceServiceTypeMatch(),
             },
           ),
@@ -247,9 +255,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
           ownerId,
           toolIds,
           {
-            template: this.routeTemplate(),
-            dueDatePriority: this.dueDatePriority(),
-            worktimeDeviationPercent: this.worktimeDeviationPercent(),
+            weightTemplateId: weightTemplateId,
             requireServiceTypeMatch: this.enforceServiceTypeMatch(),
           },
         ),
@@ -284,12 +290,22 @@ export class MapPage implements AfterViewInit, OnDestroy {
   async autoGenerateForPeriod(): Promise<void> {
     const ownerId = this.selectedOwnerId();
     const mapItems = this.mapData()?.items ?? [];
+    const weightTemplateId = this.selectedWeightTemplateId();
 
     if (!ownerId) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Select owner',
         detail: 'Select an owner first.',
+      });
+      return;
+    }
+
+    if (!weightTemplateId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Select template',
+        detail: 'Select a weight template first.',
       });
       return;
     }
@@ -346,9 +362,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
               ownerId,
               toolIds,
               {
-                template: this.routeTemplate(),
-                dueDatePriority: this.dueDatePriority(),
-                worktimeDeviationPercent: this.worktimeDeviationPercent(),
+                weightTemplateId: weightTemplateId,
                 requireServiceTypeMatch: this.enforceServiceTypeMatch(),
               },
             ),
@@ -456,24 +470,24 @@ export class MapPage implements AfterViewInit, OnDestroy {
   serviceTypes = signal<ServiceTypeDto[]>([]);
   owners = signal<ServiceLocationOwnerDto[]>([]);
   selectedServiceTypeIds = signal<number[]>([]);
-  routeTemplate = signal('Lollipop');
-  routeTemplateOptions = [{ label: 'Lollipop', value: 'Lollipop' }];
-  dueDatePriority = signal(50);
-  worktimeDeviationPercent = signal(10);
-  weightTime = signal(1);
-  weightDistance = signal(1);
-  weightDate = signal(1);
-  weightCost = signal(1);
-  weightOvertime = signal(1);
-  dueCostCapPercent = signal(50);
-  detourCostCapPercent = signal(50);
-  detourRefKmPercent = signal(50);
-  lateRefMinutesPercent = signal(50);
-  normalizeWeights = signal(true);
+  algorithmOptions = [{ label: 'Lollipop', value: 'Lollipop' }];
   weightTemplates = signal<WeightTemplateDto[]>([]);
   selectedWeightTemplateId = signal<number | null>(null);
+  templateEditMode = signal(false);
+  templateEditDueDatePriority = signal(50);
+  templateEditWorktimeDeviationPercent = signal(10);
+  showTemplateDialog = signal(false);
+  templateDialogName = signal('');
+  templateDialogAlgorithm = signal('Lollipop');
+  templateDialogDueDatePriority = signal(50);
+  templateDialogWorktimeDeviationPercent = signal(10);
+  templateDialogIsActive = signal(true);
   enforceServiceTypeMatch = signal(true);
   canManageTemplates = computed(() => {
+    const roles = this.auth.currentUser()?.roles ?? [];
+    return roles.includes('Admin') || roles.includes('SuperAdmin') || roles.includes('Planner');
+  });
+  canManageTemplateAlgorithm = computed(() => {
     const roles = this.auth.currentUser()?.roles ?? [];
     return roles.includes('Admin') || roles.includes('SuperAdmin');
   });
@@ -482,46 +496,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const id = this.selectedWeightTemplateId();
     return this.weightTemplates().find((template) => template.id === id) ?? null;
   });
-  availableWeightTemplates = computed(() => {
-    const selectedTypes = this.selectedServiceTypeIds();
-    return this.weightTemplates().filter(
-      (template) =>
-        template.scopeType === 'Global' ||
-        (template.serviceTypeId != null && selectedTypes.includes(template.serviceTypeId)),
-    );
-  });
   weightTemplateOptions = computed<WeightTemplateOption[]>(() => {
-    const sorted = [...this.availableWeightTemplates()].sort((a, b) => {
-      const aGlobal = a.scopeType === 'Global';
-      const bGlobal = b.scopeType === 'Global';
-      if (aGlobal !== bGlobal) {
-        return aGlobal ? 1 : -1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-    return sorted.map((template) => ({
-      label: template.scopeType === 'Global' ? `${template.name} (g)` : template.name,
-      value: template.id,
-    }));
+    const sorted = [...this.weightTemplates()].sort((a, b) => a.name.localeCompare(b.name));
+    return sorted.map((template) => ({ label: template.name, value: template.id }));
   });
-  activeWeightTime = computed(() => this.weightTime());
-  activeWeightDistance = computed(() => this.weightDistance());
-  activeWeightDate = computed(() => this.weightDate());
-  activeWeightCost = computed(() => this.weightCost());
-  activeWeightOvertime = computed(() => this.weightOvertime());
-  showCostDoubleCountWarning = computed(() => this.weightCost() > 0 && this.weightDistance() > 0);
-  showTemplateNameDialog = signal(false);
-  newTemplateName = signal('');
   templateSaveLoading = signal(false);
-  templateDialogMode = signal<'create' | 'update'>('create');
-  showInactiveWeights = signal(false);
-  activeWeightSummary = computed(() => this.buildWeightSummary().active);
-  inactiveWeightSummary = computed(() => this.buildWeightSummary().inactive);
-  suppressedWeightSummary = computed(() => this.buildWeightSummary().suppressed);
-  hasInactiveWeights = computed(() => {
-    const summary = this.buildWeightSummary();
-    return summary.inactive.length > 0 || summary.suppressed.length > 0;
-  });
   showBulkAddDialog = signal(false);
   bulkAddRejections = signal<BulkAddRejection[]>([]);
   selectedServiceTypesLegend = computed(() => {
@@ -599,7 +578,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private routeSaveLatest = new Map<string, RouteInfo>();
   private hasSavedPreferences = false;
   private hasAutoLoaded = false;
-  private hasEnsuredGeneralTemplate = false;
   private readonly hoursCacheTtlMs = 30_000;
 
   // UI: selected stop index (within location waypoints only) for arrow-based reordering
@@ -613,11 +591,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
   showStartOverrideEditor = false;
   showEndOverrideEditor = false;
 
-  get showTemplateNameDialogValue(): boolean {
-    return this.showTemplateNameDialog();
+  get showTemplateDialogValue(): boolean {
+    return this.showTemplateDialog();
   }
-  set showTemplateNameDialogValue(value: boolean) {
-    this.showTemplateNameDialog.set(value);
+  set showTemplateDialogValue(value: boolean) {
+    this.showTemplateDialog.set(value);
   }
 
   get showBulkAddDialogValue(): boolean {
@@ -687,6 +665,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (!ownerId) {
       this.weightTemplates.set([]);
       this.selectedWeightTemplateId.set(null);
+      this.templateEditMode.set(false);
       return;
     }
 
@@ -694,156 +673,41 @@ export class MapPage implements AfterViewInit, OnDestroy {
       next: (templates) => {
         const items = templates || [];
         this.weightTemplates.set(items);
-        this.ensureGeneralTemplate(items);
         const selected = this.selectedWeightTemplateId();
         if (selected && !items.some((t) => t.id === selected)) {
           this.selectedWeightTemplateId.set(null);
         }
-        this.syncWeightTemplateSelection();
-        const active = this.selectedWeightTemplate();
-        if (active) {
-          this.applyTemplateWeights(active);
-        }
+        this.applyTemplateSettings(this.selectedWeightTemplate());
+        this.templateEditMode.set(false);
         this.saveMapPreferences();
       },
       error: () => {
         this.weightTemplates.set([]);
+        this.selectedWeightTemplateId.set(null);
+        this.templateEditMode.set(false);
       },
     });
-  }
-
-  private ensureGeneralTemplate(templates: WeightTemplateDto[]): void {
-    if (this.hasEnsuredGeneralTemplate) {
-      return;
-    }
-    if (!this.isSuperAdmin()) {
-      this.hasEnsuredGeneralTemplate = true;
-      return;
-    }
-    if (
-      templates.some((t) => t.scopeType === 'Global' && t.name.trim().toLowerCase() === 'general')
-    ) {
-      this.hasEnsuredGeneralTemplate = true;
-      return;
-    }
-
-    this.hasEnsuredGeneralTemplate = true;
-    this.weightTemplatesApi
-      .create({
-        name: 'General',
-        scopeType: 'Global',
-        ownerId: null,
-        serviceTypeId: null,
-        isActive: true,
-        weightDistance: this.weightDistance(),
-        weightTravelTime: this.weightTime(),
-        weightOvertime: this.weightOvertime(),
-        weightCost: this.weightCost(),
-        weightDate: this.weightDate(),
-        dueCostCapPercent: this.dueCostCapPercent(),
-        detourCostCapPercent: this.detourCostCapPercent(),
-        detourRefKmPercent: this.detourRefKmPercent(),
-        lateRefMinutesPercent: this.lateRefMinutesPercent(),
-        serviceLocationIds: [],
-      })
-      .subscribe({
-        next: (created) => {
-          this.loadWeightTemplates();
-          if (!this.selectedWeightTemplateId()) {
-            this.selectedWeightTemplateId.set(created.id);
-            this.applyTemplateWeights(created);
-          }
-        },
-      });
-  }
-
-  private syncWeightTemplateSelection(): void {
-    const available = this.availableWeightTemplates();
-    const selected = this.selectedWeightTemplateId();
-    if (selected && !available.some((t) => t.id === selected)) {
-      this.selectedWeightTemplateId.set(null);
-    }
   }
 
   onWeightTemplateChange(templateId: number | null): void {
     this.selectedWeightTemplateId.set(templateId);
     const template = this.weightTemplates().find((t) => t.id === templateId);
-    if (template) {
-      this.applyTemplateWeights(template);
-    }
+    this.applyTemplateSettings(template ?? null);
+    this.templateEditMode.set(false);
     this.saveMapPreferences();
   }
-
-  onNormalizeWeightsChange(value: boolean): void {
-    this.normalizeWeights.set(value);
-    this.saveMapPreferences();
-  }
-
-  private applyTemplateWeights(template: WeightTemplateDto): void {
-    this.weightTime.set(template.weightTravelTime);
-    this.weightDistance.set(template.weightDistance);
-    this.weightDate.set(template.weightDate);
-    this.weightCost.set(template.weightCost);
-    this.weightOvertime.set(template.weightOvertime);
-    this.dueCostCapPercent.set(template.dueCostCapPercent ?? 50);
-    this.detourCostCapPercent.set(template.detourCostCapPercent ?? 50);
-    this.detourRefKmPercent.set(template.detourRefKmPercent ?? 50);
-    this.lateRefMinutesPercent.set(template.lateRefMinutesPercent ?? 50);
-  }
-
-  private buildWeightSummary(): {
-    active: string[];
-    inactive: string[];
-    suppressed: string[];
-  } {
-    const costActive = this.weightCost() > 0;
-    const entries = [
-      { label: 'Driver Time', value: this.weightTime(), suppressed: costActive },
-      { label: 'Distance', value: this.weightDistance(), suppressed: costActive },
-      { label: 'Due Date', value: this.weightDate(), suppressed: false },
-      { label: 'Cost', value: this.weightCost(), suppressed: false },
-      { label: 'Overtime', value: this.weightOvertime(), suppressed: false },
-    ];
-
-    const active: string[] = [];
-    const inactive: string[] = [];
-    const suppressed: string[] = [];
-
-    for (const entry of entries) {
-      const label = `${entry.label} ${entry.value}%`;
-      if (entry.suppressed) {
-        suppressed.push(label);
-      } else if (entry.value > 0) {
-        active.push(label);
-      } else {
-        inactive.push(label);
-      }
+  private applyTemplateSettings(template: WeightTemplateDto | null): void {
+    if (!template) {
+      return;
     }
-
-    return { active, inactive, suppressed };
-  }
-
-  private buildSolverCaps(): {
-    dueCostCapPercent: number;
-    detourCostCapPercent: number;
-    detourRefKmPercent: number;
-    lateRefMinutesPercent: number;
-  } {
-    return {
-      dueCostCapPercent: this.dueCostCapPercent(),
-      detourCostCapPercent: this.detourCostCapPercent(),
-      detourRefKmPercent: this.detourRefKmPercent(),
-      lateRefMinutesPercent: this.lateRefMinutesPercent(),
-    };
+    this.templateEditDueDatePriority.set(template.dueDatePriority ?? 50);
+    this.templateEditWorktimeDeviationPercent.set(template.worktimeDeviationPercent ?? 10);
   }
 
   canUpdateSelectedTemplate(): boolean {
     const template = this.selectedWeightTemplate();
     if (!template || !this.canManageTemplates()) {
       return false;
-    }
-    if (template.scopeType === 'Global') {
-      return this.isSuperAdmin();
     }
     if (this.isSuperAdmin()) {
       return true;
@@ -852,41 +716,25 @@ export class MapPage implements AfterViewInit, OnDestroy {
     return ownerId != null && template.ownerId === ownerId;
   }
 
-  openNewTemplateDialog(): void {
-    if (!this.canManageTemplates()) {
-      return;
-    }
-    this.templateDialogMode.set('create');
-    this.newTemplateName.set('');
-    this.showTemplateNameDialog.set(true);
-  }
-
-  openRenameTemplateDialog(): void {
+  startTemplateEdit(): void {
     if (!this.canUpdateSelectedTemplate()) {
       return;
     }
+    this.applyTemplateSettings(this.selectedWeightTemplate());
+    this.templateEditMode.set(true);
+  }
+
+  cancelTemplateEdit(): void {
+    this.applyTemplateSettings(this.selectedWeightTemplate());
+    this.templateEditMode.set(false);
+  }
+
+  saveTemplateEdits(): void {
     const template = this.selectedWeightTemplate();
-    if (!template) {
+    if (!template || !this.canUpdateSelectedTemplate()) {
       return;
     }
-    this.templateDialogMode.set('update');
-    this.newTemplateName.set(template.name);
-    this.showTemplateNameDialog.set(true);
-  }
-
-  saveTemplateFromDialog(): void {
-    if (!this.canManageTemplates()) {
-      return;
-    }
-    if (this.templateDialogMode() === 'update') {
-      this.updateSelectedTemplate(this.newTemplateName().trim());
-      return;
-    }
-    this.saveNewTemplateFromMap();
-  }
-
-  private saveNewTemplateFromMap(): void {
-    const ownerId = this.selectedOwnerId();
+    const ownerId = template.ownerId ?? this.selectedOwnerId();
     if (!ownerId) {
       this.messageService.add({
         severity: 'warn',
@@ -895,104 +743,21 @@ export class MapPage implements AfterViewInit, OnDestroy {
       });
       return;
     }
-    const selectedTypes = this.selectedServiceTypeIds();
-    if (selectedTypes.length !== 1) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Select one service type',
-        detail: 'Select exactly one service type to save a template.',
-      });
-      return;
-    }
-    const name = this.newTemplateName().trim();
-    if (!name) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Name required',
-        detail: 'Enter a template name.',
-      });
-      return;
-    }
-
-    this.templateSaveLoading.set(true);
-    this.weightTemplatesApi
-      .create({
-        name,
-        scopeType: 'ServiceType',
-        ownerId,
-        serviceTypeId: selectedTypes[0],
-        isActive: true,
-        weightDistance: this.weightDistance(),
-        weightTravelTime: this.weightTime(),
-        weightOvertime: this.weightOvertime(),
-        weightCost: this.weightCost(),
-        weightDate: this.weightDate(),
-        dueCostCapPercent: this.dueCostCapPercent(),
-        detourCostCapPercent: this.detourCostCapPercent(),
-        detourRefKmPercent: this.detourRefKmPercent(),
-        lateRefMinutesPercent: this.lateRefMinutesPercent(),
-        serviceLocationIds: [],
-      })
-      .subscribe({
-        next: (created) => {
-          this.templateSaveLoading.set(false);
-          this.showTemplateNameDialog.set(false);
-          this.messageService.add({ severity: 'success', summary: 'Template created' });
-          this.loadWeightTemplates();
-          this.selectedWeightTemplateId.set(created.id);
-          this.applyTemplateWeights(created);
-        },
-        error: (err) => {
-          this.templateSaveLoading.set(false);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Save failed',
-            detail: err?.error?.message || err?.message || 'Failed to save template',
-          });
-        },
-      });
-  }
-
-  private updateSelectedTemplate(nameOverride?: string): void {
-    const template = this.selectedWeightTemplate();
-    if (!template || !this.canUpdateSelectedTemplate()) {
-      return;
-    }
-
-    const name = (nameOverride ?? template.name).trim();
-    if (!name) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Name required',
-        detail: 'Enter a template name.',
-      });
-      return;
-    }
 
     this.templateSaveLoading.set(true);
     this.weightTemplatesApi
       .update(template.id, {
-        name,
-        scopeType: template.scopeType === 'Global' ? 'Global' : 'ServiceType',
-        ownerId:
-          template.scopeType === 'Global' ? null : (template.ownerId ?? this.selectedOwnerId()),
-        serviceTypeId: template.scopeType === 'Global' ? null : (template.serviceTypeId ?? null),
+        name: template.name,
+        ownerId: ownerId,
         isActive: template.isActive,
-        weightDistance: this.weightDistance(),
-        weightTravelTime: this.weightTime(),
-        weightOvertime: this.weightOvertime(),
-        weightCost: this.weightCost(),
-        weightDate: this.weightDate(),
-        dueCostCapPercent: this.dueCostCapPercent(),
-        detourCostCapPercent: this.detourCostCapPercent(),
-        detourRefKmPercent: this.detourRefKmPercent(),
-        lateRefMinutesPercent: this.lateRefMinutesPercent(),
-        serviceLocationIds: [],
+        algorithmType: template.algorithmType ?? 'Lollipop',
+        dueDatePriority: Number(this.templateEditDueDatePriority()),
+        worktimeDeviationPercent: Number(this.templateEditWorktimeDeviationPercent()),
       })
       .subscribe({
         next: () => {
           this.templateSaveLoading.set(false);
-          this.showTemplateNameDialog.set(false);
+          this.templateEditMode.set(false);
           this.messageService.add({ severity: 'success', summary: 'Template updated' });
           this.loadWeightTemplates();
         },
@@ -1002,6 +767,90 @@ export class MapPage implements AfterViewInit, OnDestroy {
             severity: 'error',
             summary: 'Update failed',
             detail: err?.error?.message || err?.message || 'Failed to update template',
+          });
+        },
+      });
+  }
+
+  openTemplateCreate(): void {
+    if (!this.canManageTemplates()) {
+      return;
+    }
+
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Select owner',
+        detail: 'Select an owner first.',
+      });
+      return;
+    }
+
+    this.templateDialogName.set('');
+    this.templateDialogAlgorithm.set('Lollipop');
+    this.templateDialogDueDatePriority.set(50);
+    this.templateDialogWorktimeDeviationPercent.set(10);
+    this.templateDialogIsActive.set(true);
+    this.templateEditMode.set(false);
+    this.showTemplateDialog.set(true);
+  }
+
+  saveTemplateCreate(): void {
+    if (!this.canManageTemplates()) {
+      return;
+    }
+
+    const ownerId = this.selectedOwnerId();
+    if (!ownerId) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Select owner',
+        detail: 'Select an owner first.',
+      });
+      return;
+    }
+
+    const name = this.templateDialogName().trim();
+    if (!name) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Validation',
+        detail: 'Name is required.',
+      });
+      return;
+    }
+
+    const algorithmType = this.canManageTemplateAlgorithm()
+      ? (this.templateDialogAlgorithm().trim() || 'Lollipop')
+      : 'Lollipop';
+
+    this.templateSaveLoading.set(true);
+    this.weightTemplatesApi
+      .create({
+        name,
+        ownerId: ownerId,
+        isActive: this.templateDialogIsActive(),
+        algorithmType,
+        dueDatePriority: Number(this.templateDialogDueDatePriority()),
+        worktimeDeviationPercent: Number(this.templateDialogWorktimeDeviationPercent()),
+      })
+      .subscribe({
+        next: (created) => {
+          this.templateSaveLoading.set(false);
+          this.showTemplateDialog.set(false);
+          if (created?.id) {
+            this.selectedWeightTemplateId.set(created.id);
+          }
+          this.messageService.add({ severity: 'success', summary: 'Template created' });
+          this.loadWeightTemplates();
+        },
+        error: (err) => {
+          this.templateSaveLoading.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Create failed',
+            detail: err?.error?.message || err?.message || 'Failed to create template',
           });
         },
       });
@@ -3578,21 +3427,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (prefs.weightTemplateId != null && Number.isFinite(prefs.weightTemplateId)) {
       this.selectedWeightTemplateId.set(prefs.weightTemplateId);
     }
-
-    this.normalizeWeights.set(true);
-
-    if (prefs.dueCostCapPercent != null && Number.isFinite(prefs.dueCostCapPercent)) {
-      this.dueCostCapPercent.set(prefs.dueCostCapPercent);
-    }
-    if (prefs.detourCostCapPercent != null && Number.isFinite(prefs.detourCostCapPercent)) {
-      this.detourCostCapPercent.set(prefs.detourCostCapPercent);
-    }
-    if (prefs.detourRefKmPercent != null && Number.isFinite(prefs.detourRefKmPercent)) {
-      this.detourRefKmPercent.set(prefs.detourRefKmPercent);
-    }
-    if (prefs.lateRefMinutesPercent != null && Number.isFinite(prefs.lateRefMinutesPercent)) {
-      this.lateRefMinutesPercent.set(prefs.lateRefMinutesPercent);
-    }
   }
 
   private saveMapPreferences(): void {
@@ -3606,11 +3440,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       fromDate: this.fromDate()?.toISOString(),
       toDate: this.toDate()?.toISOString(),
       weightTemplateId: this.selectedWeightTemplateId(),
-      normalizeWeights: true,
-      dueCostCapPercent: this.dueCostCapPercent(),
-      detourCostCapPercent: this.detourCostCapPercent(),
-      detourRefKmPercent: this.detourRefKmPercent(),
-      lateRefMinutesPercent: this.lateRefMinutesPercent(),
     };
 
     try {
