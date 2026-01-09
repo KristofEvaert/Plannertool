@@ -8,6 +8,18 @@
       </div>
       <div class="flex items-center gap-2">
         <p-button
+          label="Download Availability Template"
+          icon="pi pi-download"
+          [outlined]="true"
+          (onClick)="downloadTemplate()"
+        />
+        <p-button
+          label="Download Service Types Template"
+          icon="pi pi-download"
+          [outlined]="true"
+          (onClick)="downloadServiceTypesTemplate()"
+        />
+        <p-button
           label="Bulk Upload"
           icon="pi pi-file-excel"
           [outlined]="true"
