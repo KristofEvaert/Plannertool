@@ -14,14 +14,14 @@ import type {
   ServiceLocationOpeningHoursDto,
   ServiceTypeDto,
   UpdateServiceLocationRequest,
+  ServiceLocationOwnerDto,
 } from '@models';
-import { AuthService } from '@services/auth.service';
 import {
+  AuthService,
   ServiceLocationOwnersApiService,
-  type ServiceLocationOwnerDto,
-} from '@services/service-location-owners-api.service';
-import { ServiceLocationsApiService } from '@services/service-locations-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
+  ServiceLocationsApiService,
+  ServiceTypesApiService,
+} from '@services';
 import { parseYmd, toYmd } from '@utils/date.utils';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';

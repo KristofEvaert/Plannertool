@@ -2,12 +2,18 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components';
-import type { SaveWeightTemplateRequest, ServiceTypeDto, WeightTemplateDto } from '@models';
-import { AuthService } from '@services/auth.service';
-import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
-import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
+import type {
+  SaveWeightTemplateRequest,
+  ServiceTypeDto,
+  WeightTemplateDto,
+  ServiceLocationOwnerDto,
+} from '@models';
+import {
+  AuthService,
+  ServiceLocationOwnersApiService,
+  ServiceTypesApiService,
+  WeightTemplatesApiService,
+} from '@services';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';

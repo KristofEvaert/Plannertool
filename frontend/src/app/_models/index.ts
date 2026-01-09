@@ -13,3 +13,4 @@ export * from './system-cost-settings.model';
 export * from './travel-time-model-admin.model';
 export * from './user.model';
 export * from './weight-template.model';
+export * from './route.model';

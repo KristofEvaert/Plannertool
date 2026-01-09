@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent, JsonViewerComponent } from '@components';
 import type { AuditTrailEntryDto } from '@models';
-import { AuditTrailApiService } from '@services/audit-trail-api.service';
+import { AuditTrailApiService } from '@services';
 import { MessageService } from 'primeng/api';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';

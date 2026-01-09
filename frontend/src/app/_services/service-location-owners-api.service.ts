@@ -2,19 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
-
-export interface ServiceLocationOwnerDto {
-  id: number;
-  code: string;
-  name: string;
-  isActive: boolean;
-}
-
-export interface UpsertServiceLocationOwnerRequest {
-  code: string;
-  name: string;
-  isActive: boolean;
-}
+import { ServiceLocationOwnerDto, UpsertServiceLocationOwnerRequest } from '@app/_models';
 
 @Injectable({ providedIn: 'root' })
 export class ServiceLocationOwnersApiService {

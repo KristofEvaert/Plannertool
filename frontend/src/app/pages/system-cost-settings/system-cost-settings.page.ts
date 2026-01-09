@@ -2,13 +2,16 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components';
-import type { SystemCostSettingsDto, SystemCostSettingsOverviewDto } from '@models';
-import { AuthService } from '@services/auth.service';
+import type {
+  SystemCostSettingsDto,
+  SystemCostSettingsOverviewDto,
+  ServiceLocationOwnerDto,
+} from '@models';
 import {
+  AuthService,
   ServiceLocationOwnersApiService,
-  type ServiceLocationOwnerDto,
-} from '@services/service-location-owners-api.service';
-import { SystemCostSettingsApiService } from '@services/system-cost-settings-api.service';
+  SystemCostSettingsApiService,
+} from '@services';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';

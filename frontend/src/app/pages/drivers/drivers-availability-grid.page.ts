@@ -8,19 +8,17 @@ import type {
   ServiceTypeDto,
   UpdateDriverRequest,
   UpsertAvailabilityRequest,
-} from '@models';
-import { AuthService } from '@services/auth.service';
-import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
-import { DriversApiService } from '@services/drivers-api.service';
-import {
-  DriversBulkApiService,
-  type AvailabilityBulkConflictDto,
-} from '@services/drivers-bulk-api.service';
-import {
   ServiceLocationOwnerDto,
+  AvailabilityBulkConflictDto,
+} from '@models';
+import {
+  AuthService,
+  DriverAvailabilityApiService,
+  DriversApiService,
+  DriversBulkApiService,
   ServiceLocationOwnersApiService,
-} from '@services/service-location-owners-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
+  ServiceTypesApiService,
+} from '@services';
 import { toYmd } from '@utils/date.utils';
 import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';

@@ -1,3 +1,5 @@
+import { BulkErrorDto } from './driver.model';
+
 export interface ServiceLocationDto {
   id: number;
   toolId: string; // Guid as string
@@ -107,11 +109,6 @@ export interface BulkInsertServiceLocationsRequest {
   items: BulkServiceLocationInsertDto[];
 }
 
-export interface BulkErrorDto {
-  rowRef: string;
-  message: string;
-}
-
 export interface BulkInsertResultDto {
   inserted: number;
   updated: number;
@@ -153,4 +150,17 @@ export interface ResolveServiceLocationGeoResponse {
   address: string;
   latitude: number;
   longitude: number;
+}
+
+export interface ServiceLocationOwnerDto {
+  id: number;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface UpsertServiceLocationOwnerRequest {
+  code: string;
+  name: string;
+  isActive: boolean;
 }

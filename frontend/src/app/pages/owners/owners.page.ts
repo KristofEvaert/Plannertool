@@ -1,11 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components';
-import {
-  ServiceLocationOwnerDto,
-  ServiceLocationOwnersApiService,
-  UpsertServiceLocationOwnerRequest,
-} from '@services/service-location-owners-api.service';
+import { ServiceLocationOwnerDto, UpsertServiceLocationOwnerRequest } from '@models';
+import { ServiceLocationOwnersApiService } from '@services';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';

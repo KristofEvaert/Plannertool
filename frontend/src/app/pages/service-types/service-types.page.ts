@@ -1,13 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components';
-import type { CreateServiceTypeRequest, ServiceTypeDto, UpdateServiceTypeRequest } from '@models';
-import { AuthService } from '@services/auth.service';
-import {
-  ServiceLocationOwnersApiService,
-  type ServiceLocationOwnerDto,
-} from '@services/service-location-owners-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
+import type {
+  CreateServiceTypeRequest,
+  ServiceTypeDto,
+  UpdateServiceTypeRequest,
+  ServiceLocationOwnerDto,
+} from '@models';
+import { AuthService, ServiceLocationOwnersApiService, ServiceTypesApiService } from '@services';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';

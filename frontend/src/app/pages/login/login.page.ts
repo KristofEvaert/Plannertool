@@ -1,8 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
-import { email, Field, form, required } from '@angular/forms/signals';
+import { email, FormField, form, required } from '@angular/forms/signals';
 
 import { Router } from '@angular/router';
-import { AuthService } from '@services/auth.service';
+import { AuthService } from '@services';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -11,7 +11,7 @@ import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-login-page',
-  imports: [Field, InputTextModule, PasswordModule, ButtonModule, ToastModule],
+  imports: [FormField, InputTextModule, PasswordModule, ButtonModule, ToastModule],
   providers: [MessageService],
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.css'],

@@ -11,7 +11,7 @@
             type="email"
             autocomplete="email"
             [class.p-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
-            [field]="loginForm.email"
+            [formField]="loginForm.email"
           />
           @if (loginForm.email().touched() && loginForm.email().invalid()) {
             <small id="email-help" class="text-red-700">{{
@@ -28,7 +28,7 @@
             [toggleMask]="true"
             [feedback]="false"
             [invalid]="loginForm.password().touched() && loginForm.password().invalid()"
-            [field]="loginForm.password"
+            [formField]="loginForm.password"
           />
           @if (loginForm.password().touched() && loginForm.password().invalid()) {
             <small id="password-help" class="text-red-700">{{

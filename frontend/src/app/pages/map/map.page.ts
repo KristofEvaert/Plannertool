@@ -24,22 +24,22 @@ import type {
   StopSchedule,
   WeightTemplateDto,
   WeightTemplateOption,
+  CreateRouteRequest,
+  CreateRouteStopRequest,
+  RouteDto,
+  ServiceLocationOwnerDto,
 } from '@models';
-import { AuthService } from '@services/auth.service';
-import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
-import { DriversApiService } from '@services/drivers-api.service';
-import { ExportsApiService } from '@services/exports-api.service';
 import {
+  AuthService,
+  DriverAvailabilityApiService,
+  DriversApiService,
+  ExportsApiService,
   RoutesApiService,
-  type CreateRouteRequest,
-  type CreateRouteStopRequest,
-  type RouteDto,
-} from '@services/routes-api.service';
-import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
-import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
-import { ServiceLocationsApiService } from '@services/service-locations-api.service';
-import { ServiceTypesApiService } from '@services/service-types-api.service';
-import { WeightTemplatesApiService } from '@services/weight-templates-api.service';
+  ServiceLocationOwnersApiService,
+  ServiceLocationsApiService,
+  ServiceTypesApiService,
+  WeightTemplatesApiService,
+} from '@services';
 import { toYmd } from '@utils/date.utils';
 import * as L from 'leaflet';
 import { MessageService } from 'primeng/api';

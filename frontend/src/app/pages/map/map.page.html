@@ -15,11 +15,11 @@
           optionLabel="name"
           optionValue="id"
           placeholder="Select up to 5 service types"
+          class="w-full"
           [options]="serviceTypes()"
           [selectionLimit]="5"
           [showToggleAll]="false"
           [filter]="true"
-          [style]="{ width: '100%' }"
           (ngModelChange)="onServiceTypeOrOwnerChange()"
           [(ngModel)]="selectedServiceTypeIds"
         />
@@ -675,7 +675,7 @@
             <div class="text-sm font-semibold text-gray-900">{{ item.name }}</div>
             <div class="text-xs text-amber-600 mt-0.5">{{ item.reason }}</div>
             @if (item.address) {
-              <div class="text-xs text-gray-500 mt-0.5 break-words">{{ item.address }}</div>
+              <div class="text-xs text-gray-500 mt-0.5 wrap-break-word">{{ item.address }}</div>
             }
           </div>
         }

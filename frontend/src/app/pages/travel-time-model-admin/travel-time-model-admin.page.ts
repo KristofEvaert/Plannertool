@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HelpManualComponent } from '@components';
 import type { TravelTimeModelLearnedStatDto, TravelTimeModelStatus } from '@models';
-import { TravelTimeModelAdminApiService } from '@services/travel-time-model-admin-api.service';
+import { TravelTimeModelAdminApiService } from '@services';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';

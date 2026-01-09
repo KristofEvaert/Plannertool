@@ -21,15 +21,14 @@ import { ToastModule } from 'primeng/toast';
 import { catchError, forkJoin, interval, map, of, startWith, Subscription, switchMap } from 'rxjs';
 
 import { HelpManualComponent } from '@components';
-import type { RouteMessageDto } from '@models';
-import { DriversApiService } from '@services/drivers-api.service';
-import { RouteMessagesApiService } from '@services/route-messages-api.service';
-import { RouteMessagesHubService } from '@services/route-messages-hub.service';
-import { RoutesApiService, type RouteDto, type RouteStopDto } from '@services/routes-api.service';
+import type { RouteMessageDto, RouteDto, RouteStopDto, ServiceLocationOwnerDto } from '@models';
 import {
+  DriversApiService,
+  RouteMessagesApiService,
+  RouteMessagesHubService,
+  RoutesApiService,
   ServiceLocationOwnersApiService,
-  type ServiceLocationOwnerDto,
-} from '@services/service-location-owners-api.service';
+} from '@services';
 
 interface DriverOption {
   label: string;
