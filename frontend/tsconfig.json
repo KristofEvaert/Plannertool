@@ -16,52 +16,33 @@
     "target": "ES2022",
     "module": "preserve",
     "paths": {
-      "@app/*": [
-        "src/app/*"
-      ],
-      "@environments/*": [
-        "src/environments/*"
-      ],
-      "@services/*": [
-        "src/app/_services/*"
-      ],
-      "@models/*": [
-        "src/app/_models/*"
-      ],
-      "@models": [
-        "src/app/_models/index.ts"
-      ],
-      "@guards/*": [
-        "src/app/_guards/*"
-      ],
-      "@utils/*": [
-        "src/app/_utils/*"
-      ],
-      "@pipes/*": [
-        "src/app/_pipes/*"
-      ],
-      "@components/*": [
-        "src/app/components/*"
-      ],
-      "@pages/*": [
-        "src/app/pages/*"
-      ]
-    }
+      "@app/*": ["src/app/*"],
+      "@environments/*": ["src/environments/*"],
+      "@services/*": ["src/app/_services/*"],
+      "@models/*": ["src/app/_models/*"],
+      "@models": ["src/app/_models/index.ts"],
+      "@guards/*": ["src/app/_guards/*"],
+      "@utils/*": ["src/app/_utils/*"],
+      "@pipes/*": ["src/app/_pipes/*"],
+      "@components/*": ["src/app/components/*"],
+      "@components": ["src/app/components/index.ts"],
+      "@pages/*": ["src/app/pages/*"],
+    },
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
     "typeCheckHostBindings": true,
-    "strictTemplates": true
+    "strictTemplates": true,
   },
   "files": [],
   "references": [
     {
-      "path": "./tsconfig.app.json"
+      "path": "./tsconfig.app.json",
     },
     {
-      "path": "./tsconfig.spec.json"
-    }
-  ]
+      "path": "./tsconfig.spec.json",
+    },
+  ],
 }

@@ -53,7 +53,6 @@ import { MenubarModule } from 'primeng/menubar';
       }
     `,
   ],
-  standalone: true,
 })
 export class NavbarComponent {
   public readonly auth = inject(AuthService);

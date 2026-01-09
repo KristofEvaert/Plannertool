@@ -8,7 +8,6 @@ import { InputTextModule } from 'primeng/inputtext';
 
 @Component({
   selector: 'app-help-manual',
-  standalone: true,
   imports: [FormsModule, RouterLink, DialogModule, InputTextModule, ButtonModule],
   template: `
     <p-button

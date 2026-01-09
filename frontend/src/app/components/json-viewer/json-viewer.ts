@@ -4,10 +4,9 @@ import { TooltipModule } from 'primeng/tooltip';
 
 @Component({
   selector: 'app-json-viewer',
-  standalone: true,
   imports: [ButtonModule, TooltipModule],
-  templateUrl: './json-viewer.component.html',
-  styleUrl: './json-viewer.component.css',
+  templateUrl: './json-viewer.html',
+  styleUrl: './json-viewer.css',
 })
 export class JsonViewerComponent {
   readonly value = input<unknown>();
