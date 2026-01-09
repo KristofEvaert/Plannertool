@@ -1,8 +1,7 @@
 import { Component, inject, OnInit, viewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MANUAL_SECTIONS } from '@app/_data/manual.data';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import { NavbarComponent } from '@components/navbar/navbar.component';
+import { HelpManualComponent, NavbarComponent } from '@components';
 import { PrimeNG } from 'primeng/config';
 import { ToastModule } from 'primeng/toast';
 

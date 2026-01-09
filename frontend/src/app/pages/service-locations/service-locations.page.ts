@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import type { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
 import type {
   BulkInsertResultDto,
   CreateServiceLocationRequest,
@@ -12,9 +12,9 @@ import type {
   ServiceLocationExceptionDto,
   ServiceLocationListParams,
   ServiceLocationOpeningHoursDto,
+  ServiceTypeDto,
   UpdateServiceLocationRequest,
 } from '@models';
-import type { ServiceTypeDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import {
   ServiceLocationOwnersApiService,
@@ -85,7 +85,6 @@ interface ServiceLocationDetail {
   ],
   providers: [MessageService],
   templateUrl: './service-locations.page.html',
-  standalone: true,
 })
 export class ServiceLocationsPage {
   private readonly api = inject(ServiceLocationsApiService);

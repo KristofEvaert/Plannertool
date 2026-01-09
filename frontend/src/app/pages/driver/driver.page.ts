@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
@@ -14,14 +13,13 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { RouteChangeNotificationDto } from '@models';
-import type { RouteMessageDto } from '@models';
+import { HelpManualComponent } from '@components';
+import type { RouteChangeNotificationDto, RouteMessageDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriversApiService } from '@services/drivers-api.service';
 import { RouteChangeNotificationsApiService } from '@services/route-change-notifications-api.service';
-import { RouteMessagesHubService } from '@services/route-messages-hub.service';
 import { RouteMessagesApiService } from '@services/route-messages-api.service';
+import { RouteMessagesHubService } from '@services/route-messages-hub.service';
 import {
   RoutesApiService,
   type RouteDto,
@@ -57,7 +55,6 @@ interface OwnerOption {
 
 @Component({
   selector: 'app-driver-page',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -74,7 +71,6 @@ interface OwnerOption {
   providers: [MessageService],
   templateUrl: './driver.page.html',
   styleUrl: './driver.page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DriverPage implements AfterViewInit {
   private readonly driversApi = inject(DriversApiService);

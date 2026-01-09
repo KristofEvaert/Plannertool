@@ -7,6 +7,5 @@ import { ButtonModule } from 'primeng/button';
   imports: [RouterLink, ButtonModule],
   templateUrl: './not-found.page.html',
   styleUrl: './not-found.page.css',
-  standalone: true,
 })
 export class NotFoundPage {}

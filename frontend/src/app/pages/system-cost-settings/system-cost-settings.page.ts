@@ -1,24 +1,21 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { InputTextModule } from 'primeng/inputtext';
-import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-import { ToastModule } from 'primeng/toast';
-import { TableModule } from 'primeng/table';
-import { MessageService } from 'primeng/api';
-import { SystemCostSettingsApiService } from '@services/system-cost-settings-api.service';
-import type {
-  SystemCostSettingsDto,
-  SystemCostSettingsOverviewDto,
-} from '@models';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
+import type { SystemCostSettingsDto, SystemCostSettingsOverviewDto } from '@models';
+import { AuthService } from '@services/auth.service';
 import {
   ServiceLocationOwnersApiService,
   type ServiceLocationOwnerDto,
 } from '@services/service-location-owners-api.service';
-import { AuthService } from '@services/auth.service';
+import { SystemCostSettingsApiService } from '@services/system-cost-settings-api.service';
+import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { ToastModule } from 'primeng/toast';
 
 interface OwnerOption {
   label: string;
@@ -27,7 +24,6 @@ interface OwnerOption {
 
 @Component({
   selector: 'app-system-cost-settings',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,

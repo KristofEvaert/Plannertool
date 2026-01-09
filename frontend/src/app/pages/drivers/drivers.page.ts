@@ -2,15 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
 import type {
   CreateDriverRequest,
   DriverAvailabilityDto,
   DriverDto,
+  ServiceTypeDto,
   UpdateDriverRequest,
   UpsertAvailabilityRequest,
 } from '@models';
-import type { ServiceTypeDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';
@@ -57,7 +57,6 @@ import { catchError, of } from 'rxjs';
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './drivers.page.html',
-  standalone: true,
 })
 export class DriversPage {
   private readonly driversApi = inject(DriversApiService);

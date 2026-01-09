@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
 import type { UserDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
@@ -22,7 +22,6 @@ type Role = (typeof ALL_ROLES)[number];
 
 @Component({
   selector: 'app-users-page',
-  standalone: true,
   imports: [
     FormsModule,
     ButtonModule,

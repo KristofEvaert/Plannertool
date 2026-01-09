@@ -22,10 +22,8 @@ interface MapMarker {
 
 @Component({
   selector: 'app-start',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CardModule, ButtonModule, RouterLink],
   templateUrl: './start.page.html',
-  standalone: true,
 })
 export class StartPage implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);

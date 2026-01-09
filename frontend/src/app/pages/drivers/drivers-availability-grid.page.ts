@@ -1,14 +1,14 @@
 import { Component, computed, effect, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
 import type {
   CreateDriverRequest,
   DriverAvailabilityDto,
   DriverDto,
+  ServiceTypeDto,
   UpdateDriverRequest,
   UpsertAvailabilityRequest,
 } from '@models';
-import type { ServiceTypeDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
 import { DriversApiService } from '@services/drivers-api.service';
@@ -65,7 +65,6 @@ interface GridCell {
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './drivers-availability-grid.page.html',
-  standalone: true,
   styles: [
     `
       ::ng-deep .p-popover {

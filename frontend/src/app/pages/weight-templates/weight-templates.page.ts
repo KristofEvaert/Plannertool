@@ -1,9 +1,8 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type { ServiceTypeDto } from '@models';
-import type { SaveWeightTemplateRequest, WeightTemplateDto } from '@models';
+import { HelpManualComponent } from '@components';
+import type { SaveWeightTemplateRequest, ServiceTypeDto, WeightTemplateDto } from '@models';
 import { AuthService } from '@services/auth.service';
 import type { ServiceLocationOwnerDto } from '@services/service-location-owners-api.service';
 import { ServiceLocationOwnersApiService } from '@services/service-location-owners-api.service';
@@ -30,7 +29,6 @@ interface OwnerFilterOption {
 
 @Component({
   selector: 'app-weight-templates',
-  standalone: true,
   imports: [
     FormsModule,
     TableModule,

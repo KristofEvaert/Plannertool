@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
@@ -21,7 +20,7 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { catchError, forkJoin, interval, map, of, startWith, Subscription, switchMap } from 'rxjs';
 
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
 import type { RouteMessageDto } from '@models';
 import { DriversApiService } from '@services/drivers-api.service';
 import { RouteMessagesApiService } from '@services/route-messages-api.service';
@@ -68,7 +67,6 @@ type DriverPosition = {
 
 @Component({
   selector: 'app-route-followup',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -83,7 +81,6 @@ type DriverPosition = {
   providers: [MessageService],
   templateUrl: './route-followup.page.html',
   styleUrl: './route-followup.page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RouteFollowupPage implements AfterViewInit {
   private readonly driversApi = inject(DriversApiService);
@@ -739,9 +736,7 @@ export class RouteFollowupPage implements AfterViewInit {
     const targetValue = this.composeTarget();
     const drivers = this.driversForSelectedOwner();
     const targetDrivers =
-      targetValue === 'all'
-        ? drivers
-        : drivers.filter((driver) => driver.value === targetValue);
+      targetValue === 'all' ? drivers : drivers.filter((driver) => driver.value === targetValue);
 
     if (targetDrivers.length === 0) {
       this.messageService.add({

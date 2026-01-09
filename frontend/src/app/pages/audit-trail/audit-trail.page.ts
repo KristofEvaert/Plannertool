@@ -1,8 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import { JsonViewerComponent } from '@components/json-viewer/json-viewer.component';
+import { HelpManualComponent, JsonViewerComponent } from '@components';
 import type { AuditTrailEntryDto } from '@models';
 import { AuditTrailApiService } from '@services/audit-trail-api.service';
 import { MessageService } from 'primeng/api';
@@ -46,7 +45,6 @@ type StatusFilter = 'all' | '2xx' | '4xx' | '5xx' | string;
   providers: [MessageService, DatePipe],
   templateUrl: './audit-trail.page.html',
   styleUrl: './audit-trail.page.css',
-  standalone: true,
 })
 export class AuditTrailPage {
   private readonly api = inject(AuditTrailApiService);

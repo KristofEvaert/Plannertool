@@ -1,12 +1,7 @@
-
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type {
-  CreateServiceTypeRequest,
-  ServiceTypeDto,
-  UpdateServiceTypeRequest,
-} from '@models';
+import { HelpManualComponent } from '@components';
+import type { CreateServiceTypeRequest, ServiceTypeDto, UpdateServiceTypeRequest } from '@models';
 import { AuthService } from '@services/auth.service';
 import {
   ServiceLocationOwnersApiService,
@@ -46,11 +41,10 @@ interface OwnerFilterOption {
     DialogModule,
     CheckboxModule,
     ToastModule,
-    HelpManualComponent
-],
+    HelpManualComponent,
+  ],
   providers: [MessageService],
   templateUrl: './service-types.page.html',
-  standalone: true,
 })
 export class ServiceTypesPage {
   private readonly api = inject(ServiceTypesApiService);

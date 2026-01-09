@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent } from '@components';
 import {
   ServiceLocationOwnerDto,
   ServiceLocationOwnersApiService,
@@ -16,7 +16,6 @@ import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-owners-page',
-  standalone: true,
   imports: [
     FormsModule,
     TableModule,

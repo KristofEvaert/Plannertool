@@ -1,11 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
-import type {
-  TravelTimeModelLearnedStatDto,
-  TravelTimeModelStatus,
-} from '@models';
+import { HelpManualComponent } from '@components';
+import type { TravelTimeModelLearnedStatDto, TravelTimeModelStatus } from '@models';
 import { TravelTimeModelAdminApiService } from '@services/travel-time-model-admin-api.service';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
@@ -22,7 +19,6 @@ interface SelectOption<T> {
 
 @Component({
   selector: 'app-travel-time-model-admin-page',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,

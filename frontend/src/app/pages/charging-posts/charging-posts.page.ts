@@ -14,6 +14,5 @@ import { CardModule } from 'primeng/card';
       </p-card>
     </div>
   `,
-  standalone: true,
 })
 export class ChargingPostsPage {}
