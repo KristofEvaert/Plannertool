@@ -1,14 +1,14 @@
-<div class="map-page-container">
-  <div class="map-page-header">
+<div class="flex flex-col min-h-screen overflow-visible bg-gray-100">
+  <div class="bg-white px-8 py-6 border-b border-gray-200 shadow-sm shrink-0">
     <div class="flex items-center gap-2">
-      <h1 class="page-title">Service Locations Map</h1>
+      <h1 class="text-3xl font-bold text-gray-900 m-0">Service Locations Map</h1>
       <app-help-manual [sectionId]="'map'" />
     </div>
 
-    <div class="controls-section">
-      <div class="control-group">
-        <label for="serviceType" class="control-label"
-          >Service Type <span class="required">*</span></label
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4 items-end mb-4">
+      <div class="flex flex-col gap-2">
+        <label for="serviceType" class="text-sm font-medium text-gray-700 m-0"
+          >Service Type <span class="text-red-500">*</span></label
         >
         <p-multiSelect
           id="serviceType"
@@ -25,8 +25,10 @@
         />
       </div>
 
-      <div class="control-group">
-        <label for="owner" class="control-label">Owner <span class="required">*</span></label>
+      <div class="flex flex-col gap-2">
+        <label for="owner" class="text-sm font-medium text-gray-700 m-0"
+          >Owner <span class="text-red-500">*</span></label
+        >
         <p-select
           id="owner"
           optionLabel="name"
@@ -39,8 +41,8 @@
         />
       </div>
 
-      <div class="control-group">
-        <label for="fromDate" class="control-label">From Date</label>
+      <div class="flex flex-col gap-2">
+        <label for="fromDate" class="text-sm font-medium text-gray-700 m-0">From Date</label>
         <p-datepicker
           id="fromDate"
           dateFormat="yy-mm-dd"
@@ -53,8 +55,8 @@
         />
       </div>
 
-      <div class="control-group">
-        <label for="toDate" class="control-label">To Date</label>
+      <div class="flex flex-col gap-2">
+        <label for="toDate" class="text-sm font-medium text-gray-700 m-0">To Date</label>
         <p-datepicker
           id="toDate"
           dateFormat="yy-mm-dd"
@@ -67,8 +69,8 @@
         />
       </div>
 
-      <div class="control-group button-group">
-        <div class="button-row">
+      <div class="flex flex-col gap-2 items-stretch">
+        <div class="flex justify-end gap-3 items-center">
           <p-button
             label="Load"
             icon="pi pi-search"
@@ -88,8 +90,10 @@
     </div>
 
     @if (mapData()) {
-      <div class="info-section">
-        <span class="info-badge">
+      <div class="mt-4">
+        <span
+          class="inline-flex items-center bg-linear-to-br from-blue-50 to-blue-100 text-blue-900 px-4 py-2 rounded-md text-sm font-medium border border-blue-500"
+        >
           <i class="pi pi-map-marker mr-1"></i>
           Total points: {{ mapData()!.totalCount }}
           @if (mapData()!.minOrderDate && mapData()!.maxOrderDate) {
@@ -100,55 +104,29 @@
     }
   </div>
 
-  <div class="map-page-content">
-    <div class="map-left-panel">
-      @if (mapData()) {
-        <div class="map-toolbar">
-          <label class="toggle-label">
-            <input
-              type="checkbox"
-              [checked]="showPlannedLocations()"
-              (change)="onToggleShowPlannedLocations($event)"
-            />
-            Show planned locations
-          </label>
-        </div>
-      }
-
-      <div class="map-section">
-        <div id="serviceLocationsMap" class="map-element"></div>
-      </div>
-
-      <div class="legend-section">
-        <div class="legend-urgency">
-          <div class="legend-urgency-title">Urgency legend</div>
-          <div class="legend-urgency-items">
-            @for (item of urgencyLegend; track item) {
-              <div class="legend-urgency-item">
-                <span class="legend-swatch" [ngStyle]="getLegendSwatchStyle(item.key)"></span>
-                <span class="legend-urgency-label">{{ item.label }}</span>
-              </div>
-            }
-          </div>
-        </div>
-
-        @if (selectedServiceTypesLegend().length > 0) {
-          <div class="legend-service-types">
-            @for (st of selectedServiceTypesLegend(); track st) {
-              <div class="legend-service-type">
-                <span class="legend-shape" [ngClass]="getLegendShapeClass(st.id)"></span>
-                <span class="legend-service-type-label">{{ st.name }}</span>
-              </div>
-            }
-          </div>
-        }
-      </div>
+  <div
+    class="flex flex-col xl:flex-row shrink-0 overflow-visible gap-4 xl:gap-6 p-4 xl:p-6 items-start"
+  >
+    <div class="w-full xl:flex-[0_0_65%] min-w-0 xl:sticky xl:top-6 self-start">
+      <app-map-with-legend
+        [mapData]="mapData()"
+        [serviceTypes]="serviceTypes()"
+        [selectedServiceTypeIds]="selectedServiceTypeIds()"
+        [selectedDate]="selectedDate()"
+        [driverRoutes]="driverRoutes()"
+        [selectedDriverToolId]="selectedDriver()?.driver?.toolId ?? null"
+        (locationClick)="onLocationClick($event)"
+        (locationDoubleClick)="toggleLocationInRoute($event)"
+        [(showPlannedLocations)]="showPlannedLocations"
+      />
     </div>
 
-    <div class="map-right-panel">
-      <div class="drivers-section">
-        <div class="drivers-section-header">
-          <h2 class="drivers-section-title">Available Drivers</h2>
+    <div
+      class="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-visible flex flex-col"
+    >
+      <div class="flex flex-col h-full min-h-0">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <h2 class="text-xl font-semibold text-gray-800 m-0">Available Drivers</h2>
           <p-button
             label="Auto-generate day"
             icon="pi pi-bolt"
@@ -168,17 +146,19 @@
           />
         </div>
 
-        <div class="date-picker-container">
-          <label for="driverDate" class="date-picker-label">Select Date</label>
-          <div class="date-picker-row">
+        <div class="mb-6">
+          <label for="driverDate" class="block text-sm font-medium text-gray-700 mb-2"
+            >Select Date</label
+          >
+          <div class="flex items-center gap-2">
             <p-button
               icon="pi pi-angle-left"
               size="small"
               severity="secondary"
-              styleClass="date-nav-button"
+              styleClass="w-8 h-8"
               (onClick)="shiftSelectedDate(-1)"
             />
-            <div class="date-picker-input">
+            <div class="flex-1">
               <p-datepicker
                 id="driverDate"
                 dateFormat="yy-mm-dd"
@@ -194,16 +174,18 @@
               icon="pi pi-angle-right"
               size="small"
               severity="secondary"
-              styleClass="date-nav-button"
+              styleClass="w-8 h-8"
               (onClick)="shiftSelectedDate(1)"
             />
           </div>
         </div>
 
-        <div class="auto-generate-weights">
-          <div class="auto-generate-title">Auto-generate weights</div>
-          <div class="weight-row">
-            <label class="weight-label">Template</label>
+        <div class="mt-3 p-3 border border-gray-300 border-opacity-15 rounded-lg bg-slate-50">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+            Auto-generate weights
+          </div>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Template</label>
             <p-select
               optionLabel="label"
               optionValue="value"
@@ -217,12 +199,13 @@
             />
           </div>
           @if (canManageTemplates()) {
-            <div class="weight-actions">
+            <div class="flex gap-2 my-1 mb-2.5">
               <p-button
                 label="Save as new"
                 icon="pi pi-save"
                 size="small"
                 severity="secondary"
+                [style]="{ flex: '1 1 0' }"
                 (onClick)="openNewTemplateDialog()"
               />
               <p-button
@@ -231,78 +214,81 @@
                 size="small"
                 severity="secondary"
                 [disabled]="!canUpdateSelectedTemplate()"
+                [style]="{ flex: '1 1 0' }"
                 (onClick)="openRenameTemplateDialog()"
               />
             </div>
           }
           @if (weightCost() === 0 || showInactiveWeights()) {
-            <div class="weight-row">
-              <label class="weight-label">
+            <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+              <label class="text-xs text-slate-700">
                 Driver Time
                 @if (weightCost() > 0) {
-                  <span class="weight-muted">(suppressed)</span>
+                  <span class="ml-1 text-gray-400 font-medium">(suppressed)</span>
                 }
               </label>
               <input type="range" min="0" max="100" step="1" [(ngModel)]="weightTime" />
-              <span class="weight-value">{{ activeWeightTime() }}%</span>
+              <span class="text-xs text-right text-gray-900">{{ activeWeightTime() }}%</span>
             </div>
           }
           @if (weightCost() === 0 || showInactiveWeights()) {
-            <div class="weight-row">
-              <label class="weight-label">
+            <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+              <label class="text-xs text-slate-700">
                 Distance
                 @if (weightCost() > 0) {
-                  <span class="weight-muted">(suppressed)</span>
+                  <span class="ml-1 text-gray-400 font-medium">(suppressed)</span>
                 }
               </label>
               <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDistance" />
-              <span class="weight-value">{{ activeWeightDistance() }}%</span>
+              <span class="text-xs text-right text-gray-900">{{ activeWeightDistance() }}%</span>
             </div>
           }
-          <div class="weight-row">
-            <label class="weight-label">Due Date</label>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Due Date</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="weightDate" />
-            <span class="weight-value">{{ activeWeightDate() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ activeWeightDate() }}%</span>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Cost</label>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Cost</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="weightCost" />
-            <span class="weight-value">{{ activeWeightCost() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ activeWeightCost() }}%</span>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Overtime</label>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Overtime</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="weightOvertime" />
-            <span class="weight-value">{{ activeWeightOvertime() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ activeWeightOvertime() }}%</span>
           </div>
-          <div class="solver-caps-title">Solver caps</div>
-          <div class="weight-row">
-            <label class="weight-label">Due cap</label>
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-700 my-1.5 mt-2">
+            Solver caps
+          </div>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Due cap</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="dueCostCapPercent" />
-            <span class="weight-value">{{ dueCostCapPercent() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ dueCostCapPercent() }}%</span>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Detour cap</label>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Detour cap</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="detourCostCapPercent" />
-            <span class="weight-value">{{ detourCostCapPercent() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ detourCostCapPercent() }}%</span>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Detour ref</label>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Detour ref</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="detourRefKmPercent" />
-            <span class="weight-value">{{ detourRefKmPercent() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ detourRefKmPercent() }}%</span>
           </div>
-          <div class="weight-row">
-            <label class="weight-label">Late ref</label>
+          <div class="grid grid-cols-[70px_1fr_36px] gap-2 items-center mb-1.5">
+            <label class="text-xs text-slate-700">Late ref</label>
             <input type="range" min="0" max="100" step="1" [(ngModel)]="lateRefMinutesPercent" />
-            <span class="weight-value">{{ lateRefMinutesPercent() }}%</span>
+            <span class="text-xs text-right text-gray-900">{{ lateRefMinutesPercent() }}%</span>
           </div>
-          <label class="weight-checkbox">
+          <label class="flex items-center gap-2 text-xs text-slate-700 mt-1.5">
             <input type="checkbox" [(ngModel)]="enforceServiceTypeMatch" />
             <span>Enforce service type match</span>
           </label>
           @if (hasInactiveWeights()) {
             <button
               type="button"
-              class="weight-toggle"
+              class="border-none bg-none text-blue-600 text-xs cursor-pointer p-0 mt-1.5 text-left hover:underline"
               (click)="showInactiveWeights.set(!showInactiveWeights())"
             >
               {{ showInactiveWeights() ? 'Hide inactive weights' : 'Show inactive weights' }}
@@ -311,52 +297,57 @@
         </div>
 
         @if (!loadingDrivers()) {
-          <div class="drivers-list">
+          <div class="flex-1 flex flex-col gap-3 items-start mt-4">
             @for (item of driversWithAvailability(); track trackByDriverId($index, item)) {
               <div
-                class="driver-item"
-                [class.driver-item-selected]="isDriverExpanded(item)"
-                [class.driver-item-unavailable]="!item.availability"
-                [class.driver-item-overbooked]="isDriverOverbooked(item)"
-                [class.driver-item-selected.driver-item-overbooked]="
-                  isDriverOverbooked(item) && isDriverExpanded(item)
-                "
+                class="w-full px-3.5 py-2.4 bg-gray-50 rounded-md border border-gray-200 transition-all duration-200 relative z-1 select-none"
+                [class.bg-blue-50]="isDriverExpanded(item)"
+                [class.border-blue-500]="isDriverExpanded(item)"
+                [class.border-2]="isDriverExpanded(item)"
+                [class.opacity-70]="!item.availability"
+                [class.bg-orange-50]="isDriverOverbooked(item) && isDriverExpanded(item)"
+                [class.border-orange-500]="isDriverOverbooked(item) && isDriverExpanded(item)"
               >
                 <div
-                  class="driver-header"
+                  class="flex items-center justify-between gap-3 cursor-pointer"
                   role="button"
                   tabindex="0"
                   (click)="toggleDriverCard(item, $event)"
                   (keydown.enter)="toggleDriverCard(item, $event)"
                   (keydown.space)="toggleDriverCard(item, $event)"
                 >
-                  <div class="driver-content">
-                    <span class="driver-name">{{ item.driver.name }}</span>
-                    <span class="driver-hours">{{ getDriverHeaderDuration(item) }}</span>
-                    <span class="driver-availability">
+                  <div class="flex items-center gap-4 flex-wrap pointer-events-none">
+                    <span class="text-base font-semibold text-gray-800 flex-1 min-w-max">{{
+                      item.driver.name
+                    }}</span>
+                    <span
+                      class="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded whitespace-nowrap"
+                      >{{ getDriverHeaderDuration(item) }}</span
+                    >
+                    <span class="flex items-center text-sm text-gray-500 whitespace-nowrap">
                       <i class="pi pi-clock mr-1"></i>
                       {{ getDriverHeaderTimeRange(item) }}
                     </span>
                   </div>
                   <i
-                    class="driver-toggle-icon pi"
+                    class="text-gray-500 text-xs pi"
                     [ngClass]="isDriverExpanded(item) ? 'pi-chevron-down' : 'pi-chevron-right'"
                   ></i>
                 </div>
                 @if (isDriverExpanded(item)) {
                   <div
-                    class="driver-route-info"
+                    class="mt-3 pt-3 border-t-2 border-blue-500 bg-blue-50 p-3 rounded-md"
                     (click)="$event.stopPropagation()"
                     (mousedown)="$event.stopPropagation()"
                     (touchstart)="$event.stopPropagation()"
                   >
-                    <div class="route-header">
-                      <h4 class="route-title">
+                    <div class="mb-2">
+                      <h4 class="text-sm font-semibold text-blue-900 m-0">
                         <i class="pi pi-map mr-1"></i>
                         Route
                       </h4>
                     </div>
-                    <div class="route-summary">
+                    <div class="flex items-center gap-3 text-sm text-gray-700 mb-2 flex-wrap">
                       <i class="pi pi-map-marker mr-1"></i>
                       <span
                         >{{
@@ -365,7 +356,7 @@
                         location(s)</span
                       >
                       @if (getCurrentRouteForDisplay()!.waypoints.length > 1) {
-                        <span class="route-time">
+                        <span class="text-blue-600 font-semibold">
                           <i class="pi pi-clock mr-1"></i>
                           {{ formatRouteTime(getCurrentRouteForDisplay()!.totalTimeMinutes) }}
                           <span style="opacity: 0.75">
@@ -379,7 +370,7 @@
                         </span>
                       }
                       @if (getCurrentRouteForDisplay()!.waypoints.length > 1) {
-                        <span class="route-distance">
+                        <span class="text-gray-500">
                           <i class="pi pi-map mr-1"></i>
                           @if (isRouteCalculating(getCurrentRouteForDisplay())) {
                             Calculating...
@@ -390,56 +381,65 @@
                       }
                     </div>
                     @if (getCurrentRouteForDisplay()!.waypoints.length > 0) {
-                      <div class="route-locations">
+                      <div class="flex flex-col gap-1">
                         @if (getStartWaypoint(getCurrentRouteForDisplay()!); as startWp) {
                           <div
-                            class="route-location-item route-start route-location-clickable"
+                            class="flex items-center gap-2 text-xs px-2 py-1 bg-gray-50 rounded cursor-pointer"
                             (click)="toggleStartOverrideEditor()"
                           >
-                            <span class="route-location-label">Start</span>
-                            <span class="route-location-name">{{ startWp.name }}</span>
-                            <span
-                              class="route-location-address"
-                              [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'start')"
+                            <span class="font-semibold text-gray-500 text-xs uppercase shrink-0"
+                              >Start</span
                             >
-                              {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'start') }}
-                            </span>
+                            <div class="flex flex-col gap-0 min-w-0 flex-1">
+                              <span
+                                class="text-gray-700 overflow-hidden text-ellipsis whitespace-nowrap"
+                                >{{ startWp.name }}</span
+                              >
+                              <span
+                                class="text-gray-500 text-xs leading-tight whitespace-normal overflow-hidden text-ellipsis block"
+                                [title]="
+                                  getRouteEndpointCoords(getCurrentRouteForDisplay(), 'start')
+                                "
+                              >
+                                {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'start') }}
+                              </span>
+                            </div>
                             @if (showStartOverrideEditor) {
-                              <div class="route-override-editor">
+                              <div class="flex flex-col gap-1.5 w-full mt-1.5">
                                 <input
                                   type="text"
-                                  class="route-override-input"
+                                  class="w-full border border-gray-300 rounded-md p-0.5 text-xs text-gray-700"
                                   placeholder="Start address (optional)"
                                   (click)="$event.stopPropagation()"
                                   [(ngModel)]="startOverrideAddress"
                                 />
-                                <div class="route-override-coords">
+                                <div class="grid grid-cols-2 gap-1.5">
                                   <input
                                     type="number"
-                                    class="route-override-input"
+                                    class="w-full border border-gray-300 rounded-md p-0.5 text-xs text-gray-700"
                                     placeholder="Lat"
                                     (click)="$event.stopPropagation()"
                                     [(ngModel)]="startOverrideLatitude"
                                   />
                                   <input
                                     type="number"
-                                    class="route-override-input"
+                                    class="w-full border border-gray-300 rounded-md p-0.5 text-xs text-gray-700"
                                     placeholder="Lng"
                                     (click)="$event.stopPropagation()"
                                     [(ngModel)]="startOverrideLongitude"
                                   />
                                 </div>
-                                <div class="route-override-actions">
+                                <div class="flex gap-1.5">
                                   <button
                                     type="button"
-                                    class="route-override-btn"
+                                    class="border border-gray-300 bg-gray-100 text-gray-900 rounded-md px-2 py-0.5 text-xs cursor-pointer"
                                     (click)="$event.stopPropagation(); applyStartOverride()"
                                   >
                                     Apply
                                   </button>
                                   <button
                                     type="button"
-                                    class="route-override-btn secondary"
+                                    class="border border-gray-300 bg-white text-gray-500 rounded-md px-2 py-0.5 text-xs cursor-pointer"
                                     (click)="$event.stopPropagation(); clearStartOverride()"
                                   >
                                     Reset
@@ -456,20 +456,22 @@
                               track waypoint;
                               let i = $index
                             ) {
-                              <div class="route-location-item">
+                              <div
+                                class="flex items-center gap-2 text-xs px-2 py-1 bg-gray-50 rounded"
+                              >
                                 <button
                                   type="button"
-                                  class="route-location-number route-location-number-btn"
+                                  class="inline-flex items-center justify-center w-4.5 h-4.5 bg-blue-500 text-white rounded-full text-xs font-semibold shrink-0 border-none cursor-pointer"
                                   title="Select stop to reorder"
                                   (click)="$event.stopPropagation(); toggleSelectedRouteStop(i)"
                                 >
                                   {{ i + 1 }}
                                 </button>
                                 @if (selectedRouteStopIndex() === i) {
-                                  <div class="route-reorder-controls">
+                                  <div class="inline-flex gap-1 mr-1">
                                     <button
                                       type="button"
-                                      class="route-reorder-btn"
+                                      class="border border-gray-300 bg-white rounded px-1 py-0.5 cursor-pointer text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
                                       title="Move up"
                                       [disabled]="i === 0"
                                       (click)="$event.stopPropagation(); moveSelectedStop('up')"
@@ -478,7 +480,7 @@
                                     </button>
                                     <button
                                       type="button"
-                                      class="route-reorder-btn"
+                                      class="border border-gray-300 bg-white rounded px-1 py-0.5 cursor-pointer text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
                                       title="Move down"
                                       [disabled]="
                                         i ===
@@ -491,11 +493,14 @@
                                     </button>
                                   </div>
                                 }
-                                <div class="route-location-main">
-                                  <span class="route-location-name">{{ waypoint.name }}</span>
+                                <div class="flex flex-col gap-0 min-w-0 flex-1">
+                                  <span
+                                    class="text-gray-700 overflow-hidden text-ellipsis whitespace-nowrap"
+                                    >{{ waypoint.name }}</span
+                                  >
                                   @if (waypoint.address) {
                                     <span
-                                      class="route-location-address route-location-address-compact"
+                                      class="text-gray-500 text-xs leading-tight whitespace-nowrap max-w-full"
                                       [title]="waypoint.address"
                                     >
                                       {{ waypoint.address }}
@@ -503,12 +508,12 @@
                                   }
                                 </div>
                                 @if (stopSchedule[i]?.label) {
-                                  <span class="route-location-time">
+                                  <span class="text-gray-500 text-xs shrink-0">
                                     {{ stopSchedule[i]?.label }}
                                   </span>
                                 }
                                 @if (!stopSchedule[i]?.label && waypoint.serviceMinutes) {
-                                  <span class="route-location-time">
+                                  <span class="text-gray-500 text-xs shrink-0">
                                     ({{ waypoint.serviceMinutes }}m)
                                   </span>
                                 }
@@ -518,53 +523,60 @@
                         }
                         @if (getEndWaypoint(getCurrentRouteForDisplay()!); as endWp) {
                           <div
-                            class="route-location-item route-end route-location-clickable"
+                            class="flex items-center gap-2 text-xs px-2 py-1 bg-gray-50 rounded cursor-pointer"
                             (click)="toggleEndOverrideEditor()"
                           >
-                            <span class="route-location-label">End</span>
-                            <span class="route-location-name">{{ endWp.name }}</span>
-                            <span
-                              class="route-location-address"
-                              [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'end')"
+                            <span class="font-semibold text-gray-500 text-xs uppercase shrink-0"
+                              >End</span
                             >
-                              {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'end') }}
-                            </span>
+                            <div class="flex flex-col gap-0 min-w-0 flex-1">
+                              <span
+                                class="text-gray-700 overflow-hidden text-ellipsis whitespace-nowrap"
+                                >{{ endWp.name }}</span
+                              >
+                              <span
+                                class="text-gray-500 text-xs leading-tight whitespace-normal overflow-hidden text-ellipsis block"
+                                [title]="getRouteEndpointCoords(getCurrentRouteForDisplay(), 'end')"
+                              >
+                                {{ getRouteEndpointAddress(getCurrentRouteForDisplay(), 'end') }}
+                              </span>
+                            </div>
                             @if (showEndOverrideEditor) {
-                              <div class="route-override-editor">
+                              <div class="flex flex-col gap-1.5 w-full mt-1.5">
                                 <input
                                   type="text"
-                                  class="route-override-input"
+                                  class="w-full border border-gray-300 rounded-md p-0.5 text-xs text-gray-700"
                                   placeholder="End address (optional)"
                                   (click)="$event.stopPropagation()"
                                   [(ngModel)]="endOverrideAddress"
                                 />
-                                <div class="route-override-coords">
+                                <div class="grid grid-cols-2 gap-1.5">
                                   <input
                                     type="number"
-                                    class="route-override-input"
+                                    class="w-full border border-gray-300 rounded-md p-0.5 text-xs text-gray-700"
                                     placeholder="Lat"
                                     (click)="$event.stopPropagation()"
                                     [(ngModel)]="endOverrideLatitude"
                                   />
                                   <input
                                     type="number"
-                                    class="route-override-input"
+                                    class="w-full border border-gray-300 rounded-md p-0.5 text-xs text-gray-700"
                                     placeholder="Lng"
                                     (click)="$event.stopPropagation()"
                                     [(ngModel)]="endOverrideLongitude"
                                   />
                                 </div>
-                                <div class="route-override-actions">
+                                <div class="flex gap-1.5">
                                   <button
                                     type="button"
-                                    class="route-override-btn"
+                                    class="border border-gray-300 bg-gray-100 text-gray-900 rounded-md px-2 py-0.5 text-xs cursor-pointer"
                                     (click)="$event.stopPropagation(); applyEndOverride()"
                                   >
                                     Apply
                                   </button>
                                   <button
                                     type="button"
-                                    class="route-override-btn secondary"
+                                    class="border border-gray-300 bg-white text-gray-500 rounded-md px-2 py-0.5 text-xs cursor-pointer"
                                     (click)="$event.stopPropagation(); clearEndOverride()"
                                   >
                                     Reset
@@ -580,7 +592,7 @@
                       isBuildingRoute() &&
                       getCurrentRouteForDisplay()?.driver?.toolId === item.driver.toolId
                     ) {
-                      <div class="route-actions">
+                      <div class="mt-2">
                         <p-button
                           label="Clear Route"
                           icon="pi pi-times"
@@ -596,7 +608,7 @@
               </div>
             }
             @if (driversWithAvailability().length === 0) {
-              <div class="no-drivers">
+              <div class="flex items-center justify-center p-8 text-gray-500 text-sm">
                 <i class="pi pi-info-circle mr-2"></i>
                 No drivers found
               </div>
@@ -605,7 +617,7 @@
         }
 
         @if (loadingDrivers()) {
-          <div class="drivers-loading">
+          <div class="flex items-center justify-center p-8 text-gray-500 text-sm">
             <i class="pi pi-spin pi-spinner mr-2"></i>
             Loading drivers...
           </div>
@@ -654,16 +666,16 @@
   [style]="{ width: '520px' }"
   [(visible)]="showBulkAddDialogValue"
 >
-  <div class="bulk-add-dialog">
-    <div class="bulk-add-subtitle">These locations were skipped during the bulk add.</div>
+  <div class="flex flex-col gap-3">
+    <div class="text-xs text-gray-500">These locations were skipped during the bulk add.</div>
     @if (bulkAddRejections().length > 0) {
-      <div class="bulk-add-list">
+      <div class="flex flex-col gap-2 max-h-80 overflow-auto">
         @for (item of bulkAddRejections(); track item) {
-          <div class="bulk-add-item">
-            <div class="bulk-add-name">{{ item.name }}</div>
-            <div class="bulk-add-reason">{{ item.reason }}</div>
+          <div class="border border-gray-200 rounded-lg p-2 bg-gray-50">
+            <div class="text-sm font-semibold text-gray-900">{{ item.name }}</div>
+            <div class="text-xs text-amber-600 mt-0.5">{{ item.reason }}</div>
             @if (item.address) {
-              <div class="bulk-add-address">{{ item.address }}</div>
+              <div class="text-xs text-gray-500 mt-0.5 break-words">{{ item.address }}</div>
             }
           </div>
         }

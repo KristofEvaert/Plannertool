@@ -1,0 +1,53 @@
+<div
+  class="flex-0 md:h-[calc(100vh-300px)] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0"
+>
+  <div id="serviceLocationsMap" class="w-full md:h-[calc(100vh-300px)]"></div>
+</div>
+
+@if (mapData()) {
+  <div class="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 shrink-0">
+    <label class="inline-flex items-center gap-2 text-sm text-gray-700 select-none">
+      <input
+        type="checkbox"
+        class="w-4 h-4"
+        [checked]="showPlannedLocations()"
+        (change)="onToggleShowPlannedLocations($event)"
+      />
+      Show planned locations
+    </label>
+  </div>
+}
+<div
+  class="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 shrink-0 flex justify-between items-start gap-6"
+>
+  <div class="flex flex-col gap-2 flex-1 min-w-0">
+    <div class="text-sm font-semibold text-gray-700">Urgency legend</div>
+    <div class="grid grid-cols-3 gap-1 gap-x-4">
+      @for (item of urgencyLegend; track $index) {
+        <div class="flex items-center gap-2 text-sm text-gray-700 min-h-6">
+          <span
+            class="w-3.5 h-3.5 border border-black rounded-sm shrink-0"
+            [style]="getLegendSwatchStyle(item.key)"
+          ></span>
+          <span class="text-sm text-gray-700">{{ item.label }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (selectedServiceTypesLegend().length > 0) {
+    <div class="flex flex-wrap gap-1 gap-x-2 ml-auto items-center self-start justify-end">
+      @for (st of selectedServiceTypesLegend(); track st) {
+        <div
+          class="inline-flex items-center gap-1 px-2 py-1 border border-gray-200 rounded-full bg-gray-50"
+        >
+          <span
+            class="w-3 h-3 inline-block bg-gray-500 border border-black"
+            [class]="getLegendShapeClass(st.id)"
+          ></span>
+          <span class="text-sm text-gray-700 font-medium">{{ st.name }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

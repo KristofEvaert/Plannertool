@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AfterViewInit, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HelpManualComponent } from '@components/help-manual/help-manual.component';
+import { HelpManualComponent, MapWithLegendComponent } from '@components';
 import { environment } from '@environments/environment';
 import type {
   ArrivalWindow,
@@ -11,10 +11,8 @@ import type {
   DriverAvailabilityDto,
   DriverDto,
   DriverWithAvailability,
-  LocationHoursDisplay,
   LocationWindowInfo,
   MapPagePreferences,
-  MarkerColorKey,
   RouteInfo,
   RouteOverride,
   RouteWaypoint,
@@ -25,7 +23,7 @@ import type {
   ServiceTypeDto,
   StopSchedule,
   WeightTemplateDto,
-  WeightTemplateOption
+  WeightTemplateOption,
 } from '@models';
 import { AuthService } from '@services/auth.service';
 import { DriverAvailabilityApiService } from '@services/driver-availability-api.service';
@@ -54,7 +52,6 @@ import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 
-
 @Component({
   selector: 'app-map',
   imports: [
@@ -68,94 +65,13 @@ import { firstValueFrom, lastValueFrom } from 'rxjs';
     DialogModule,
     InputTextModule,
     HelpManualComponent,
+    MapWithLegendComponent,
   ],
   providers: [MessageService],
   templateUrl: './map.page.html',
   styleUrl: './map.page.css',
-  standalone: true,
 })
 export class MapPage implements AfterViewInit, OnDestroy {
-  private readonly serviceTypeShapes = [
-    'circle',
-    'square',
-    'triangle',
-    'diamond',
-    'pentagon',
-  ] as const;
-  private getServiceTypeShape(serviceTypeId: number): (typeof this.serviceTypeShapes)[number] {
-    const ids = this.selectedServiceTypeIds();
-    const idx = Math.max(0, ids.indexOf(serviceTypeId));
-    return this.serviceTypeShapes[idx % this.serviceTypeShapes.length];
-  }
-
-  getLegendShapeClass(serviceTypeId: number): string {
-    return `legend-shape-${this.getServiceTypeShape(serviceTypeId)}`;
-  }
-
-  private buildServiceLocationIconSvg(
-    shape: (typeof this.serviceTypeShapes)[number],
-    size: number,
-    fill: string,
-    stroke: string,
-    strokeWidth: number,
-  ): string {
-    const s = size;
-    const half = s / 2;
-    const pad = Math.max(1, strokeWidth);
-    const min = pad;
-    const max = s - pad;
-
-    const svgOpen = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">`;
-    const svgClose = `</svg>`;
-
-    switch (shape) {
-      case 'circle':
-        return `${svgOpen}<circle cx="${half}" cy="${half}" r="${half - pad}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />${svgClose}`;
-      case 'square':
-        return `${svgOpen}<rect x="${min}" y="${min}" width="${max - min}" height="${max - min}" rx="2" ry="2" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />${svgClose}`;
-      case 'triangle': {
-        const p1 = `${half},${min}`;
-        const p2 = `${max},${max}`;
-        const p3 = `${min},${max}`;
-        return `${svgOpen}<polygon points="${p1} ${p2} ${p3}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />${svgClose}`;
-      }
-      case 'diamond': {
-        const p1 = `${half},${min}`;
-        const p2 = `${max},${half}`;
-        const p3 = `${half},${max}`;
-        const p4 = `${min},${half}`;
-        return `${svgOpen}<polygon points="${p1} ${p2} ${p3} ${p4}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />${svgClose}`;
-      }
-      case 'pentagon': {
-        // simple regular-ish pentagon
-        const p1 = `${half},${min}`;
-        const p2 = `${max},${half * 0.9}`;
-        const p3 = `${half * 0.82},${max}`;
-        const p4 = `${half * 0.18},${max}`;
-        const p5 = `${min},${half * 0.9}`;
-        return `${svgOpen}<polygon points="${p1} ${p2} ${p3} ${p4} ${p5}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />${svgClose}`;
-      }
-    }
-  }
-
-  private createServiceLocationMarker(
-    item: ServiceLocationMapDto,
-    fill: string,
-    stroke: string,
-    size: number,
-  ): L.Marker {
-    const shape = this.getServiceTypeShape(item.serviceTypeId);
-    const svg = this.buildServiceLocationIconSvg(shape, size, fill, stroke, 2);
-    return L.marker([item.latitude, item.longitude], {
-      icon: L.divIcon({
-        className: 'service-location-shape-marker',
-        html: svg,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-      }),
-      keyboard: false,
-    });
-  }
   private readonly http = inject(HttpClient);
   private readonly serviceTypesApi = inject(ServiceTypesApiService);
   private readonly ownersApi = inject(ServiceLocationOwnersApiService);
@@ -272,7 +188,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
         detail: `Updated ${updated} driver(s)` + (skipped > 0 ? `, skipped ${skipped}` : ''),
       });
       await this.loadExistingRoutes();
-      this.refreshMapDataAfterRouteSave(); // refresh statuses/markers
+      // refresh statuses/markers
+      this.refreshMapDataAfterRouteSave();
     } catch (err: any) {
       this.messageService.add({
         severity: 'error',
@@ -374,7 +291,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
         await this.loadMapDataAsync(this.lastMapQuery, { reloadRoutes: false, silent: true });
         await this.loadExistingRoutesAsync();
-        this.refreshLocationMarkers();
       }
     } finally {
       this.autoGeneratePeriodLoading.set(false);
@@ -521,35 +437,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
   });
   showBulkAddDialog = signal(false);
   bulkAddRejections = signal<BulkAddRejection[]>([]);
-  selectedServiceTypesLegend = computed(() => {
-    const ids = this.selectedServiceTypeIds();
-    const all = this.serviceTypes();
-    return ids
-      .slice(0, 5)
-      .map((id) => all.find((t) => t.id === id))
-      .filter((t): t is ServiceTypeDto => !!t);
-  });
   selectedOwnerId = signal<number | null>(null);
-  readonly urgencyLegend: { key: MarkerColorKey; label: string }[] = [
-    { key: 'green', label: 'Due in > 4 weeks' },
-    { key: 'yellow', label: 'Due in 2–4 weeks' },
-    { key: 'orange', label: 'Due in < 2 weeks' },
-    { key: 'red', label: 'Overdue' },
-    { key: 'white', label: 'Closed today' },
-    { key: 'black', label: 'Already planned' },
-  ];
-  private readonly markerColors: Record<MarkerColorKey, string> = {
-    green: '#16a34a',
-    yellow: '#facc15',
-    orange: '#f59e0b',
-    red: '#dc2626',
-    white: '#ffffff',
-    black: '#111827',
-  };
 
   // Date range
   fromDate = signal<Date>(new Date());
-  toDate = signal<Date>(new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)); // +60 days
+  // +60 days
+  toDate = signal<Date>(new Date(Date.now() + 60 * 24 * 60 * 60 * 1000));
 
   // Map data
   mapData = signal<ServiceLocationsMapResponseDto | null>(null);
@@ -581,23 +474,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private routePolylines = new Map<string, L.Polyline>();
   private routeMarkers = new Map<string, L.Marker[]>();
   private locationWindowCache = new Map<string, CacheEntry<LocationWindowInfo | null>>();
-  private locationHoursCache = new Map<string, CacheEntry<LocationHoursDisplay>>();
-  private locationHoursRequests = new Map<string, Promise<LocationHoursDisplay>>();
   private routeEndpointAddressCache = signal<Map<string, string>>(new Map());
-  private routeEndpointAddressRequests = new Map<string, Promise<void>>();
-  private selectionStart: L.LatLng | null = null;
-  private selectionRect: L.Rectangle | null = null;
-  private isAreaSelecting = false;
-
-  // Prevent overlapping saves (rapid clicking) from causing backend concurrency errors.
-  private routeSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private routeSaveInFlight = new Set<string>();
-  private routeSavePending = new Set<string>();
-  private routeSaveLatest = new Map<string, RouteInfo>();
-  private hasSavedPreferences = false;
-  private hasAutoLoaded = false;
-  private hasEnsuredGeneralTemplate = false;
-  private readonly hoursCacheTtlMs = 30_000;
 
   // UI: selected stop index (within location waypoints only) for arrow-based reordering
   selectedRouteStopIndex = signal<number | null>(null);
@@ -624,11 +501,26 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.showBulkAddDialog.set(value);
   }
 
+  private selectionStart: L.LatLng | null = null;
+  private selectionRect: L.Rectangle | null = null;
+  private isAreaSelecting = false;
+
+  // Prevent overlapping saves (rapid clicking) from causing backend concurrency errors.
+  private routeSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private routeSaveInFlight = new Set<string>();
+  private routeSavePending = new Set<string>();
+  private routeSaveLatest = new Map<string, RouteInfo>();
+  private hasSavedPreferences = false;
+  private hasAutoLoaded = false;
+
+  onMapReady(map: L.Map): void {
+    this.map = map;
+    this.initAreaSelection();
+  }
+
   async ngAfterViewInit(): Promise<void> {
     this.loadMapPreferences();
     await this.loadInitialData();
-    this.initMap();
-    this.initAreaSelection();
     await this.loadDriversWithAvailability();
   }
 
@@ -654,7 +546,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       await this.loadServiceTypesAsync(this.selectedOwnerId());
       this.loadWeightTemplates();
       this.autoLoadMapIfReady();
-    } catch (error) {
+    } catch {
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
@@ -710,21 +602,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   private ensureGeneralTemplate(templates: WeightTemplateDto[]): void {
-    if (this.hasEnsuredGeneralTemplate) {
-      return;
-    }
     if (!this.isSuperAdmin()) {
-      this.hasEnsuredGeneralTemplate = true;
       return;
     }
     if (
       templates.some((t) => t.scopeType === 'Global' && t.name.trim().toLowerCase() === 'general')
     ) {
-      this.hasEnsuredGeneralTemplate = true;
       return;
     }
-
-    this.hasEnsuredGeneralTemplate = true;
     this.weightTemplatesApi
       .create({
         name: 'General',
@@ -1033,8 +918,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     options?: { reloadRoutes?: boolean; silent?: boolean },
   ): void {
     this.locationWindowCache.clear();
-    this.locationHoursCache.clear();
-    this.locationHoursRequests.clear();
     const params = new URLSearchParams({
       ownerId: query.ownerId.toString(),
       from: query.from,
@@ -1063,10 +946,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
           if (options?.reloadRoutes) {
             this.loadExistingRoutes();
           }
-          setTimeout(() => this.updateMap(), 50);
         },
-        error: (error) => {
-          console.error('Error loading service locations:', error);
+        error: () => {
           if (!options?.silent) {
             this.messageService.add({
               severity: 'error',
@@ -1088,8 +969,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
 
     this.locationWindowCache.clear();
-    this.locationHoursCache.clear();
-    this.locationHoursRequests.clear();
 
     const params = new URLSearchParams({
       ownerId: query.ownerId.toString(),
@@ -1120,11 +999,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
             if (options?.reloadRoutes) {
               this.loadExistingRoutes();
             }
-            setTimeout(() => this.updateMap(), 50);
             resolve(data);
           },
-          error: (error) => {
-            console.error('Error loading service locations:', error);
+          error: () => {
             if (!options?.silent) {
               this.messageService.add({
                 severity: 'error',
@@ -1146,457 +1023,37 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.loadMapData(this.lastMapQuery, { reloadRoutes: false, silent: true });
   }
 
-  private initMap(): void {
-    if (this.map) {
-      return;
-    }
-
-    const mapElement = document.getElementById('serviceLocationsMap');
-    if (!mapElement) {
-      console.error('Map element not found');
-      return;
-    }
-
-    this.map = L.map('serviceLocationsMap');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(this.map);
-
-    // Set default view to Belgium
-    this.map.setView([50.5039, 4.4699], 8);
-  }
-
-  private updateMap(): void {
-    if (!this.map) {
-      return;
-    }
-
-    // Clear existing service location markers (but keep driver marker and route)
-    this.markers.forEach((marker) => this.map!.removeLayer(marker));
-    this.markers = [];
-
-    // Get current route once for the entire function
-    const currentRoute = this.getCurrentRoute();
-
-    const data = this.mapData();
-    if (!data || !data.items || data.items.length === 0) {
-      return;
-    }
-
-    const selectedDay = this.selectedDate();
-
-    const bounds: L.LatLngBoundsExpression = [];
-
-    data.items.forEach((item) => {
-      const isPlanned = item.status === 'Planned';
-      if (isPlanned && !this.showPlannedLocations()) {
-        return;
-      }
-
-      const hoursInfo =
-        this.getCachedLocationHours(item.toolId, selectedDay) ??
-        this.getHoursPlaceholderDisplay(selectedDay);
-      const colorKey = this.getMarkerColorKey(item, selectedDay, hoursInfo);
-      const fill = this.markerColors[colorKey];
-      const stroke = this.getMarkerStrokeColor(colorKey);
-
-      // Check if location is in current route and get its order
-      const routeWaypoint = currentRoute?.waypoints.find(
-        (w) => w.type === 'location' && w.toolId === item.toolId,
-      );
-      const isInRoute = !!routeWaypoint;
-      const routeOrder =
-        isInRoute && currentRoute
-          ? this.getLocationNumber(
-              currentRoute.waypoints.findIndex((w) => w === routeWaypoint),
-              currentRoute.waypoints,
-            )
-          : null;
-
-      // Marker shape depends on service type (max 5 shapes).
-      const marker = this.createServiceLocationMarker(item, fill, stroke, isInRoute ? 22 : 18);
-
-      // Don't add number label here - route markers already show the numbers
-      // The route waypoint markers from updateAllRoutesDisplay() will show the numbers
-
-      // Tooltip on hover (click is used for route building).
-      const tooltipContent = this.buildLocationTooltip(item, isInRoute, routeOrder, hoursInfo);
-
-      marker.bindTooltip(tooltipContent, {
-        direction: 'top',
-        opacity: 0.95,
-        sticky: true,
-        className: 'map-location-tooltip',
-      });
-      marker.on('tooltipopen', () => {
-        this.getLocationHoursDisplay(item.toolId, this.selectedDate(), true).then((display) => {
-          marker.setTooltipContent(this.buildLocationTooltip(item, isInRoute, routeOrder, display));
-          const updatedKey = this.getMarkerColorKey(item, this.selectedDate(), display);
-          if (updatedKey !== colorKey) {
-            const updatedFill = this.markerColors[updatedKey];
-            const updatedStroke = this.getMarkerStrokeColor(updatedKey);
-            const size = isInRoute ? 22 : 18;
-            const shape = this.getServiceTypeShape(item.serviceTypeId);
-            const svg = this.buildServiceLocationIconSvg(
-              shape,
-              size,
-              updatedFill,
-              updatedStroke,
-              2,
-            );
-            marker.setIcon(
-              L.divIcon({
-                className: 'service-location-shape-marker',
-                html: svg,
-                iconSize: [size, size],
-                iconAnchor: [size / 2, size / 2],
-              }),
-            );
-          }
-        });
-      });
-
-      if (!hoursInfo.isLoading && !hoursInfo.isClosed) {
-        // no-op if cached and open
-      } else {
-        this.getLocationHoursDisplay(item.toolId, selectedDay).then((display) => {
-          const updatedKey = this.getMarkerColorKey(item, selectedDay, display);
-          if (updatedKey !== colorKey) {
-            const updatedFill = this.markerColors[updatedKey];
-            const updatedStroke = this.getMarkerStrokeColor(updatedKey);
-            const shape = this.getServiceTypeShape(item.serviceTypeId);
-            const svg = this.buildServiceLocationIconSvg(
-              shape,
-              isInRoute ? 22 : 18,
-              updatedFill,
-              updatedStroke,
-              2,
-            );
-            marker.setIcon(
-              L.divIcon({
-                className: 'service-location-shape-marker',
-                html: svg,
-                iconSize: [isInRoute ? 22 : 18, isInRoute ? 22 : 18],
-                iconAnchor: [(isInRoute ? 22 : 18) / 2, (isInRoute ? 22 : 18) / 2],
-              }),
-            );
-          }
-        });
-      }
-
-      // Helper function to check if location is in any route
-      const isLocationInAnyRoute = (): boolean => {
-        const allRoutes = this.driverRoutes();
-        for (const route of allRoutes.values()) {
-          if (route.waypoints.some((w) => w.type === 'location' && w.toolId === item.toolId)) {
-            return true;
-          }
-        }
-        return false;
-      };
-
-      // Click adds/moves (unless Ctrl is held for area selection).
-      marker.on('click', (e) => {
-        const ctrl = (e.originalEvent as MouseEvent | undefined)?.ctrlKey;
-        if (ctrl) {
-          return;
-        }
-        this.onLocationClick(item);
-      });
-
-      // Add double click handler to remove from route
-      marker.on('dblclick', (e) => {
-        const ctrl = (e.originalEvent as MouseEvent | undefined)?.ctrlKey;
-        if (ctrl) {
-          return;
-        }
-        e.originalEvent?.stopPropagation();
-        e.originalEvent?.preventDefault();
-
-        // Check if location is in any route (current or other)
-        const isInAnyRoute = isLocationInAnyRoute();
-
-        // Remove on double click if in any route
-        if (isInAnyRoute) {
-          this.toggleLocationInRoute(item);
-        }
-      });
-
-      marker.addTo(this.map!);
-      this.markers.push(marker);
-      bounds.push([item.latitude, item.longitude] as [number, number]);
-    });
-
-    // Fit bounds to all markers (but don't if we have a route, as it might zoom out too much)
-    if (bounds.length > 0 && !currentRoute) {
-      this.map.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }
-
-  getLegendSwatchStyle(key: MarkerColorKey): Record<string, string> {
-    const color = this.markerColors[key];
-    return {
-      backgroundColor: color,
-      borderColor: key === 'black' ? '#ffffff' : '#000000',
-    };
-  }
-
-  private toStartOfDay(value: Date): Date {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  }
-
-  private getMarkerColorKey(
-    item: ServiceLocationMapDto,
-    selectedDay: Date,
-    hoursInfo?: LocationHoursDisplay,
-  ): MarkerColorKey {
-    if (item.status === 'Planned') {
-      return 'black';
-    }
-
-    if (hoursInfo?.isClosed) {
-      return 'white';
-    }
-
-    if (!item.dueDate) {
-      return 'green';
-    }
-
-    const dueDate = new Date(item.dueDate);
-    if (Number.isNaN(dueDate.getTime())) {
-      return 'green';
-    }
-
-    const remainingDays = Math.floor(
-      (this.toStartOfDay(dueDate).getTime() - this.toStartOfDay(selectedDay).getTime()) /
-        86_400_000,
-    );
-
-    if (remainingDays < 0) {
-      return 'red';
-    }
-    if (remainingDays <= 13) {
-      return 'orange';
-    }
-    if (remainingDays <= 27) {
-      return 'yellow';
-    }
-    return 'green';
-  }
-
-  private getMarkerStrokeColor(colorKey: MarkerColorKey): string {
-    if (colorKey === 'white') {
-      return '#111827';
-    }
-    if (colorKey === 'black') {
-      return '#000000';
-    }
-    return '#1f2937';
-  }
-
-  private getLocationHoursKey(toolId: string, date: Date): string {
-    return `${toolId}-${toYmd(date)}`;
-  }
-
-  private getDayLabel(date: Date): string {
-    const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return labels[date.getDay()] ?? '';
-  }
-
-  private getHoursPlaceholderDisplay(date: Date): LocationHoursDisplay {
-    const dayLabel = this.getDayLabel(date);
-    return {
-      label: `Hours (${dayLabel}): Loading...`,
-      isClosed: false,
-      isLoading: true,
-    };
-  }
-
-  private formatHourRanges(
-    openTime?: string | null,
-    closeTime?: string | null,
-    openTime2?: string | null,
-    closeTime2?: string | null,
-  ): string | null {
-    const ranges: string[] = [];
-    if (openTime && closeTime) {
-      ranges.push(`${openTime}-${closeTime}`);
-    }
-    if (openTime2 && closeTime2) {
-      ranges.push(`${openTime2}-${closeTime2}`);
-    }
-    return ranges.length > 0 ? ranges.join(', ') : null;
-  }
-
   private buildLocationHoursDisplay(
     hours: ServiceLocationOpeningHoursDto[],
     exceptions: ServiceLocationExceptionDto[],
     date: Date,
-  ): LocationHoursDisplay {
-    const dayLabel = this.getDayLabel(date);
-    const prefix = `Hours (${dayLabel}): `;
-    const dateKey = toYmd(date);
-    const exception = exceptions.find((ex) => toYmd(new Date(ex.date)) === dateKey);
+  ): LocationWindowInfo | null {
+    const dayOfWeek = date.getDay();
+    const exception = exceptions.find((ex) => toYmd(new Date(ex.date)) === toYmd(date));
 
     if (exception) {
       if (exception.isClosed) {
-        return { label: `${prefix}Closed`, isClosed: true };
+        return { isClosed: true, openMinute: 0, closeMinute: 0, label: 'Closed' };
       }
-      const ranges = this.formatHourRanges(exception.openTime, exception.closeTime);
       return {
-        label: `${prefix}${ranges ?? 'Open all day'}`,
         isClosed: false,
+        label: `Hours: ${exception.openTime} - ${exception.closeTime}`,
+        openMinute: this.parseTimeToMinutes(exception.openTime) ?? 0,
+        closeMinute: this.parseTimeToMinutes(exception.closeTime) ?? 1440,
       };
     }
 
-    const dayOfWeek = date.getDay();
     const standard = hours.find((h) => h.dayOfWeek === dayOfWeek);
-    if (!standard) {
-      return { label: `${prefix}Open all day`, isClosed: false };
+    if (!standard || standard.isClosed) {
+      return { isClosed: true, openMinute: 0, closeMinute: 0, label: 'Closed' };
     }
-
-    if (standard.isClosed) {
-      return { label: `${prefix}Closed`, isClosed: true };
-    }
-
-    const ranges = this.formatHourRanges(
-      standard.openTime,
-      standard.closeTime,
-      standard.openTime2,
-      standard.closeTime2,
-    );
 
     return {
-      label: `${prefix}${ranges ?? 'Open all day'}`,
       isClosed: false,
+      label: `Hours: ${standard.openTime} - ${standard.closeTime}`,
+      openMinute: this.parseTimeToMinutes(standard.openTime) ?? 0,
+      closeMinute: this.parseTimeToMinutes(standard.closeTime) ?? 1440,
     };
-  }
-
-  private isCacheFresh(fetchedAt: number): boolean {
-    return Date.now() - fetchedAt < this.hoursCacheTtlMs;
-  }
-
-  private getCachedLocationHours(toolId: string, date: Date): LocationHoursDisplay | null {
-    const key = this.getLocationHoursKey(toolId, date);
-    const cached = this.locationHoursCache.get(key);
-    if (!cached || !this.isCacheFresh(cached.fetchedAt)) {
-      return null;
-    }
-    return cached.value;
-  }
-
-  private async getLocationHoursDisplay(
-    toolId: string,
-    date: Date,
-    forceRefresh = false,
-  ): Promise<LocationHoursDisplay> {
-    const key = this.getLocationHoursKey(toolId, date);
-    const cached = this.locationHoursCache.get(key);
-    if (!forceRefresh && cached && this.isCacheFresh(cached.fetchedAt)) {
-      return cached.value;
-    }
-
-    const inFlight = this.locationHoursRequests.get(key);
-    if (inFlight) {
-      return inFlight;
-    }
-
-    const request = (async () => {
-      try {
-        const [hours, exceptions] = await Promise.all([
-          firstValueFrom(this.serviceLocationsApi.getOpeningHours(toolId)),
-          firstValueFrom(this.serviceLocationsApi.getExceptions(toolId)),
-        ]);
-        return this.buildLocationHoursDisplay(hours, exceptions, date);
-      } catch {
-        const dayLabel = this.getDayLabel(date);
-        return { label: `Hours (${dayLabel}): Unavailable`, isClosed: false };
-      }
-    })();
-
-    this.locationHoursRequests.set(key, request);
-    request
-      .then((display) => {
-        this.locationHoursCache.set(key, { value: display, fetchedAt: Date.now() });
-      })
-      .finally(() => {
-        this.locationHoursRequests.delete(key);
-      });
-
-    return request;
-  }
-
-  private buildLocationTooltip(
-    item: ServiceLocationMapDto,
-    isInRoute: boolean,
-    routeOrder: number | null,
-    hoursInfo?: LocationHoursDisplay,
-  ): string {
-    const popupContent = this.createPopupContent(item, hoursInfo);
-    return isInRoute && routeOrder !== null
-      ? `${popupContent}<br><b style="color: #3b82f6;">In Route (Stop #${routeOrder})</b>`
-      : popupContent;
-  }
-
-  private createPopupContent(
-    item: ServiceLocationMapDto,
-    hoursInfo?: LocationHoursDisplay,
-  ): string {
-    const address = item.address?.trim();
-    const planned = this.getPlannedRouteInfo(item);
-    const plannedDriverName = planned?.driverName;
-    const plannedDate = planned?.date;
-
-    // Hover tooltip content (avoid click popups since clicking is used for route building).
-    let content = `<b>${item.name}</b><br>`;
-    content += `<span class="map-location-address">Address: ${address || 'N/A'}</span><br>`;
-    if (plannedDriverName) {
-      content += `<span>Driver: ${plannedDriverName}</span><br>`;
-    }
-    if (plannedDate) {
-      content += `<span>Planned: ${plannedDate}</span><br>`;
-    }
-    if (hoursInfo) {
-      const hoursClass = hoursInfo.isClosed
-        ? 'map-location-hours map-location-hours-closed'
-        : 'map-location-hours';
-      const loadingClass = hoursInfo.isLoading ? ' map-location-hours-loading' : '';
-      content += `<span class="${hoursClass}${loadingClass}">${hoursInfo.label}</span><br>`;
-    }
-    content += `<span>Service: ${item.serviceMinutes} min</span>`;
-    return content;
-  }
-
-  private getPlannedRouteInfo(
-    item: ServiceLocationMapDto,
-  ): { driverName: string; date: string } | null {
-    if (item.plannedDriverName && item.plannedDate) {
-      return {
-        driverName: item.plannedDriverName,
-        date: toYmd(new Date(item.plannedDate)),
-      };
-    }
-
-    const routes = this.driverRoutes();
-    for (const route of routes.values()) {
-      if (route.waypoints.some((w) => w.type === 'location' && w.toolId === item.toolId)) {
-        return {
-          driverName: route.driver.name,
-          date: toYmd(this.selectedDate()),
-        };
-      }
-    }
-
-    if (item.plannedDriverName) {
-      return {
-        driverName: item.plannedDriverName,
-        date: item.plannedDate ? toYmd(new Date(item.plannedDate)) : '',
-      };
-    }
-
-    return null;
   }
 
   private initAreaSelection(): void {
@@ -1649,7 +1106,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.selectionRect.setBounds(bounds);
     });
 
-    const finishSelection = (e: L.LeafletMouseEvent) => {
+    const finishSelection = () => {
       if (!this.isAreaSelecting || !this.selectionStart || !this.selectionRect) {
         return;
       }
@@ -1687,11 +1144,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
     };
 
     this.map.on('mouseup', finishSelection);
-    this.map.on('mouseout', (e: any) => {
+    this.map.on('mouseout', () => {
       // Leaflet doesn't always send mouseup if cursor leaves map container
       // while dragging selection; try to finish gracefully.
       if (this.isAreaSelecting) {
-        finishSelection(e as L.LeafletMouseEvent);
+        finishSelection();
       }
     });
   }
@@ -1830,7 +1287,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.scheduleSaveRouteToBackend(route);
 
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
 
     this.messageService.add({
       severity: 'success',
@@ -1852,8 +1308,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       }
 
       const remainingLocations = route.waypoints.filter(
-        (w) =>
-          w.type === 'location' && w.toolId != null && !locationToolIds.has(w.toolId),
+        (w) => w.type === 'location' && w.toolId != null && !locationToolIds.has(w.toolId),
       );
 
       const startWaypoint = route.waypoints.find((w) => w.type === 'driver-start');
@@ -1905,7 +1360,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
   onToggleShowPlannedLocations(event: Event): void {
     const checked = (event.target as HTMLInputElement | null)?.checked ?? true;
     this.showPlannedLocations.set(checked);
-    this.refreshLocationMarkers();
   }
 
   private destroyMap(): void {
@@ -1937,9 +1391,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       });
     }
 
-    console.log('Driver clicked:', item.driver.name, isAvailable ? '(available)' : '(unavailable)');
-    console.log('Current routes before switch:', Array.from(this.driverRoutes().keys()));
-
     this.selectedDriver.set(item);
     this.showDriverLocation(item.driver, isAvailable);
 
@@ -1948,8 +1399,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.loadOrCreateDriverRoute(item.driver);
     }
     this.syncOverrideInputsFromRoute(this.getCurrentRoute());
-
-    console.log('Current routes after switch:', Array.from(this.driverRoutes().keys()));
   }
 
   toggleDriverCard(item: DriverWithAvailability, event?: Event): void {
@@ -1961,25 +1410,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.isBuildingRoute.set(false);
       this.syncOverrideInputsFromRoute(null);
       this.updateAllRoutesDisplay();
-      this.refreshLocationMarkers();
+
       return;
     }
     this.onDriverClick(item, event);
-  }
-
-  onDriversListBackgroundClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement | null;
-    // If the click is inside a driver card, keep selection.
-    if (target?.closest?.('.driver-item')) {
-      return;
-    }
-    // Clicked empty space in the container → clear selection.
-    this.selectedDriver.set(null);
-    this.selectedRouteStopIndex.set(null);
-    this.isBuildingRoute.set(false);
-    this.syncOverrideInputsFromRoute(null);
-    this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
   }
 
   private getCurrentRoute(): RouteInfo | null {
@@ -2219,7 +1653,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     route.isAwaitingBackendTotals = true;
     this.calculateRouteMetrics(route);
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
+
     this.scheduleSaveRouteToBackend(route);
   }
 
@@ -2232,7 +1666,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     route.isAwaitingBackendTotals = true;
     this.calculateRouteMetrics(route);
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
+
     this.scheduleSaveRouteToBackend(route);
   }
 
@@ -2295,7 +1729,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.calculateRouteMetrics(route);
     }
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
+
     this.scheduleSaveRouteToBackend(route);
 
     if (address && (lat == null || lng == null)) {
@@ -2309,13 +1743,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   private loadOrCreateDriverRoute(driver: DriverDto): void {
     const routes = this.driverRoutes();
-    console.log('loadOrCreateDriverRoute - Current routes:', Array.from(routes.keys()));
-    console.log('loadOrCreateDriverRoute - Looking for driver:', driver.toolId);
 
     let route = routes.get(driver.toolId);
 
     if (!route) {
-      console.log('loadOrCreateDriverRoute - Creating new route for driver:', driver.toolId);
       // Create new route for this driver (but don't start building automatically)
       const startWaypoint: RouteWaypoint = {
         type: 'driver-start',
@@ -2331,31 +1762,20 @@ export class MapPage implements AfterViewInit, OnDestroy {
         totalTimeMinutes: 0,
       };
 
-      // Store route for this driver - IMPORTANT: preserve existing routes
       const newRoutes = new Map(this.driverRoutes());
       newRoutes.set(driver.toolId, route);
       this.driverRoutes.set(newRoutes);
-      console.log('loadOrCreateDriverRoute - Routes after adding:', Array.from(newRoutes.keys()));
-    } else {
-      console.log(
-        'loadOrCreateDriverRoute - Found existing route with',
-        route.waypoints.length,
-        'waypoints',
-      );
     }
 
     // Always update display and refresh markers when switching drivers
     // Show all routes, not just the current one
     this.isBuildingRoute.set(true);
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
   }
 
   onLocationClick(location: ServiceLocationMapDto): void {
-    console.log('onLocationClick called for:', location.name, location.toolId);
     const selected = this.selectedDriver();
     if (!selected || !selected.availability) {
-      console.log('No driver selected or driver unavailable');
       this.messageService.add({
         severity: 'info',
         summary: 'Select Driver First',
@@ -2364,7 +1784,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       return;
     }
 
-    console.log('Selected driver:', selected.driver.name);
     if (!this.isBuildingRoute()) {
       this.messageService.add({
         severity: 'info',
@@ -2374,7 +1793,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.isBuildingRoute.set(true);
     }
 
-    console.log('Calling toggleLocationInRoute');
     this.toggleLocationInRoute(location);
   }
 
@@ -2385,7 +1803,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       // Route already exists, just update display
       this.isBuildingRoute.set(true);
       this.updateRouteDisplay();
-      this.refreshLocationMarkers();
+
       return;
     }
 
@@ -2411,10 +1829,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     this.isBuildingRoute.set(true);
     this.updateRouteDisplay();
-    this.refreshLocationMarkers();
   }
 
-  private async toggleLocationInRoute(location: ServiceLocationMapDto): Promise<void> {
+  async toggleLocationInRoute(location: ServiceLocationMapDto): Promise<void> {
     const selected = this.selectedDriver();
     if (!selected) {
       return;
@@ -2433,38 +1850,42 @@ export class MapPage implements AfterViewInit, OnDestroy {
     let locationWasInOtherRoute = false;
     let otherRouteDriverName = '';
 
-    for (const [driverToolId, route] of allRoutes.entries()) {
+    for (const [driverToolId, r] of allRoutes.entries()) {
       if (driverToolId !== selected.driver.toolId) {
-        const isInRoute = route.waypoints.some(
-          (w) => w.type === 'location' && w.toolId === location.toolId,
+        const isInRoute = r.waypoints.some(
+          (w: RouteWaypoint) => w.type === 'location' && w.toolId === location.toolId,
         );
         if (isInRoute) {
           locationWasInOtherRoute = true;
-          otherRouteDriverName = route.driver.name;
+          otherRouteDriverName = r.driver.name;
           break;
         }
       }
     }
 
-    const route = allRoutes.get(selected.driver.toolId);
-    if (!route) {
+    const currentRoute = allRoutes.get(selected.driver.toolId);
+    if (!currentRoute) {
       return;
     }
 
-    const prepared = await this.prepareRouteForCalculation(route);
+    const prepared = await this.prepareRouteForCalculation(currentRoute);
     if (!prepared) {
       return;
     }
 
-    const existingIndex = route.waypoints.findIndex(
-      (w) => w.type === 'location' && w.toolId === location.toolId,
+    const existingIndex = currentRoute.waypoints.findIndex(
+      (w: RouteWaypoint) => w.type === 'location' && w.toolId === location.toolId,
     );
 
     if (existingIndex !== -1) {
-      const startWaypoint = route.waypoints.find((w) => w.type === 'driver-start');
-      const endWaypoint = route.waypoints.find((w) => w.type === 'driver-end');
-      const remainingLocations = route.waypoints.filter(
-        (w, i) => w.type === 'location' && i !== existingIndex,
+      const startWaypoint = currentRoute.waypoints.find(
+        (w: RouteWaypoint) => w.type === 'driver-start',
+      );
+      const endWaypoint = currentRoute.waypoints.find(
+        (w: RouteWaypoint) => w.type === 'driver-end',
+      );
+      const remainingLocations = currentRoute.waypoints.filter(
+        (w: RouteWaypoint, i: number) => w.type === 'location' && i !== existingIndex,
       );
 
       const newWaypoints: RouteWaypoint[] = [];
@@ -2474,9 +1895,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
       if (remainingLocations.length > 0) {
         const optimizedLocations = this.optimizeRouteOrder(
-          startWaypoint || this.getRouteStartPoint(route),
+          startWaypoint || this.getRouteStartPoint(currentRoute),
           remainingLocations,
-          endWaypoint || this.getRouteEndPoint(route),
+          endWaypoint || this.getRouteEndPoint(currentRoute),
         );
         newWaypoints.push(...optimizedLocations);
       }
@@ -2484,16 +1905,16 @@ export class MapPage implements AfterViewInit, OnDestroy {
       if (endWaypoint) {
         newWaypoints.push(endWaypoint);
       } else if (remainingLocations.length > 0) {
-        const endPoint = this.getRouteEndPoint(route);
+        const endPoint = this.getRouteEndPoint(currentRoute);
         newWaypoints.push({
           type: 'driver-end',
-          name: `${route.driver.name} (Stop)`,
+          name: `${currentRoute.driver.name} (Stop)`,
           latitude: endPoint.latitude,
           longitude: endPoint.longitude,
         });
       }
 
-      route.waypoints = newWaypoints;
+      currentRoute.waypoints = newWaypoints;
       this.messageService.add({
         severity: 'info',
         summary: 'Location Removed',
@@ -2511,9 +1932,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
         erpId: location.erpId ?? undefined,
       };
 
-      const startWaypoint = route.waypoints.find((w) => w.type === 'driver-start');
-      const endWaypoint = route.waypoints.find((w) => w.type === 'driver-end');
-      const locations = route.waypoints.filter((w) => w.type === 'location');
+      const startWaypoint = currentRoute.waypoints.find(
+        (w: RouteWaypoint) => w.type === 'driver-start',
+      );
+      const endWaypoint = currentRoute.waypoints.find(
+        (w: RouteWaypoint) => w.type === 'driver-end',
+      );
+      const locations = currentRoute.waypoints.filter((w: RouteWaypoint) => w.type === 'location');
       locations.push(locationWaypoint);
 
       const newWaypoints: RouteWaypoint[] = [];
@@ -2522,19 +1947,19 @@ export class MapPage implements AfterViewInit, OnDestroy {
       }
 
       const optimizedLocations = this.optimizeRouteOrder(
-        startWaypoint || this.getRouteStartPoint(route),
+        startWaypoint || this.getRouteStartPoint(currentRoute),
         locations,
-        endWaypoint || this.getRouteEndPoint(route),
+        endWaypoint || this.getRouteEndPoint(currentRoute),
       );
       newWaypoints.push(...optimizedLocations);
 
       if (endWaypoint) {
         newWaypoints.push(endWaypoint);
       } else {
-        const endPoint = this.getRouteEndPoint(route);
+        const endPoint = this.getRouteEndPoint(currentRoute);
         newWaypoints.push({
           type: 'driver-end',
-          name: `${route.driver.name} (Stop)`,
+          name: `${currentRoute.driver.name} (Stop)`,
           latitude: endPoint.latitude,
           longitude: endPoint.longitude,
         });
@@ -2571,37 +1996,36 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
       this.calculateRouteMetrics(updatedRoute);
 
-      const routes = new Map(this.driverRoutes());
+      const nextRoutes = new Map(this.driverRoutes());
       const updatedRouteCopy = {
         ...updatedRoute,
         totalTimeMinutes: updatedRoute.totalTimeMinutes || 0,
         totalDistanceKm: updatedRoute.totalDistanceKm || 0,
         isAwaitingBackendTotals: true,
       };
-      routes.set(updatedRoute.driver.toolId, updatedRouteCopy);
-      this.driverRoutes.set(routes);
+      nextRoutes.set(updatedRoute.driver.toolId, updatedRouteCopy);
+      this.driverRoutes.set(nextRoutes);
 
       this.scheduleSaveRouteToBackend(updatedRouteCopy);
       this.updateAllRoutesDisplay();
-      this.refreshLocationMarkers();
+
       return;
     }
 
-    this.calculateRouteMetrics(route);
+    this.calculateRouteMetrics(currentRoute);
 
-    const routes = new Map(this.driverRoutes());
-    const updatedRoute = {
-      ...route,
-      totalTimeMinutes: route.totalTimeMinutes || 0,
-      totalDistanceKm: route.totalDistanceKm || 0,
+    const routesMap = new Map(this.driverRoutes());
+    const finalRoute = {
+      ...currentRoute,
+      totalTimeMinutes: currentRoute.totalTimeMinutes || 0,
+      totalDistanceKm: currentRoute.totalDistanceKm || 0,
       isAwaitingBackendTotals: true,
     };
-    routes.set(route.driver.toolId, updatedRoute);
-    this.driverRoutes.set(routes);
+    routesMap.set(currentRoute.driver.toolId, finalRoute);
+    this.driverRoutes.set(routesMap);
 
-    this.scheduleSaveRouteToBackend(updatedRoute);
+    this.scheduleSaveRouteToBackend(finalRoute);
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
   }
 
   private removeLocationFromOtherDrivers(
@@ -2669,167 +2093,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.driverRoutes.set(routes);
       // Update all routes display to show the changes
       this.updateAllRoutesDisplay();
-      this.refreshLocationMarkers();
     }
-  }
-
-  private refreshLocationMarkers(): void {
-    // Re-render all location markers to update route numbers
-    // This ensures number markers are properly added/removed
-    const data = this.mapData();
-    if (!data || data.items.length === 0 || !this.map) {
-      return;
-    }
-
-    // Remove all existing location markers (these are tracked in `this.markers`).
-    this.markers.forEach((marker) => this.map!.removeLayer(marker));
-    this.markers = [];
-
-    const currentRoute = this.getCurrentRoute();
-    const allRoutes = this.driverRoutes();
-    const selectedDay = this.selectedDate();
-
-    // Re-create all location markers with updated styling and numbers
-    data.items.forEach((item) => {
-      const isPlanned = item.status === 'Planned';
-      if (isPlanned && !this.showPlannedLocations()) {
-        return;
-      }
-
-      const hoursInfo =
-        this.getCachedLocationHours(item.toolId, selectedDay) ??
-        this.getHoursPlaceholderDisplay(selectedDay);
-      const colorKey = this.getMarkerColorKey(item, selectedDay, hoursInfo);
-      const fill = this.markerColors[colorKey];
-      const stroke = this.getMarkerStrokeColor(colorKey);
-
-      // Check if location is in current route and get its order
-      const routeWaypoint = currentRoute?.waypoints.find(
-        (w) => w.type === 'location' && w.toolId === item.toolId,
-      );
-      const isInRoute = !!routeWaypoint;
-      const routeOrder =
-        isInRoute && currentRoute
-          ? this.getLocationNumber(
-              currentRoute.waypoints.findIndex((w) => w === routeWaypoint),
-              currentRoute.waypoints,
-            )
-          : null;
-
-      // Marker shape depends on service type (max 5 shapes).
-      const marker = this.createServiceLocationMarker(item, fill, stroke, isInRoute ? 22 : 18);
-
-      // Don't add number label here - route markers already show the numbers
-      // The route waypoint markers from updateAllRoutesDisplay() will show the numbers
-
-      // Tooltip on hover (click is used for route building).
-      const tooltipContent = this.buildLocationTooltip(item, isInRoute, routeOrder, hoursInfo);
-
-      marker.bindTooltip(tooltipContent, {
-        direction: 'top',
-        opacity: 0.95,
-        sticky: true,
-        className: 'map-location-tooltip',
-      });
-      marker.on('tooltipopen', () => {
-        this.getLocationHoursDisplay(item.toolId, this.selectedDate(), true).then((display) => {
-          marker.setTooltipContent(this.buildLocationTooltip(item, isInRoute, routeOrder, display));
-          const updatedKey = this.getMarkerColorKey(item, this.selectedDate(), display);
-          if (updatedKey !== colorKey) {
-            const updatedFill = this.markerColors[updatedKey];
-            const updatedStroke = this.getMarkerStrokeColor(updatedKey);
-            const size = isInRoute ? 22 : 18;
-            const shape = this.getServiceTypeShape(item.serviceTypeId);
-            const svg = this.buildServiceLocationIconSvg(
-              shape,
-              size,
-              updatedFill,
-              updatedStroke,
-              2,
-            );
-            marker.setIcon(
-              L.divIcon({
-                className: 'service-location-shape-marker',
-                html: svg,
-                iconSize: [size, size],
-                iconAnchor: [size / 2, size / 2],
-              }),
-            );
-          }
-        });
-      });
-
-      if (!hoursInfo.isLoading && !hoursInfo.isClosed) {
-        // no-op if cached and open
-      } else {
-        this.getLocationHoursDisplay(item.toolId, selectedDay).then((display) => {
-          const updatedKey = this.getMarkerColorKey(item, selectedDay, display);
-          if (updatedKey !== colorKey) {
-            const updatedFill = this.markerColors[updatedKey];
-            const updatedStroke = this.getMarkerStrokeColor(updatedKey);
-            const shape = this.getServiceTypeShape(item.serviceTypeId);
-            const svg = this.buildServiceLocationIconSvg(
-              shape,
-              isInRoute ? 22 : 18,
-              updatedFill,
-              updatedStroke,
-              2,
-            );
-            marker.setIcon(
-              L.divIcon({
-                className: 'service-location-shape-marker',
-                html: svg,
-                iconSize: [isInRoute ? 22 : 18, isInRoute ? 22 : 18],
-                iconAnchor: [(isInRoute ? 22 : 18) / 2, (isInRoute ? 22 : 18) / 2],
-              }),
-            );
-          }
-        });
-      }
-
-      // Helper function to check if location is in any route
-      const isLocationInAnyRoute = (): boolean => {
-        const allRoutes = this.driverRoutes();
-        for (const route of allRoutes.values()) {
-          if (route.waypoints.some((w) => w.type === 'location' && w.toolId === item.toolId)) {
-            return true;
-          }
-        }
-        return false;
-      };
-
-      // Click adds/moves (unless Ctrl is held for area selection).
-      marker.on('click', (e) => {
-        const ctrl = (e.originalEvent as MouseEvent | undefined)?.ctrlKey;
-        if (ctrl) {
-          return;
-        }
-        this.onLocationClick(item);
-      });
-
-      // Add double click handler to remove from route
-      marker.on('dblclick', (e) => {
-        const ctrl = (e.originalEvent as MouseEvent | undefined)?.ctrlKey;
-        if (ctrl) {
-          return;
-        }
-        e.originalEvent?.stopPropagation();
-        e.originalEvent?.preventDefault();
-
-        // Check if location is in any route (current or other)
-        const isInAnyRoute = isLocationInAnyRoute();
-
-        // Remove on double click if in any route
-        if (isInAnyRoute) {
-          this.toggleLocationInRoute(item);
-        }
-      });
-
-      if (this.map) {
-        marker.addTo(this.map);
-        this.markers.push(marker);
-      }
-    });
   }
 
   private optimizeRouteOrder(
@@ -2846,14 +2110,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
 
     // Use nearest neighbor algorithm with 2-opt improvement
-    const optimized = this.nearestNeighbor(start, locations, end);
+    const optimized = this.nearestNeighbor(start, locations);
     return this.twoOptImprovement(optimized, start, end);
   }
 
   private nearestNeighbor(
     start: { latitude: number; longitude: number },
     locations: RouteWaypoint[],
-    end: { latitude: number; longitude: number },
   ): RouteWaypoint[] {
     const result: RouteWaypoint[] = [];
     const unvisited = [...locations];
@@ -3152,6 +2415,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
     return windowInfo;
   }
 
+  private isCacheFresh(fetchedAt: number): boolean {
+    // 30 minutes TTL
+    const TTL = 30 * 60 * 1000;
+    return Date.now() - fetchedAt < TTL;
+  }
+
   private buildWindowInfo(
     openTime?: string | null,
     closeTime?: string | null,
@@ -3193,7 +2462,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Earth's radius in km
+    // Earth's radius in km
+    const R = 6371;
     const dLat = this.toRad(lat2 - lat1);
     const dLon = this.toRad(lon2 - lon1);
     const a =
@@ -3264,15 +2534,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }
 
     const allRoutes = this.driverRoutes();
-    console.log('updateAllRoutesDisplay - Displaying', allRoutes.size, 'routes');
 
     // Remove all existing route polylines and markers
-    this.routePolylines.forEach((polyline, driverToolId) => {
+    this.routePolylines.forEach((polyline) => {
       this.map!.removeLayer(polyline);
     });
     this.routePolylines.clear();
 
-    this.routeMarkers.forEach((markers, driverToolId) => {
+    this.routeMarkers.forEach((markers) => {
       markers.forEach((marker) => this.map!.removeLayer(marker));
     });
     this.routeMarkers.clear();
@@ -3378,11 +2647,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
     routes.set(driverToolId, { ...route });
     this.driverRoutes.set(routes);
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
+
     this.scheduleSaveRouteToBackend(route);
   }
 
-  private updateRouteDisplayForRoute(route: RouteInfo | null): void {
+  private updateRouteDisplayForRoute(): void {
     // This method is now deprecated - we always show all routes
     // But keep it for backward compatibility
     this.updateAllRoutesDisplay();
@@ -3408,7 +2677,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   private showDriverLocation(driver: DriverDto, isAvailable: boolean): void {
     if (!this.map) {
-      console.error('Map not initialized');
       this.messageService.add({
         severity: 'warn',
         summary: 'Map not ready',
@@ -3484,10 +2752,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     // Routes are per driver per day — clear current in-memory routes immediately
     this.driverRoutes.set(new Map());
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
-    this.locationWindowCache.clear();
-    this.locationHoursCache.clear();
-    this.locationHoursRequests.clear();
 
     // Reload availability for the new day first (async)
     await this.loadDriversWithAvailability();
@@ -3640,7 +2904,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     // Clear current routes so we don't show routes from a different day while loading/failing
     this.driverRoutes.set(new Map());
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
 
     const drivers = this.driversWithAvailability();
     if (drivers.length === 0) {
@@ -3777,15 +3040,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
         this.driverRoutes.set(routes);
         this.updateAllRoutesDisplay();
-        this.refreshLocationMarkers();
+
         this.syncOverrideInputsFromRoute(this.getCurrentRoute());
       })
-      .catch((error) => {
-        console.error('Error loading existing routes:', error);
+      .catch(() => {
         // Routes are per day; if loading fails, keep map clean (no stale routes)
         this.driverRoutes.set(new Map());
         this.updateAllRoutesDisplay();
-        this.refreshLocationMarkers();
+
         this.syncOverrideInputsFromRoute(this.getCurrentRoute());
       });
   }
@@ -3800,7 +3062,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     this.driverRoutes.set(new Map());
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
 
     const drivers = this.driversWithAvailability();
     if (drivers.length === 0) {
@@ -3927,13 +3188,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
       this.driverRoutes.set(routes);
       this.updateAllRoutesDisplay();
-      this.refreshLocationMarkers();
+
       this.syncOverrideInputsFromRoute(this.getCurrentRoute());
-    } catch (error) {
-      console.error('Error loading existing routes:', error);
+    } catch {
       this.driverRoutes.set(new Map());
       this.updateAllRoutesDisplay();
-      this.refreshLocationMarkers();
+
       this.syncOverrideInputsFromRoute(this.getCurrentRoute());
     }
   }
@@ -3974,8 +3234,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
               driver,
               availability,
             } as DriverWithAvailability;
-          } catch (error) {
-            console.error(`Error loading availability for driver ${driver.name}:`, error);
+          } catch {
             return {
               driver,
               availability: null,
@@ -3990,8 +3249,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       );
 
       this.driversWithAvailability.set(availableDrivers);
-    } catch (error) {
-      console.error('Error loading drivers with availability:', error);
+    } catch {
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
@@ -4256,17 +3514,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   private resolveRouteEndpointAddress(
-    route: RouteInfo,
-    kind: 'start' | 'end',
+    _route: RouteInfo,
+    _kind: 'start' | 'end',
     latitude: number,
     longitude: number,
     key: string,
   ): void {
-    if (this.routeEndpointAddressRequests.has(key)) {
-      return;
-    }
-
-    const request = firstValueFrom(this.serviceLocationsApi.resolveGeo({ latitude, longitude }))
+    void firstValueFrom(this.serviceLocationsApi.resolveGeo({ latitude, longitude }))
       .then((result) => {
         const address = result?.address?.trim();
         if (!address) {
@@ -4276,14 +3530,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
         next.set(key, address);
         this.routeEndpointAddressCache.set(next);
       })
-      .catch((err) => {
-        console.warn('Failed to resolve route endpoint address', err);
-      })
-      .finally(() => {
-        this.routeEndpointAddressRequests.delete(key);
+      .catch(() => {
+        // Silently fail geo-resolution
       });
-
-    this.routeEndpointAddressRequests.set(key, request);
   }
 
   private isCoordinateLikeAddress(value: string): boolean {
@@ -4337,7 +3586,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.driverRoutes.set(routes);
 
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
 
     // Persist new order + recalc on backend (OSRM)
     this.scheduleSaveRouteToBackend(route);
@@ -4381,64 +3629,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   private saveRouteToBackend(route: RouteInfo): void {
-    const ownerId = Number(this.selectedOwnerId());
-    const date = this.selectedDate();
-
-    if (!ownerId) {
-      // Can't save without owner - should be set before building routes
-      return;
-    }
-
-    // Convert waypoints to stops (only location waypoints, exclude start/end)
-    const locationWaypoints = route.waypoints.filter((w) => w.type === 'location');
-    const stops: CreateRouteStopRequest[] = [];
-
-    for (let i = 0; i < locationWaypoints.length; i++) {
-      const waypoint = locationWaypoints[i];
-      const routeStart = this.getRouteStartPoint(route);
-      const prevWaypoint =
-        i === 0
-          ? { latitude: Number(routeStart.latitude), longitude: Number(routeStart.longitude) }
-          : locationWaypoints[i - 1];
-
-      const distanceKm = this.calculateDistance(
-        Number(prevWaypoint.latitude),
-        Number(prevWaypoint.longitude),
-        Number(waypoint.latitude),
-        Number(waypoint.longitude),
-      );
-      const travelMinutes = Math.round((distanceKm / 50) * 60); // 50 km/h average
-
-      const mapData = this.mapData();
-      const serviceLocationToolId =
-        waypoint.toolId ??
-        mapData?.items.find((item) => {
-          const latDiff = Math.abs(item.latitude - Number(waypoint.latitude));
-          const lonDiff = Math.abs(item.longitude - Number(waypoint.longitude));
-          return latDiff < 0.0001 && lonDiff < 0.0001;
-        })?.toolId;
-
-      stops.push({
-        sequence: i + 1, // Sequence starts at 1
-        serviceLocationToolId,
-        latitude: Number(waypoint.latitude),
-        longitude: Number(waypoint.longitude),
-        serviceMinutes: waypoint.serviceMinutes || 20,
-        travelKmFromPrev: Number(distanceKm),
-        travelMinutesFromPrev: travelMinutes,
-      });
-    }
-
     // Ensure metrics are calculated before saving
     this.calculateRouteMetrics(route);
 
     // Validate route has metrics
     if (route.totalTimeMinutes == null || route.totalDistanceKm == null) {
-      console.error('Route metrics not calculated:', {
-        totalTimeMinutes: route.totalTimeMinutes,
-        totalDistanceKm: route.totalDistanceKm,
-        waypoints: route.waypoints.length,
-      });
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
@@ -4447,35 +3642,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const totalMinutes = Number.isFinite(route.totalTimeMinutes)
-      ? Math.round(route.totalTimeMinutes)
-      : 0;
-    const totalKm = Number.isFinite(route.totalDistanceKm) ? route.totalDistanceKm : 0;
-
-    const request: CreateRouteRequest = {
-      date: toYmd(date),
-      ownerId: ownerId,
-      // serviceTypeId removed - routes are identified by date, driver, owner only
-      driverToolId: route.driver.toolId,
-      totalMinutes: totalMinutes,
-      totalKm: totalKm,
-      startAddress: route.startOverride?.address,
-      startLatitude: route.startOverride?.latitude,
-      startLongitude: route.startOverride?.longitude,
-      endAddress: route.endOverride?.address,
-      endLatitude: route.endOverride?.latitude,
-      endLongitude: route.endOverride?.longitude,
-      weightTemplateId: this.selectedWeightTemplateId() ?? undefined,
-      stops: stops,
-    };
-
-    console.log('Saving route:', {
-      totalMinutes: request.totalMinutes,
-      totalKm: request.totalKm,
-      stopsCount: request.stops.length,
-    });
-
-    // Use debounced queued saving to avoid overlapping requests
     this.scheduleSaveRouteToBackend(route);
   }
 
@@ -4507,36 +3673,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
       route.roadGeometry = saved.geometry.map(
         (p) => [Number(p.lat), Number(p.lng)] as [number, number],
       );
-    }
-
-    const isDev = !(environment as { production?: boolean }).production;
-    if (isDev) {
-      const stops = saved.stops ?? [];
-      const legKmSum = stops.reduce((sum, stop) => sum + (Number(stop.travelKmFromPrev) || 0), 0);
-      const lastStop = stops.length > 0 ? stops[stops.length - 1] : null;
-      const endLat = saved.endLatitude ?? saved.driverStartLatitude ?? null;
-      const endLng = saved.endLongitude ?? saved.driverStartLongitude ?? null;
-      const tailKm =
-        lastStop && this.hasValidCoordinates(endLat, endLng)
-          ? this.calculateDistance(
-              lastStop.latitude,
-              lastStop.longitude,
-              endLat as number,
-              endLng as number,
-            )
-          : 0;
-      const expectedKm = legKmSum + tailKm;
-      if (stops.length > 0 && Math.abs(expectedKm - route.totalDistanceKm) > 1) {
-        console.warn('Route distance mismatch', {
-          routeId: saved.id,
-          totalKm: route.totalDistanceKm,
-          legKmSum,
-          tailKm,
-          expectedKm,
-          end: { lat: endLat, lon: endLng },
-          points: stops.length,
-        });
-      }
     }
   }
 
@@ -4591,7 +3727,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
           routes.set(driverToolId, { ...current });
           this.driverRoutes.set(routes);
           this.updateAllRoutesDisplay();
-          this.refreshLocationMarkers();
+
           if (this.getCurrentRoute()?.driver.toolId === driverToolId) {
             this.syncOverrideInputsFromRoute(current);
           }
@@ -4602,7 +3738,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
         this.refreshMapDataAfterRouteSave();
       },
       error: (err) => {
-        console.error('Failed to save route:', err);
         const errorMessage =
           err?.error?.detail ||
           err?.error?.title ||
@@ -4764,7 +3899,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     // Update all routes display (will remove the cleared route)
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
 
     if (hadRoute) {
       this.routesApi
@@ -4801,7 +3935,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.isBuildingRoute.set(false);
     this.syncOverrideInputsFromRoute(null);
     this.updateAllRoutesDisplay();
-    this.refreshLocationMarkers();
 
     if (hadRoutes) {
       this.routesApi.deleteDayRoutes(this.selectedDate(), ownerId).subscribe({
